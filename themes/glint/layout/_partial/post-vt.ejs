@@ -36,7 +36,10 @@
             // 封面与标题的形变只动 transform，交给合成线程：文章页正在加载时主线程再忙也不掉帧（见 _partial/vt-flip.ejs）
             vtFlip(e.viewTransition, {
                 'post-cover': { old: 'cover' },
-                'post-title': { old: 'auto', new: 'auto' }
+                'post-shadow': { follow: 'post-cover', how: 'box' },
+                'post-light': { follow: 'post-cover', how: 'box' },
+                'post-info': { follow: 'post-cover', how: 'content' },
+                'post-title': { old: 'auto', new: 'auto', el: '#vt-post-title' }
             });
             e.viewTransition.finished.finally(function () { root.classList.remove('vt-from-card'); });
         });

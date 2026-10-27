@@ -20,6 +20,8 @@
         <% if (post.title !== '关于网站') { %>
         <%# 整张卡片就是链接（中键 / 新标签页、首页的预取规则都认它）；一镜到底见 head.ejs %>
         <a class="post-item card-style" href="<%- url_for(post.path) %>">
+            <%# 投影、高光与细边、摘要信息各是一层独立元素：一镜到底时各自成为过渡层，跟着卡片放大、途中渐隐（见 glint.css） %>
+            <span class="post-card-shadow" aria-hidden="true"></span>
             <%# 封面原图与模糊层：两层真实元素，图片写在各自的内联 background-image 上（不经 CSS 变量，样式重算时不会被当成换了图而重绘） %>
             <% var coverUrl = post.cover || theme.background; %>
             <div class="post-card-bg">
@@ -31,7 +33,7 @@
             </div>
 
             <div class="post-card-overlay">
-                <span class="post-card-sheen" aria-hidden="true"></span>
+                <span class="post-card-light" aria-hidden="true"><span class="post-card-sheen"></span></span>
                 <h2 class="post-card-title">
                     <span><%- post.title || '未命名' %></span>
                 </h2>

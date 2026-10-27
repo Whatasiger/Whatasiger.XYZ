@@ -72,9 +72,12 @@
                     // 卡片铺满成整屏：形变只动 transform，交给合成线程；圆角按组的缩放折算（见 _partial/vt-flip.ejs）
                     vtFlip(e.viewTransition, {
                         'cw-stage': { new: 'cover', radius: 24 },
-                        'cw-hero-wave': {},
-                        'cw-hero-title': { old: 'auto', new: 'auto' },
-                        'cw-hero-sub': { old: 'auto', new: 'auto' }
+                        // 载波的终点是画布上真实载波所在：滚过吸顶点后它停在顶部，不随轴线滚走（cw.js 的 cwCarrierRect）
+                        'cw-hero-wave': { el: function () {
+                            return window.cwCarrierRect ? window.cwCarrierRect() : document.querySelector('.cw-axis').getBoundingClientRect();
+                        } },
+                        'cw-hero-title': { old: 'auto', new: 'auto', el: '.cw-title' },
+                        'cw-hero-sub': { old: 'auto', new: 'auto', el: '.cw-sub' }
                     });
                     e.viewTransition.finished.finally(function () { root.classList.remove('cw-from-home'); });
                 });

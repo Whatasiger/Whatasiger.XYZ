@@ -164,8 +164,9 @@
     <%- partial('_partial/cw-title-font') %>
     <!-- 预渲染目录页：指针停在卡片上（或按下）时就在后台把它完整加载好，点击即刻切换、过渡立即开始，不必等网络与字体 -->
     <script type="speculationrules">{"prerender": [{"urls": ["<%- url_for('/carrier_wave/') %>"], "eagerness": "moderate"}]}</script>
-    <!-- 文章卡片只预取 HTML（不预渲染：预渲染会执行文章页脚本，不蒜子会多计一次阅读）；样式与封面首页已加载过，新页能及时出首帧接上一镜到底 -->
-    <script type="speculationrules">{"prefetch": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "moderate"}]}</script>
+    <!-- 文章卡片同样预渲染（指针停留 / 按下即开始）：点击后过渡立即开始，不必等文章页下载、解析、出首帧
+         预渲染会执行文章页脚本，所以不蒜子等页面真正打开才加载计数（footer.ejs），评论等过渡结束（post-vt.ejs 的 vtSettled） -->
+    <script type="speculationrules">{"prerender": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "moderate"}]}</script>
     <!-- 卡片副题「载波·短篇辑」与目录页同用思源宋体；只取这几个字，字体文件很小 -->
     <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300&text=<%- encodeURIComponent('载波短篇辑') %>&display=swap">
     <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」与「首页 → 文章」（文章卡片一镜到底），其余跳转一律跳过 -->
@@ -265,10 +266,10 @@
                 root.classList.add('cw-back', 'cw-came-back');
                 // 形变改为只动 transform，交给合成线程（见 _partial/vt-flip.ejs）
                 vtFlip(e.viewTransition, {
-                    'cw-stage': {},
-                    'cw-hero-wave': {},
-                    'cw-hero-title': { old: 'auto', new: 'auto' },
-                    'cw-hero-sub': { old: 'auto', new: 'auto' }
+                    'cw-stage': { el: '.post-item.cw-card' },
+                    'cw-hero-wave': { el: '.cw-card-wave-box' },
+                    'cw-hero-title': { old: 'auto', new: 'auto', el: '.cw-card-title' },
+                    'cw-hero-sub': { old: 'auto', new: 'auto', el: '.cw-card-sub' }
                 });
                 e.viewTransition.finished.finally(function () { root.classList.remove('cw-back'); });
             });
@@ -288,14 +289,9 @@
                         document.head.appendChild(l);
                     });
             }
-            document.addEventListener('DOMContentLoaded', function () {
-                var card = document.querySelector('.post-item.cw-card');
-                if (!card) return;
-                ['pointerenter', 'pointerdown', 'touchstart', 'focus'].forEach(function (t) {
-                    card.addEventListener(t, warm, { once: true, passive: true });
-                });
-                // 按下即有回应：卡片微微沉下、标题与载波从悬停状态回落，不必等新页面就绪；离场快照会从这里接续
-                // 抬起后保持按下状态直到离开本页；移出卡片、触摸转为滚动、带修饰键（新标签页打开）时复原
+            // 按下即有回应（所有卡片）：卡片微沉；文章卡片同时开始放大、模糊（触屏没有悬停），离场快照从这里接续
+            // 抬起后保持按下状态直到离开本页；移出卡片、触摸转为滚动、带修饰键（新标签页打开）、从往返缓存回来时复原
+            function pressable(card) {
                 function release() { card.classList.remove('is-pressed'); }
                 card.addEventListener('pointerdown', function (e) {
                     if (e.button === 0) card.classList.add('is-pressed');
@@ -308,8 +304,17 @@
                 card.addEventListener('click', function (e) {
                     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) release();
                 });
-                // 从往返缓存回来时复原
                 window.addEventListener('pageshow', release);
+            }
+            document.addEventListener('DOMContentLoaded', function () {
+                Array.prototype.forEach.call(document.querySelectorAll('a.post-item.card-style:not(.cw-card)'), pressable);
+                var card = document.querySelector('.post-item.cw-card');
+                if (!card) return;
+                ['pointerenter', 'pointerdown', 'touchstart', 'focus'].forEach(function (t) {
+                    card.addEventListener(t, warm, { once: true, passive: true });
+                });
+                // CW 卡片按下时标题与载波还从悬停状态回落，与目录页首屏一致
+                pressable(card);
                 window.addEventListener('load', function () {
                     if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 3000 });
                     else setTimeout(warm, 1000);
