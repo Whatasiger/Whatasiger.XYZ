@@ -23,10 +23,21 @@
                 return !!hop && Date.now() - hop.t < 10000 && hop.to === norm(location.href) && isHome(hop.from);
             } catch (err) { return false; }
         }
+        // 过渡结束的信号：评论（Twikoo）等重活等它落定再开始，免得在过渡中途占住主线程（见 _partial/comments.ejs）
+        var settle;
+        window.vtSettled = new Promise(function (r) { settle = r; });
+        if (!('onpagereveal' in window)) settle();
         window.addEventListener('pagereveal', function (e) {
-            if (!e.viewTransition) return;
-            if (!fromHome()) { e.viewTransition.skipTransition(); return; }
-            root.classList.add('vt-from-card');
+            if (!e.viewTransition) { settle(); return; }
+            if (!fromHome()) { e.viewTransition.skipTransition(); settle(); return; }
+            e.viewTransition.finished.finally(settle);
+            // vt-card-in 不随过渡结束移除：标题区的入场动画一旦恢复就会重播
+            root.classList.add('vt-from-card', 'vt-card-in');
+            // 封面与标题的形变只动 transform，交给合成线程：文章页正在加载时主线程再忙也不掉帧（见 _partial/vt-flip.ejs）
+            vtFlip(e.viewTransition, {
+                'post-cover': { old: 'cover' },
+                'post-title': { old: 'auto', new: 'auto' }
+            });
             e.viewTransition.finished.finally(function () { root.classList.remove('vt-from-card'); });
         });
         // 离开文章页：不做过渡

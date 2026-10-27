@@ -19,6 +19,7 @@
     <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
     <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Serif+SC:wght@300;400;500&display=swap">
     <%- partial('_partial/cw-title-font') %>
+    <%- partial('_partial/vt-flip') %>
 
     <script>
         (function () {
@@ -67,7 +68,15 @@
                     var heroIn = fresh || (hero && hero.getBoundingClientRect().bottom > 0);
                     var on = !!(e.viewTransition && heroIn && cameFrom(isHome));
                     root.classList.toggle('cw-from-home', on);
-                    if (on) e.viewTransition.finished.finally(function () { root.classList.remove('cw-from-home'); });
+                    if (!on) return;
+                    // 卡片铺满成整屏：形变只动 transform，交给合成线程；圆角按组的缩放折算（见 _partial/vt-flip.ejs）
+                    vtFlip(e.viewTransition, {
+                        'cw-stage': { new: 'cover', radius: 24 },
+                        'cw-hero-wave': {},
+                        'cw-hero-title': { old: 'auto', new: 'auto' },
+                        'cw-hero-sub': { old: 'auto', new: 'auto' }
+                    });
+                    e.viewTransition.finished.finally(function () { root.classList.remove('cw-from-home'); });
                 });
             }
 

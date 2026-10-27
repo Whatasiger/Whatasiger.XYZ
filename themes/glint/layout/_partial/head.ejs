@@ -127,6 +127,25 @@
     <% if (bgImage) { %>
     <style>body{ --page-bg-image: url(<%- bgImage %>) }</style>
     <% } %>
+    <% if (is_post() && bgImage) { %>
+    <%# 首页指针移上卡片时已按文章页的模糊度把这张图烤好（glint.js bgBake.prebake）：首帧就用烤好的图，背景层不挂实时的全屏模糊
+       图、模糊度（设置里的 bgBlur，缺省 8，与 glint.js defaultSettings 一致）、视口尺寸都对得上才用；glint.js 载入后接管 %>
+    <script>
+        (function () {
+            try {
+                var p = JSON.parse(sessionStorage.getItem('glint-bg-prebake'));
+                var s = JSON.parse(localStorage.getItem('whatasiger_reader_settings')) || {};
+                var blur = typeof s.bgBlur === 'number' ? Math.max(0, Math.min(20, s.bgBlur)) : 8;
+                if (!p || p.src !== <%- JSON.stringify(bgImage) %> || p.blur !== blur || p.w !== innerWidth || p.h !== innerHeight) return;
+                var st = document.createElement('style');
+                st.id = 'bg-prebake';
+                st.textContent = 'body{--page-bg-image:url("' + p.url + '")}';
+                document.head.appendChild(st);
+                document.documentElement.classList.add('bg-prebaked');
+            } catch (err) {}
+        })();
+    </script>
+    <% } %>
 
     <!-- 思源黑体（Noto Sans SC）：国内镜像优先 + 本机字体名回退 -->
     <link rel="preconnect" href="https://fonts.loli.net">
@@ -137,6 +156,9 @@
     <link rel="stylesheet"
           href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap"
           media="print" onload="this.media='all'; this.onload=null;">
+    <% if (is_home() || is_post()) { %>
+    <%- partial('_partial/vt-flip') %>
+    <% } %>
     <% if (is_home()) { %>
     <!-- 卡片标题用内联的子集字体，不再外链 Cormorant Garamond -->
     <%- partial('_partial/cw-title-font') %>
@@ -196,6 +218,8 @@
                     if (r.bottom <= 0 || r.top >= innerHeight) return false;
                     var title = cards[i].querySelector('.post-card-title span');
                     cards[i].classList.add('vt-active');
+                    // 倾斜摆正（快照按平面形变；最多 2.5°，被放大的动作盖住看不出来）
+                    cards[i].style.transform = '';
                     cards[i].style.viewTransitionName = 'post-cover';
                     if (title) title.style.viewTransitionName = 'post-title';
                     root.classList.add('post-leaving');
@@ -239,6 +263,13 @@
                 }
                 // cw-came-back 不随过渡结束移除：卡片的入场动画一旦恢复就会重播，造成落定后再闪一下
                 root.classList.add('cw-back', 'cw-came-back');
+                // 形变改为只动 transform，交给合成线程（见 _partial/vt-flip.ejs）
+                vtFlip(e.viewTransition, {
+                    'cw-stage': {},
+                    'cw-hero-wave': {},
+                    'cw-hero-title': { old: 'auto', new: 'auto' },
+                    'cw-hero-sub': { old: 'auto', new: 'auto' }
+                });
                 e.viewTransition.finished.finally(function () { root.classList.remove('cw-back'); });
             });
 
