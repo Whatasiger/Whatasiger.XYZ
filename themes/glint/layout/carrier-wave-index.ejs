@@ -1,0 +1,84 @@
+﻿---
+layout: false
+---
+<%
+var album = page.album;
+var tracks = page.tracks || [];
+%>
+<!DOCTYPE html>
+<html lang="<%= config.language || 'zh-CN' %>">
+<%- partial('_partial/carrier-wave-head', {
+    cwTitle: album.title + ' ' + album.subtitle + ' - ' + config.title,
+    cwDescription: album.subtitle + ' · ' + album.caption + '。' + album.epigraph,
+    cwType: 'website'
+}) %>
+<body class="cw cw-index">
+    <div class="cw-stage" aria-hidden="true"></div>
+    <canvas class="cw-wave" aria-hidden="true"></canvas>
+
+    <nav class="cw-corner">
+        <a class="cw-home" href="<%- url_for('/') %>"><span class="cw-arrow" aria-hidden="true">←</span>Whatasiger</a>
+    </nav>
+    <div class="cw-tuner" aria-hidden="true">
+        <span class="cw-tuner-no"></span>
+        <span class="cw-tuner-title"></span>
+    </div>
+
+    <main>
+        <section class="cw-hero">
+            <h1 class="cw-title cw-rise" style="--d:0"><%
+                var iUrl = url_for('/carrier_wave/i/');
+                var dotUrl = url_for('/carrier_wave/dot/');
+                var hasDot = album.title.slice(-1) === '.';
+                var parts = (hasDot ? album.title.slice(0, -1) : album.title).split('i');
+            %><%= parts[0] %><a class="cw-i" href="<%- iUrl %>" aria-label="i.">i</a><%= parts.slice(1).join('i') %><% if (hasDot) { %><a class="cw-period" href="<%- dotUrl %>" aria-label=".">.</a><% } %></h1>
+            <div class="cw-axis" data-cw-axis></div>
+            <p class="cw-sub cw-rise" style="--d:2">
+                <span><%= album.subtitle %></span><i class="cw-dot" aria-hidden="true"></i><span><%= album.caption %></span>
+            </p>
+            <a class="cw-cue cw-rise" style="--d:4" href="#tracks" aria-label="曲目"><span></span></a>
+        </section>
+
+        <section id="tracks" class="cw-list" aria-label="曲目">
+            <ol class="cw-tracks">
+            <% tracks.forEach(function (t, i) {
+                var cls = ['cw-track'];
+                if (!t.published) cls.push('is-lost');
+                if (t.lead) cls.push('is-lead');
+                if (t.slug === 'limbo') cls.push('is-limbo');
+                var gapA = ((i * 37 + 11) % 68) + 12;
+                var gapB = gapA + 2 + ((i * 13) % 5);
+                var tag = t.published ? 'a' : 'span';
+            %>
+                <li class="<%= cls.join(' ') %>" style="--tint:<%= t.tint %>;--gap-a:<%= gapA %>%;--gap-b:<%= gapB %>%">
+                    <<%= tag %> class="cw-track-link"
+                        <% if (t.published) { %>href="<%- url_for(t.url) %>"<% } else { %>aria-disabled="true"<% } %>
+                        data-cw-track
+                        data-seed="<%= t.index %>"
+                        data-tint="<%= t.tint %>"
+                        data-wave="<%= t.wave %>"
+                        <% if (t.flat) { %>data-flat<% } %>
+                        data-no="<%= t.no %>"
+                        data-title="<%= t.title %><%= t.part ? ' ' + t.part : '' %>"
+                        data-state="<%= t.published ? 'signal' : 'lost' %>">
+                        <span class="cw-no"><%= t.no %></span>
+                        <span class="cw-name">
+                            <span class="cw-name-text" style="view-transition-name:cw-t-<%= t.slug %>"><%= t.title %></span><% if (t.part) { %><span class="cw-part"><%= t.part %></span><% } %>
+                        </span>
+                        <span class="cw-meta">
+                            <% if (t.published) { %><%= t.wordsLabel %><% } else { %>未接收<% } %>
+                        </span>
+                    </<%= tag %>>
+                </li>
+            <% }) %>
+            </ol>
+        </section>
+
+        <footer class="cw-foot" id="cw-foot">
+            <p class="cw-epigraph"><%= album.epigraph %></p>
+            <p class="cw-sign"><%= config.author %></p>
+        </footer>
+    </main>
+</body>
+</html>
+

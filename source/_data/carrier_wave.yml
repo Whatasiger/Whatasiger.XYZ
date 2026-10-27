@@ -1,0 +1,41 @@
+# CARRiER WAVE. 曲目表
+# 正文放在 source/_carrier_wave/<slug>.md；文件不存在的篇目在目录中显示为「未接收」。
+#
+# slug   : 正文文件名与阅读页路径 /carrier_wave/<slug>/
+# title  : 标题（不含系列序号）
+# part   : 系列序号，可留空
+# lead   : 主打篇目
+# tint   : 该篇的色调（低饱和、高明度）
+# flat   : 为 true 时载波被拉直，不再起伏
+# wave   : 载波颜色，可留空（默认由 tint 推出）；暗色时整条载波变暗，阅读页进度点只照亮前后一小段
+
+title: CARRiER WAVE.
+subtitle: 载波
+caption: 短篇辑
+epigraph: 被留下的成为信号，被遗漏的进入 limbo。
+
+tracks:
+  - { slug: sin,                title: SIN.,              tint: "#CFC6B8" }
+  - { slug: pathos,             title: PATHOS.,           tint: "#C9A9AE", wave: "#E2626B" }
+  - { slug: mamihlapinatapei-1, title: maMihlApinaTapEi., part: 1st, tint: "#A8C3C1", wave: "#8FA7BF" }
+  - { slug: anecdoche,          title: Anecdoche.,        tint: "#CFC6B8" }
+  - { slug: eden,               title: Eden.,             tint: "#B9C7AE" }
+  - { slug: airs-1,             title: AIRS.,             part: Ⅰ,   tint: "#AEBFD6", wave: "#BFB48C" }
+  - { slug: mamihlapinatapei-2, title: maMihlApinaTapEi., part: 2nd, tint: "#A8C3C1", wave: "#8FA7BF" }
+  - { slug: eric,               title: Eric.,             tint: "#BDB6CF" }
+  - { slug: airs-2,             title: AIRS.,             part: Ⅱ,   tint: "#AEBFD6", wave: "#BFB48C" }
+  - { slug: remy,               title: Remy.,             tint: "#D3BFA9" }
+  - { slug: mamihlapinatapei-3, title: maMihlApinaTapEi., part: 3rd, tint: "#A8C3C1", wave: "#8FA7BF" }
+  - { slug: mora,               title: Mora.,             tint: "#B4B9C4" }
+  - { slug: sonder,             title: Sonder.,           tint: "#CFC6B8" }
+  - { slug: mamihlapinatapei-4, title: maMihlApinaTapEi., part: 4th, tint: "#A8C3C1", wave: "#8FA7BF" }
+  - { slug: enouement,          title: Énouement.,        tint: "#CFC6B8" }
+  - { slug: airs-3,             title: AIRS.,             part: Ⅲ,   tint: "#AEBFD6", wave: "#BFB48C" }
+  - { slug: limbo,              title: limbo.,            tint: "#C4C4C6", wave: "#000000" }
+  - { slug: carrier-wave,       title: CARRiER WAVE.,     tint: "#B7C4D4", flat: true }
+# 加上 lead: true 使其成为主打篇目。
+
+# 隐藏篇目：不在目录中，不参与上一篇/下一篇，只能从首屏标题里的 i / 末尾的句点进入。
+hidden:
+  - { slug: i,                  title: i.,                tint: "#B9A4C9" }
+  - { slug: dot,                title: ".",              tint: "#C4C4C6" }

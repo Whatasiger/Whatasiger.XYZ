@@ -1,0 +1,16 @@
+.DS_Store
+Thumbs.db
+db.json
+*.log
+node_modules/
+public/
+.deploy*/
+_multiconfig.yml
+
+# 工具脚本可能在自身目录就地安装依赖，但绝对不应进入站点 source/
+source/**/node_modules/
+source/**/package-lock.json
+# Origin 构建缓存 / 编辑器配置
+.origin-build/
+.idea/
+.cursor/

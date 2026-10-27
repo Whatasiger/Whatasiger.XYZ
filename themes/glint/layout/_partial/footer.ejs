@@ -1,0 +1,32 @@
+<footer>
+    <div class="wrap min">
+        <section class="widget">
+            <div class="footer-grid">
+                <div class="footer-card">
+                    <h3 class="footer-card-title title-recent">最新文章<span class="footer-card-sub">Recent</span></h3>
+                    <%- list_posts() %>
+                </div>
+                <div class="footer-card">
+                    <h3 class="footer-card-title title-date">时光机<span class="footer-card-sub">Archive</span></h3>
+                    <%- list_archives({ show_count: false, format: 'YYYY 年 M 月' }) %>
+                </div>
+                <div class="footer-card">
+                    <h3 class="footer-card-title title-tags">标签云<span class="footer-card-sub">Tags</span></h3>
+                    <div class="footer-tags"><%- tagcloud({ min_font: 13, max_font: 17, unit: 'px' }) %></div>
+                    <p class="footer-card-note">共 <%= site.posts.length %> 篇文章 · <%= site.tags.length %> 个标签</p>
+                </div>
+            </div>
+        </section>
+        <section class="sub-footer">
+            <p>© <%= date(new Date, "YYYY") %> <a href="<%= url_for() %>"><%= config.title %></a>. All Rights Reserved. Theme Glint, based on <a href="https://github.com/Dreamer-Paul/Hingle" target="_blank" rel="nofollow">Hingle</a>.</p>
+        </section>
+    </div>
+</footer>
+
+<%# 目录开关 .toggle-list 由 glint.js 插入此处（CSS 已隐藏） %>
+<div class="buttons"></div>
+
+<%- js(["static/kico.js", "static/glint.js"]) %>
+
+<script>var glint = new Glint(<%- JSON.stringify(theme.config) %>);</script>
+<script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>

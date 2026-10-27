@@ -1,0 +1,55 @@
+<% if (theme.social) { %>
+    <div class="home-social">
+        <span class="home-social-pill" aria-hidden="true"></span>
+        <span class="home-social-tip" aria-hidden="true"></span>
+    <% theme.social.forEach(item => { %>
+        <a href="<%= item.link %>" aria-label="<%= item.title %>" data-title="<%= item.title %>">
+        <% if (item.svg) { %>
+            <%- item.svg %>
+        <% } else { %>
+            <i class="fa fa-<%= item.icon %>"></i>
+        <% } %>
+        </a>
+    <% }) %>
+    </div>
+    <script>
+        // 社交栏：悬停时一枚强调框带回弹地滑到所指图标，上方的名称标签随之滑动换字；
+        // 移出整栏后两者淡出，再次进入时原地浮现，不从上一次的位置滑来（与顶栏导航强调框同一套做法）
+        (function () {
+            var dock = document.currentScript.previousElementSibling;
+            var pill = dock.querySelector(".home-social-pill");
+            var tip = dock.querySelector(".home-social-tip");
+            var leaveTimer = 0;
+
+            function place(a) {
+                var instant = !dock.classList.contains("is-pointing");
+                if (instant) dock.classList.add("no-glide");
+                dock.style.setProperty("--x", a.offsetLeft + "px");
+                dock.style.setProperty("--w", a.offsetWidth + "px");
+                tip.textContent = a.getAttribute("data-title");
+                dock.classList.add("is-pointing");
+                if (instant) {
+                    void dock.offsetWidth;
+                    dock.classList.remove("no-glide");
+                }
+            }
+
+            [].forEach.call(dock.querySelectorAll("a"), function (a) {
+                a.addEventListener("pointerenter", function (e) {
+                    if (e.pointerType === "touch") return;
+                    clearTimeout(leaveTimer);
+                    place(a);
+                });
+                a.addEventListener("focus", function () { place(a); });
+            });
+            // 图标之间有空隙，稍等再收起，免得划过空隙时闪一下
+            function leave() {
+                clearTimeout(leaveTimer);
+                leaveTimer = setTimeout(function () { dock.classList.remove("is-pointing"); }, 120);
+            }
+            dock.addEventListener("pointerleave", leave);
+            dock.addEventListener("focusout", leave);
+            dock.addEventListener("pointerenter", function () { clearTimeout(leaveTimer); });
+        })();
+    </script>
+<% } %>

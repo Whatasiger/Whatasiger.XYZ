@@ -1,0 +1,149 @@
+<%# 跨页面过渡的兜底：Chrome 在小数缩放（如 150%）下，新页首帧的视口高度可能比旧页差 1px，
+    会以 "Viewport size changed" 放弃整个过渡。旧页离开时记下带过渡名的文字位置，
+    新页发现视口对不上（或过渡被放弃）时跳过原生过渡，自己用 Web Animations 把文字从旧位置移过来。
+    只覆盖文字一镜到底（标题里的 i 与句点、篇名），须放在设置过渡类名的脚本之后 %>
+<script>
+    (function () {
+        if (!('onpagereveal' in window) || !Element.prototype.animate) return;
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        var root = document.documentElement;
+        var KEY = 'cw-vt-fb';
+        var NAME = /^cw-(i|i-l|i-r|i-dot|period|t-.+)$/;
+        var SELECTOR = '.cw-i, .cw-glyph-i, .cw-glyph-l, .cw-glyph-r, .cw-glyph-dot, .cw-period, .cw-glyph-period, .cw-name-text';
+        // 只在新页出现的字形：从 i 身后向两侧浮现（与 cw.css 中 cw-vt-bloom-* 一致）
+        var BLOOM = {
+            'cw-i-l': { x: 28, delay: 700, duration: 1000 },
+            'cw-i-r': { x: -28, delay: 780, duration: 1000 },
+            'cw-i-dot': { x: -28, delay: 750, duration: 900 }
+        };
+
+        function norm(u) {
+            try { return new URL(u, location.href).pathname.replace(/index\.html$/, ''); } catch (err) { return ''; }
+        }
+        var here = norm(location.href);
+
+        function named() {
+            var map = {};
+            var els = document.querySelectorAll(SELECTOR);
+            for (var k = 0; k < els.length; k++) {
+                var n = getComputedStyle(els[k]).viewTransitionName;
+                if (n && NAME.test(n)) map[n] = els[k];
+            }
+            return map;
+        }
+
+        window.addEventListener('pageswap', function (e) {
+            try { sessionStorage.removeItem(KEY); } catch (err) {}
+            if (!e.viewTransition) return;
+            var to = e.activation && e.activation.entry && e.activation.entry.url;
+            if (!to) return;
+            var map = named();
+            var rects = {};
+            var any = false;
+            for (var n in map) {
+                var r = map[n].getBoundingClientRect();
+                if (!r.width || !r.height || r.bottom <= 0 || r.top >= innerHeight) continue;
+                rects[n] = { x: r.left, y: r.top, h: r.height };
+                any = true;
+            }
+            if (!any) return;
+            try {
+                sessionStorage.setItem(KEY, JSON.stringify({
+                    to: norm(to), t: Date.now(), w: innerWidth, h: innerHeight, rects: rects
+                }));
+            } catch (err) {}
+        });
+
+        window.addEventListener('pagereveal', function (e) {
+            var rec = null;
+            try { rec = JSON.parse(sessionStorage.getItem(KEY)); sessionStorage.removeItem(KEY); } catch (err) {}
+            if (!rec || rec.to !== here || Date.now() - rec.t > 6000) return;
+
+            var mismatch = rec.w !== innerWidth || rec.h !== innerHeight;
+            if (e.viewTransition && !mismatch) {
+                // 视口一致仍可能因别的原因被放弃，那时再补
+                e.viewTransition.ready.catch(function () { play(rec); });
+                return;
+            }
+            if (e.viewTransition) e.viewTransition.skipTransition();
+            play(rec);
+        });
+
+        function play(rec) {
+            var cs = getComputedStyle(root);
+            var spring = cs.getPropertyValue('--spring').trim() || 'ease-out';
+            var easeOut = cs.getPropertyValue('--ease-out').trim() || 'ease-out';
+
+            // i 一镜到底：挂上类名才有对应过渡名，首屏标题也会直接处于终态
+            var viaI = 'cw-i' in rec.rects;
+            if (viaI) root.classList.add('cw-via-i');
+            var viaDot = 'cw-period' in rec.rects;
+            if (viaDot) root.classList.add('cw-via-dot');
+
+            var map = named();
+            var keep = [];
+            var colors = [];
+            var end = 0;
+            for (var n in map) {
+                var el = map[n];
+                var old = rec.rects[n];
+                if (old) {
+                    var r = el.getBoundingClientRect();
+                    if (!r.height) continue;
+                    var s = old.h / r.height;
+                    var from = 'translate(' + (old.x - r.left) + 'px,' + (old.y - r.top) + 'px) scale(' + s + ')';
+                    el.animate([
+                        { transformOrigin: '0 0', transform: from },
+                        { transformOrigin: '0 0', transform: 'none' }
+                    ], { duration: 1200, easing: spring });
+                    colors.push(getComputedStyle(el).color);
+                    keep.push(el);
+                    end = Math.max(end, 1200);
+                } else if (BLOOM[n]) {
+                    var b = BLOOM[n];
+                    el.animate([
+                        { opacity: 0, transform: 'translateX(' + b.x + 'px)', filter: 'blur(6px)' },
+                        { opacity: 1, transform: 'none', filter: 'none' }
+                    ], { duration: b.duration, delay: b.delay, easing: spring, fill: 'backwards' });
+                    colors.push(getComputedStyle(el).color);
+                    keep.push(el);
+                    end = Math.max(end, b.delay + b.duration);
+                }
+            }
+            if (!keep.length) {
+                if (viaI) root.classList.remove('cw-via-i');
+                if (viaDot) root.classList.remove('cw-via-dot');
+                return;
+            }
+
+            // 其余内容：先隐去，待文字落定后浮现（同原生过渡里 root 的延迟淡入）
+            var fadeIn = [{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'none' }];
+            var fadeOpts = { duration: 800, delay: 550, easing: easeOut, fill: 'backwards' };
+            function holds(node) {
+                for (var k = 0; k < keep.length; k++) if (node === keep[k] || node.contains(keep[k])) return true;
+                return false;
+            }
+            (function walk(parent) {
+                var kids = parent.children;
+                for (var k = 0; k < kids.length; k++) {
+                    var c = kids[k];
+                    if (keep.indexOf(c) !== -1) continue;
+                    if (!holds(c)) { c.animate(fadeIn, fadeOpts); continue; }
+                    // 含有被保留文字的容器：它自己的文字（如 CARR / ER WAVE.）用颜色淡入，被保留的文字已单独锁定颜色
+                    var color = getComputedStyle(c).color;
+                    c.animate([{ color: 'transparent' }, { color: color }], fadeOpts);
+                    walk(c);
+                }
+            })(document.body);
+            end = Math.max(end, 550 + 800);
+            // 被保留的文字在整个过程中锁定颜色，不随所在容器的颜色淡入（颜色须在容器动画开始前取）
+            keep.forEach(function (el, k) {
+                el.animate([{ color: colors[k] }, { color: colors[k] }], { duration: end });
+            });
+
+            if (viaI) setTimeout(function () { root.classList.remove('cw-via-i'); }, end + 50);
+            if (viaDot) setTimeout(function () { root.classList.remove('cw-via-dot'); }, end + 50);
+        }
+    })();
+</script>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="<%= config.language || 'zh-CN' %>">
+  <%- partial("_partial/head") %>
+  <body class="dark-theme <%- (is_post() || is_page()) ? 'post-page' : '' %>">
+    <%- partial("_partial/header") %>
+    <%- body %>
+    <%- partial("_partial/footer") %>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const searchBox = document.querySelector('.head-search');
+        const searchBtn = document.querySelector('.search-btn');
+
+        if (searchBox && searchBtn) {
+          // 监听整个网页的点击事件
+          document.addEventListener('click', function(event) {
+            // 如果搜索框当前是展开状态 (active)
+            if (searchBox.classList.contains('active')) {
+              // 且手指点击的位置既不在搜索框内部，也不在放大镜图标上
+              if (!searchBox.contains(event.target) && !searchBtn.contains(event.target)) {
+                // 移除 active 状态，触发 CSS 动画收回搜索框
+                searchBox.classList.remove('active');
+              }
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

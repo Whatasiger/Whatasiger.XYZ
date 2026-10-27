@@ -1,0 +1,182 @@
+﻿<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title><%= cwTitle %></title>
+    <meta name="description" content="<%= cwDescription %>">
+    <meta name="author" content="<%= config.author %>">
+    <meta name="theme-color" content="#16181D">
+    <link rel="canonical" href="<%= full_url_for(page.path) %>">
+    <% if (page.track && page.track.hidden) { %><meta name="robots" content="noindex, nofollow"><% } %>
+    <link rel="icon" href="<%- url_for('/static/img/icon.png') %>" sizes="192x192">
+
+    <meta property="og:site_name" content="<%= config.title %>">
+    <meta property="og:type" content="<%= cwType %>">
+    <meta property="og:url" content="<%= full_url_for(page.path) %>">
+    <meta property="og:title" content="<%= cwTitle %>">
+    <meta property="og:description" content="<%= cwDescription %>">
+
+    <link rel="preconnect" href="https://fonts.loli.net">
+    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+    <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Serif+SC:wght@300;400;500&display=swap">
+
+    <script>
+        (function () {
+            var root = document.documentElement;
+            root.classList.add('cw-js');
+            var home = '<%- url_for("/") %>';
+            var album = '<%- url_for(page.album.url) %>';
+            var hidden = album + 'i/';
+            var limbo = album + 'limbo/';
+            var dot = album + 'dot/';
+            function norm(u) {
+                try { return new URL(u, location.href).pathname.replace(/index\.html$/, ''); } catch (err) { return ''; }
+            }
+            var here = norm(location.href);
+
+            // 来源页：优先用 navigation.activation；它偶尔拿不到时，退回到离开页在 pageswap 里写下的记录
+            // 记录须指向本页且在几秒之内，免得旧记录误判；揭幕后即清掉
+            var HOP_KEY = 'cw-vt-hop';
+            function hop() {
+                try {
+                    var h = JSON.parse(sessionStorage.getItem(HOP_KEY));
+                    return h && h.to === here && Date.now() - h.t < 6000 ? h.from : '';
+                } catch (err) { return ''; }
+            }
+            function cameFrom(test) {
+                var act = window.navigation && navigation.activation;
+                var from = act && act.from && act.from.url;
+                return (!!from && test(norm(from))) || test(hop());
+            }
+            window.addEventListener('pageswap', function (e) {
+                var to = e.activation && e.activation.entry && e.activation.entry.url;
+                try { sessionStorage.setItem(HOP_KEY, JSON.stringify({ from: here, to: to ? norm(to) : '', t: Date.now() })); } catch (err) {}
+            });
+
+            // 从博客首页卡片进入目录页：首屏元素不做入场，由跨页面过渡从卡片形变而来
+            // 全新加载时在首帧前就挂上（冻结首屏入场）；往返缓存恢复时 head 脚本不会重跑，靠 pagereveal 再判断一次
+            function isHome(p) { return p === home; }
+            if ('onpagereveal' in window && here === album && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                var firstLoad = true;
+                if (cameFrom(isHome)) root.classList.add('cw-from-home');
+                window.addEventListener('pagereveal', function (e) {
+                    var fresh = firstLoad;
+                    firstLoad = false;
+                    var hero = document.querySelector('.cw-hero');
+                    // 恢复时首屏可能已滚出视口，形变会落到看不见的地方，这时只做整页淡入淡出
+                    var heroIn = fresh || (hero && hero.getBoundingClientRect().bottom > 0);
+                    var on = !!(e.viewTransition && heroIn && cameFrom(isHome));
+                    root.classList.toggle('cw-from-home', on);
+                    if (on) e.viewTransition.finished.finally(function () { root.classList.remove('cw-from-home'); });
+                });
+            }
+
+            // 首屏 ↔ i ↔ limbo：标题里的 i 一镜到底，只在这几页之间互相跳转时才给它过渡名
+            function viaI(a, b) {
+                return (a === hidden && (b === album || b === limbo)) || (b === hidden && (a === album || a === limbo));
+            }
+            window.addEventListener('pagereveal', function (e) {
+                root.classList.toggle('cw-via-i', !!(e.viewTransition && cameFrom(function (p) { return viaI(p, here); })));
+            });
+            window.addEventListener('pageswap', function (e) {
+                var to = e.activation && e.activation.entry && e.activation.entry.url;
+                root.classList.toggle('cw-via-i', !!(e.viewTransition && to && viaI(here, norm(to))));
+            });
+
+            // 首屏 ↔ dot：标题末尾的句点同理
+            function viaDot(a, b) {
+                return (a === dot && b === album) || (b === dot && a === album);
+            }
+            window.addEventListener('pagereveal', function (e) {
+                root.classList.toggle('cw-via-dot', !!(e.viewTransition && cameFrom(function (p) { return viaDot(p, here); })));
+            });
+            window.addEventListener('pageswap', function (e) {
+                var to = e.activation && e.activation.entry && e.activation.entry.url;
+                root.classList.toggle('cw-via-dot', !!(e.viewTransition && to && viaDot(here, norm(to))));
+            });
+
+            // 目录页 → 博客首页：反向一镜到底，整屏收回成首页卡片；首屏已滚出视口时不做
+            if (here === album) {
+                window.addEventListener('pageswap', function (e) {
+                    if (!e.viewTransition) return;
+                    var to = e.activation && e.activation.entry && e.activation.entry.url;
+                    if (!to || norm(to) !== home) return;
+                    var hero = document.querySelector('.cw-hero');
+                    if (!hero || hero.getBoundingClientRect().bottom <= 0) { e.viewTransition.skipTransition(); return; }
+                    root.classList.add('cw-to-home');
+                });
+                // 从往返缓存恢复时清掉，免得过渡名残留到其他跳转
+                window.addEventListener('pagereveal', function () { root.classList.remove('cw-to-home'); });
+
+                // 目录页 ↔ 阅读页：回到目录时停在离开时的位置，篇名的反向过渡才有落点
+                var RETURN_KEY = 'cw-return';
+                function isReader(p) { return !!p && p !== album && p.indexOf(album) === 0; }
+                function findTrack(p) {
+                    var links = document.querySelectorAll('.cw-track-link[href]');
+                    for (var i = 0; i < links.length; i++) if (norm(links[i].getAttribute('href')) === p) return links[i];
+                    return null;
+                }
+                // 离开时记下所点篇目在视口中的高度
+                window.addEventListener('pageswap', function (e) {
+                    var to = e.activation && e.activation.entry && e.activation.entry.url;
+                    var p = to && norm(to);
+                    if (!isReader(p)) return;
+                    var link = findTrack(p);
+                    try { sessionStorage.setItem(RETURN_KEY, JSON.stringify({ top: link ? link.getBoundingClientRect().top : null })); } catch (err) {}
+                });
+                // 回来时（全新加载；往返缓存本就原样恢复）在首帧前把刚读完的那篇滚回同一高度
+                // 经上一篇/下一篇换过篇目时，落点是最后读的那篇
+                var firstReveal = true;
+                window.addEventListener('pagereveal', function (e) {
+                    if (!firstReveal) return;
+                    firstReveal = false;
+                    var act = window.navigation && navigation.activation;
+                    var from = act && act.from && norm(act.from.url);
+                    if (!isReader(from)) return;
+                    var link = findTrack(from);
+                    if (!link) return;
+                    var saved = null;
+                    try { saved = JSON.parse(sessionStorage.getItem(RETURN_KEY)); } catch (err) {}
+                    var top = saved && typeof saved.top === 'number' ? saved.top : innerHeight * .4;
+                    top = Math.min(Math.max(top, 90), innerHeight - 90);
+                    root.classList.add('cw-returning');
+                    window.scrollTo({ top: window.scrollY + link.getBoundingClientRect().top - top, behavior: 'instant' });
+                    // 视口内的曲目直接就位，不再逐行浮现，否则篇名的落点是透明的
+                    [].forEach.call(document.querySelectorAll('.cw-track'), function (li) {
+                        var r = li.getBoundingClientRect();
+                        if (r.bottom > 0 && r.top < innerHeight) li.classList.add('is-in');
+                    });
+                    var done = function () { root.classList.remove('cw-returning'); };
+                    if (e.viewTransition) e.viewTransition.finished.finally(done);
+                    else requestAnimationFrame(done);
+                });
+                // 上一页就是首页时，「← Whatasiger」等同后退：首页从往返缓存原样恢复，过渡才不卡
+                document.addEventListener('click', function (e) {
+                    var a = e.target.closest && e.target.closest('a.cw-home');
+                    if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    var nav = window.navigation;
+                    if (!nav || !nav.canGoBack) return;
+                    var prev = nav.entries()[nav.currentEntry.index - 1];
+                    if (!prev || norm(prev.url) !== home) return;
+                    e.preventDefault();
+                    nav.back();
+                });
+            }
+
+            // 来源记录只用于这一次揭幕：等本轮 pagereveal 监听（含诊断）都读过再清
+            window.addEventListener('pagereveal', function () {
+                setTimeout(function () {
+                    try { sessionStorage.removeItem(HOP_KEY); } catch (err) {}
+                }, 0);
+            });
+        })();
+    </script>
+    <%- partial('_partial/cw-vt-fallback') %>
+    <%- partial('_partial/vt-debug') %>
+    <% if (cwType === 'website') { %>
+    <!-- 目录页：曲目列表解析完才渲染首帧，从阅读页返回时才能在首帧前滚到原位 -->
+    <link rel="expect" href="#cw-foot" blocking="render">
+    <% } %>
+    <link rel="stylesheet" href="<%- url_for('/static/carrier-wave/cw.css') %>?v=<%= page.album.version %>">
+    <script src="<%- url_for('/static/carrier-wave/cw.js') %>?v=<%= page.album.version %>" defer></script>
+</head>
+

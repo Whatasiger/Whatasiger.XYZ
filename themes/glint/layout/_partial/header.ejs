@@ -1,0 +1,325 @@
+<script>
+    (function() {
+        // 核心修复：把普通的博客文章 (is_post) 和独立页面 (is_page) 都视为"阅读界面"
+        var isArticle = <%= (is_post() || is_page()) ? 'true' : 'false' %>;
+        var isFromArticle = sessionStorage.getItem("is_from_article") === "true";
+        var theme = sessionStorage.getItem("theme");
+
+        // 0. 立即应用字体设置，避免字体闪烁
+        try {
+            var SETTINGS_KEY = "whatasiger_reader_settings";
+            var savedSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+            var fontChoice = (savedSettings && savedSettings.fontFamily) ? savedSettings.fontFamily : "noto-sans-sc";
+            var sourceHanFontStack = '"Noto Sans SC", "Source Han Sans SC", "Source Han Sans CN", "Noto Sans CJK SC", "思源黑体", "思源黑体 CN", "Microsoft YaHei", sans-serif';
+            var systemFontStack = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif';
+            document.body.style.fontFamily = fontChoice === "noto-sans-sc" ? sourceHanFontStack : systemFontStack;
+            if (savedSettings && savedSettings.hideTodo) document.body.classList.add("hide-todo");
+            // 主题色：首帧前挂到 html 上，避免先闪一下默认的蓝
+            if (savedSettings && savedSettings.accent && savedSettings.accent !== "blue") {
+                document.documentElement.setAttribute("data-accent", savedSettings.accent);
+            }
+        } catch (e) {
+            document.body.style.fontFamily = '"Noto Sans SC", "Source Han Sans SC", "Source Han Sans CN", "Noto Sans CJK SC", "思源黑体", "思源黑体 CN", "Microsoft YaHei", sans-serif';
+        }
+
+        // 0.1 背景可见度：与设置面板共用唯一数据源 whatasiger_reader_settings.bgOpacity
+        var targetBgOpacity = 0.50; // 与 glint.js defaultSettings.bgOpacity=35 对应
+        var defaultBgOpacityValue = 50; // 默认档位（0~100），用于“从文章回首页”时重置
+        try {
+            var readerSettings = JSON.parse(localStorage.getItem("whatasiger_reader_settings"));
+            if (readerSettings && typeof readerSettings.bgOpacity === "number") {
+                var v = readerSettings.bgOpacity;
+                if (v >= 0 && v <= 100) targetBgOpacity = v / 100;
+            }
+            // 从文章回到首页时：强制恢复为默认可见度，并写回设置
+            if (!isArticle && isFromArticle) {
+                targetBgOpacity = defaultBgOpacityValue / 100;
+                if (readerSettings && typeof readerSettings === "object") {
+                    readerSettings.bgOpacity = defaultBgOpacityValue;
+                    try { localStorage.setItem("whatasiger_reader_settings", JSON.stringify(readerSettings)); } catch (e) {}
+                }
+            }
+        } catch (e) {
+            // 忽略错误，使用默认 0.35
+        }
+
+        // 0.2 背景模糊度：文章页使用用户保存值（默认8px），首页始终为0
+        var DEFAULT_ARTICLE_BLUR = 8;
+        var savedBlur = DEFAULT_ARTICLE_BLUR;
+        try {
+            if (readerSettings && typeof readerSettings.bgBlur === "number") {
+                var bv = readerSettings.bgBlur;
+                if (bv >= 0 && bv <= 20) savedBlur = bv;
+            }
+        } catch (e) {}
+        // 目标模糊度：文章页=用户设置，首页=0
+        var targetBgBlur = isArticle ? savedBlur : 0;
+        // 初始（瞬间）模糊度：来自文章页则从 savedBlur 开始，便于过渡动画
+        var initialBgBlur = isFromArticle ? savedBlur : 0;
+        // 文章→文章时 initialBgBlur == targetBgBlur，rAF 不触发动画
+
+        // 1. 初始状态：全面封印动画，防止页面刚加载时的任何闪烁
+        document.body.classList.add("no-bg-transition");
+
+        // 1.1 立即设置背景可见度和模糊度（封印状态，无动画）
+        document.body.style.setProperty("--bg-opacity", String(targetBgOpacity));
+        document.body.style.setProperty("--bg-blur", initialBgBlur + "px");
+
+        // 2. 瞬间敲定日夜模式
+        if (theme === "light") {
+            document.body.classList.remove("dark-theme");
+        } else {
+            document.body.classList.add("dark-theme");
+            sessionStorage.setItem("theme", "dark");
+        }
+
+        // 3. 敲定刚进网页瞬间的背景状态
+        if (isArticle && isFromArticle) {
+            // 阅读页跳阅读页：瞬间淡化
+            document.body.classList.add("bg-faded");
+        } else if (!isArticle && isFromArticle) {
+            // 阅读页跳主页：必须先瞬间淡化，为后面的淡出动画做准备
+            document.body.classList.add("bg-faded");
+        }
+
+        // 4. 更新记忆，留给下一次跳转使用
+        sessionStorage.setItem("is_from_article", isArticle ? "true" : "false");
+
+        // 5. 释放封印，并触发需要的丝滑动画
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                // 解除动画封印
+                document.body.classList.remove("no-bg-transition");
+
+                // 背景可见度：与设置面板统一，不再在跳转时覆盖为固定值，保持当前 targetBgOpacity 即可
+                document.body.style.setProperty("--bg-opacity", String(targetBgOpacity));
+
+                // 背景模糊度：设置目标值，触发平滑过渡
+                // 文章→文章时 initialBgBlur == targetBgBlur，此处赋值无变化，不触发动画
+                document.body.style.setProperty("--bg-blur", targetBgBlur + "px");
+
+                // 触发跨界面的过渡动画（保留原有逻辑）
+                if (isArticle && !isFromArticle) {
+                    // 主页跳阅读页：此时开始平滑变淡
+                    document.body.classList.add("bg-faded");
+                } else if (!isArticle && isFromArticle) {
+                    // 阅读页跳主页：此时开始平滑变清晰
+                    document.body.classList.remove("bg-faded");
+                }
+            });
+        });
+    })();
+</script>
+<header>
+    <a href="/" class="header-logo"><span class="header-logo-name">Whatasiger</span><span class="header-logo-ver">Ciel</span></a>
+    <div class="head-title">
+        <a href="/" style="text-decoration: none; color: inherit; display: block; width: 100%; height: 100%;">
+            <h4><%= config.title %></h4>
+        </a>
+    </div>
+    <div class="head-action">
+        <div class="toggle-btn"></div>
+        <div class="light-btn"></div>
+        <div class="settings-btn"></div>
+        <% if (!is_post()) { %>
+            <div class="search-btn"></div>
+        <% } %>
+    </div>
+
+    <% if (!is_post()) { %>
+        <div class="head-search">
+            <input type="text" id="local-search-input" name="s" placeholder="标题 / 标签 / 正文">
+            <div id="local-search-result"></div>
+        </div>
+    <% } %>
+</header>
+<%# 设置面板放在 header 外：header 自带 backdrop-filter，嵌套在内会让面板的毛玻璃失效 %>
+<div class="settings-panel" id="reader-settings-panel">
+    <div class="settings-panel-inner">
+        <div class="settings-panel-header">
+            <i class="fa fa-sliders"></i>
+            <span class="settings-panel-title">阅读设置</span>
+        </div>
+        <div class="settings-panel-body">
+            <div class="settings-group">
+                <%# 界面主题：切到 Origin 会跳到 Origin 界面的同一页（见 _partial/ui-switch.ejs） %>
+                <div class="settings-row">
+                    <i class="fa fa-desktop"></i>
+                    <span>界面</span>
+                    <div class="settings-segment" id="setting-ui" data-value="glint" role="radiogroup" aria-label="界面">
+                        <button type="button" role="radio" data-value="glint" aria-checked="true">Glint</button>
+                        <button type="button" role="radio" data-value="origin" aria-checked="false">Origin</button>
+                    </div>
+                </div>
+                <label class="settings-row">
+                    <i class="fa fa-expand"></i>
+                    <span>沉浸模式</span>
+                    <input type="checkbox" id="setting-immersive">
+                </label>
+                <label class="settings-row">
+                    <i class="fa fa-list-ul"></i>
+                    <span>关闭首页 TODO 显示</span>
+                    <input type="checkbox" id="setting-hide-todo">
+                </label>
+                <div class="settings-row">
+                    <i class="fa fa-font"></i>
+                    <span>字体</span>
+                    <div class="settings-segment" id="setting-font-family" role="radiogroup" aria-label="字体">
+                        <button type="button" role="radio" data-value="noto-sans-sc">思源黑体</button>
+                        <button type="button" role="radio" data-value="system-default">系统默认</button>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-group-title">文字<small>仅在文章页对正文生效</small></div>
+            <div class="settings-group">
+                <label class="settings-row settings-row-range">
+                    <i class="fa fa-bold"></i>
+                    <span>字重</span>
+                    <input type="range" id="setting-font-weight" min="1" max="5" step="1">
+                </label>
+                <label class="settings-row settings-row-range">
+                    <i class="fa fa-text-width"></i>
+                    <span>字间距</span>
+                    <input type="range" id="setting-letter-spacing" min="-2" max="8" step="1">
+                </label>
+                <label class="settings-row settings-row-range">
+                    <i class="fa fa-text-height"></i>
+                    <span>字号</span>
+                    <input type="range" id="setting-font-size" min="90" max="130" step="10">
+                </label>
+            </div>
+            <div class="settings-group-title">背景</div>
+            <div class="settings-group">
+                <label class="settings-row settings-row-range">
+                    <i class="fa fa-eye"></i>
+                    <span>可见度</span>
+                    <input type="range" id="setting-bg-opacity" min="0" max="50" step="2.5">
+                </label>
+                <label class="settings-row settings-row-range">
+                    <i class="fa fa-tint"></i>
+                    <span>模糊度</span>
+                    <input type="range" id="setting-bg-blur" min="0" max="20" step="1">
+                </label>
+            </div>
+            <%# 主题色：色相与 glint.css 第 0 节 html[data-accent] 一一对应；色块颜色取该主题的 --tc-soft 一级 %>
+            <% var accents = [["blue", "天青", 247], ["lavender", "藤紫", 300], ["sakura", "樱粉", 355], ["mikan", "蜜柑", 62], ["wakakusa", "若草", 135], ["mint", "薄荷", 185]]; %>
+            <div class="settings-group-title">主题色<small id="setting-accent-name">天青</small></div>
+            <div class="settings-group">
+                <div class="settings-accent" id="setting-accent" role="radiogroup" aria-label="主题色">
+                    <% accents.forEach(function (a) { %>
+                        <button type="button" role="radio" data-value="<%= a[0] %>" data-name="<%= a[1] %>" aria-label="<%= a[1] %>" title="<%= a[1] %>" style="--sw: <%= a[0] === 'blue' ? '#8bb4e0' : 'oklch(0.756 0.078 ' + a[2] + ')' %>"></button>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+        <div class="settings-panel-footer">
+            <button id="setting-reset-btn" class="settings-reset-btn"><i class="fa fa-undo"></i>恢复默认</button>
+        </div>
+    </div>
+</div>
+<% var menuIcons = theme.menu_icons || {}; %>
+<nav class="head-menu">
+    <span class="head-menu-pill" aria-hidden="true"></span>
+    <a href="<%= url_for() %>"<% if (is_home()) { %> class="current"<% } %>><i class="fa fa-<%= menuIcons['首页'] || 'home' %>"></i><span>首页</span></a>
+    <% for (var i in theme.menu){ %>
+        <a href="<%- url_for(theme.menu[i]) %>"<% if (is_current(theme.menu[i])) { %> class="current"<% } %>><i class="fa fa-<%= menuIcons[i] || 'circle-o' %>"></i><span><%= i %></span></a>
+    <% } %>
+</nav>
+<script>
+    // 顶栏导航是否收起：按钮居中排开时若会碰到左侧 Logo 或右侧搜索框 / 按钮，就收进汉堡菜单（html.nav-collapsed）
+    // 紧跟在 nav 后同步执行，首帧即为正确布局；按钮宽度用 canvas 量文字算出，不必来回切换布局
+    (function () {
+        var root = document.documentElement;
+        var nav = document.querySelector(".head-menu");
+        var ctx = document.createElement("canvas").getContext("2d");
+        var GAP = 24; // 与两侧元素至少留出的间距（px）
+        var PAD = 0.85, SPACE = 0.15; // 与 glint.css 中 .head-menu > a 的左右 padding / margin-right 一致（em）
+
+        function update() {
+            var collapse = window.innerWidth < 600; // 手机端始终收起
+            if (!collapse) {
+                // 桌面端导航宽度：各按钮文字宽 + 胶囊左右留白 + 按钮间距
+                var cs = getComputedStyle(nav);
+                var fontSize = parseFloat(cs.fontSize);
+                ctx.font = "600 " + cs.fontSize + " " + cs.fontFamily;
+                var labels = nav.querySelectorAll("a span");
+                var width = (labels.length * PAD * 2 + (labels.length - 1) * SPACE) * fontSize;
+                for (var i = 0; i < labels.length; i++) width += ctx.measureText(labels[i].textContent).width;
+
+                var vw = root.clientWidth;
+                var left = (vw - width) / 2, right = (vw + width) / 2;
+
+                // 左侧 Logo 展开态位于 left: 1.5em（收起态会右移，故按展开态计算）
+                var logo = document.querySelector(".header-logo");
+                var logoRight = logo ? 1.5 * parseFloat(getComputedStyle(logo).fontSize) + logo.getBoundingClientRect().width : 0;
+
+                // 右侧最靠左的元素（搜索框 / 日夜 / 设置按钮）
+                var rightLimit = vw;
+                var obstacles = document.querySelectorAll("header .head-search, header .light-btn, header .settings-btn");
+                for (var j = 0; j < obstacles.length; j++) {
+                    var r = obstacles[j].getBoundingClientRect();
+                    if (r.width) rightLimit = Math.min(rightLimit, r.left);
+                }
+                collapse = left < logoRight + GAP || right > rightLimit - GAP;
+            }
+            if (root.classList.contains("nav-collapsed") !== collapse) {
+                // 切换形态时直接跳到结果，不播放磁贴 ↔ 文字的过渡（字体加载后可能改判）
+                root.classList.add("nav-switching");
+                root.classList.toggle("nav-collapsed", collapse);
+                if (!collapse) nav.classList.remove("active");
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () { root.classList.remove("nav-switching"); });
+                });
+            }
+            // 布局或字体变了：强调框直接跳到位，不播放滑动
+            if (!collapse) place(target, true);
+        }
+
+        // 桌面端导航强调框：平时停在当前页，悬停 / 聚焦时滑到所指项，离开后滑回（无当前页则淡出）
+        var pill = nav.querySelector(".head-menu-pill");
+        var current = nav.querySelector(":scope > a.current");
+        var target = current;
+        var leaveTimer = 0;
+
+        function place(a, instant) {
+            target = a;
+            if (!a) { pill.classList.remove("is-on"); return; }
+            // 从隐藏状态出现时原地浮现，不从上一次的位置滑过来
+            if (instant || !pill.classList.contains("is-on")) {
+                pill.classList.add("no-glide");
+                instant = true;
+            }
+            pill.style.setProperty("--pill-x", a.offsetLeft + "px");
+            pill.style.setProperty("--pill-w", a.offsetWidth + "px");
+            pill.classList.toggle("is-current", a === current);
+            pill.classList.add("is-on");
+            if (instant) {
+                void pill.offsetWidth;
+                pill.classList.remove("no-glide");
+            }
+        }
+
+        [].forEach.call(nav.querySelectorAll(":scope > a"), function (a) {
+            a.addEventListener("pointerenter", function () {
+                clearTimeout(leaveTimer);
+                place(a);
+            });
+            // 两项之间有空隙，稍等一下再滑回，免得划过空隙时先回到当前页再折返
+            a.addEventListener("pointerleave", function () {
+                clearTimeout(leaveTimer);
+                leaveTimer = setTimeout(function () { place(current); }, 90);
+            });
+            a.addEventListener("focus", function () { place(a); });
+            a.addEventListener("blur", function () { place(current); });
+        });
+
+        update();
+        window.addEventListener("resize", update);
+        // 字体加载完成或在设置里切换字体后，文字宽度会变
+        if (document.fonts) {
+            document.fonts.ready.then(update);
+            document.fonts.addEventListener("loadingdone", update);
+        }
+        new MutationObserver(update).observe(document.body, { attributes: true, attributeFilter: ["style"] });
+    })();
+</script>

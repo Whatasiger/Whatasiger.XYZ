@@ -1,0 +1,37 @@
+<%# 文章页一侧的「文章卡片一镜到底」：只接从首页（含分页）卡片进来的这一次，其余跳转一律跳过
+   首页一侧见 head.ejs，过渡编排见 glint.css「文章卡片一镜到底」 %>
+<%# 首帧要等到正文标题解析完：否则首帧时 .vt-cover 与标题还不存在，新页快照里配不上对，只剩整页淡入淡出 %>
+<link rel="expect" href="#vt-post-title" blocking="render">
+<style>@view-transition { navigation: auto; } @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }</style>
+<script>
+    (function () {
+        var root = document.documentElement;
+        var home = '<%- url_for("/") %>';
+        function norm(u) {
+            try { return new URL(u, location.href).pathname.replace(/index\.html$/, ''); } catch (err) { return ''; }
+        }
+        function isHome(p) {
+            return p === home || (p.indexOf(home + 'page/') === 0);
+        }
+        // 来源页：优先用 navigation.activation；拿不到时退回首页在 pageswap 里写下的记录（cw-vt-hop）
+        function fromHome() {
+            var act = window.navigation && navigation.activation;
+            var from = act && act.from && act.from.url;
+            if (from) return isHome(norm(from));
+            try {
+                var hop = JSON.parse(sessionStorage.getItem('cw-vt-hop'));
+                return !!hop && Date.now() - hop.t < 10000 && hop.to === norm(location.href) && isHome(hop.from);
+            } catch (err) { return false; }
+        }
+        window.addEventListener('pagereveal', function (e) {
+            if (!e.viewTransition) return;
+            if (!fromHome()) { e.viewTransition.skipTransition(); return; }
+            root.classList.add('vt-from-card');
+            e.viewTransition.finished.finally(function () { root.classList.remove('vt-from-card'); });
+        });
+        // 离开文章页：不做过渡
+        window.addEventListener('pageswap', function (e) {
+            if (e.viewTransition) e.viewTransition.skipTransition();
+        });
+    })();
+</script>

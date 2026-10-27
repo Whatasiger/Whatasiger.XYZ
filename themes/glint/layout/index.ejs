@@ -1,0 +1,50 @@
+<main>
+    <div class="wrap min">
+        <% var motto = "二人には夢があった 今は凍りついた花。"; %>
+        <% var mottoLink = "https://music.163.com/#/song?id=3330074495"; // 点击座右铭打开的歌曲 %>
+        <section class="home-title home-hero">
+            <a href="/about-me" class="home-profile-link">
+                <span class="home-avatar-ring"><img src="<%= theme.author_avatar %>" alt="Author Avatar" class="home-avatar"></span>
+                <h1 class="home-name"><%= config.title %></h1>
+            </a>
+
+            <%# 座右铭（点击打开歌曲）：隐形的整句先占好位置，打字的文字叠在同一格里，打字时行高与可点区域不跳 %>
+            <a class="home-motto" href="<%= mottoLink %>" target="_blank" rel="noopener" aria-label="<%= motto %>（在网易云音乐中收听）">
+                <span class="home-motto-ghost" aria-hidden="true"><%= motto %></span>
+                <span class="home-motto-text" aria-hidden="true"></span>
+            </a>
+
+            <script>
+                (function() {
+                    var text = <%- JSON.stringify(motto) %>;
+                    var container = document.querySelector(".home-motto-text");
+                    var i = 0;
+                    function typeWriter() {
+                        if (i < text.length) {
+                            container.textContent += text.charAt(i);
+                            i++;
+                            setTimeout(typeWriter, 120);
+                        } else {
+                            container.classList.add("is-done");
+                        }
+                    }
+                    setTimeout(typeWriter, 900); // 等入场动画走到座右铭再开始
+                })();
+            </script>
+
+            <%- partial("_partial/social") %>
+        </section>
+        <%- partial("_partial/archive-list") %>
+        <section class="page-navigator">
+            <%- paginator({
+                prev_text: "«",
+                next_text: "»"
+            }) %>
+        </section>
+    </div>
+</main>
+<% if (theme.todo && theme.todo.enable) { %>
+<%- partial("_partial/todo-sidebar") %>
+<script src="/static/todo-sidebar.js"></script>
+<% } %>
+<script src="/static/water-ripple.js"></script>

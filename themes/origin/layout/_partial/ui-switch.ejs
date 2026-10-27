@@ -1,0 +1,21 @@
+<%# 界面主题切换（Glint / Origin）：两套界面是同一份内容生成的两个站点，Glint 在根路径，Origin 在 /origin/ 下（tools/build-origin.js 生成）
+    选择保存在 localStorage 的 whatasiger_ui；打开的页面与选择不符时，立刻跳到另一套界面的同一页
+    放在 <head> 最前面，跳转发生在加载样式之前；CARRiER WAVE. 只有一份、不分界面，它的页面不引用这里 %>
+<script>
+    (function () {
+        var CURRENT = "origin"; // 本套界面
+        var KEY = "whatasiger_ui";
+        function target(to) {
+            var path = location.pathname.replace(/^\/origin(?=\/|$)/, "") || "/";
+            return (to === "origin" ? "/origin" + path : path) + location.search + location.hash;
+        }
+        // 设置面板调用：记下选择并跳到另一套界面的同一页（会重新加载）
+        window.switchUI = function (to) {
+            try { localStorage.setItem(KEY, to); } catch (e) {}
+            if (to !== CURRENT) location.assign(target(to));
+        };
+        var want = null;
+        try { want = localStorage.getItem(KEY); } catch (e) {}
+        if ((want === "glint" || want === "origin") && want !== CURRENT) location.replace(target(want));
+    })();
+</script>

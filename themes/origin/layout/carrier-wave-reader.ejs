@@ -1,0 +1,66 @@
+﻿---
+layout: false
+---
+<%
+var album = page.album;
+var t = page.track;
+var prev = page.prev;
+var next = page.next;
+var fullTitle = t.title + (t.part ? ' ' + t.part : '');
+%>
+<!DOCTYPE html>
+<html lang="<%= config.language || 'zh-CN' %>">
+<%- partial('_partial/carrier-wave-head', {
+    cwTitle: fullTitle + ' - ' + album.title + ' - ' + config.title,
+    cwDescription: t.description || (album.title + ' ' + album.subtitle + ' · ' + t.no + ' / ' + album.total),
+    cwType: 'article'
+}) %>
+<body class="cw cw-reader" style="--tint:<%= t.tint %>">
+    <canvas class="cw-wave cw-wave-bar" aria-hidden="true" data-tint="<%= t.tint %>" data-wave="<%= t.wave %>"<% if (t.flat) { %> data-flat<% } %> data-seed="<%= t.index %>"></canvas>
+
+    <nav class="cw-corner">
+        <a class="cw-home" href="<%- url_for(album.url) %>" data-cw-back><span class="cw-arrow" aria-hidden="true">←</span><%= album.title %></a>
+        <span class="cw-count"><%= t.no %> <i>/</i> <%= String(album.total).padStart(2, '0') %></span>
+    </nav>
+
+    <main class="cw-read">
+        <header class="cw-read-head">
+            <p class="cw-read-no cw-rise" style="--d:0"><%= t.no %></p>
+            <h1 class="cw-read-title">
+                <% if (t.slug === 'i') { %><span class="cw-name-text"><a class="cw-glyph-i" href="<%- url_for(album.url + 'limbo/') %>" aria-label="limbo.">i</a><span class="cw-glyph-dot"><%= t.title.slice(1) %></span></span><%
+                } else if (t.slug === 'dot') { %><span class="cw-name-text"><span class="cw-glyph-period"><%= t.title %></span></span><%
+                } else if (t.slug === 'limbo' && t.title.indexOf('i') > 0) { var at = t.title.indexOf('i'); %><span class="cw-name-text" style="view-transition-name:cw-t-<%= t.slug %>"><span class="cw-glyph-l"><%= t.title.slice(0, at) %></span><a class="cw-glyph-i" href="<%- url_for(album.url + 'i/') %>" aria-label="i.">i</a><span class="cw-glyph-r"><%= t.title.slice(at + 1) %></span></span><%
+                } else { %><span class="cw-name-text" style="view-transition-name:cw-t-<%= t.slug %>"><%= t.title %></span><% } %><% if (t.part) { %><span class="cw-part cw-rise" style="--d:1"><%= t.part %></span><% } %>
+            </h1>
+            <p class="cw-read-meta cw-rise" style="--d:2"><%= t.wordsLabel %></p>
+        </header>
+
+        <article class="cw-prose cw-rise" style="--d:3">
+            <%- t.content %>
+        </article>
+
+        <div class="cw-end" aria-hidden="true">
+            <svg viewBox="0 0 48 12" width="48" height="12"><path d="M0 6 Q6 0 12 6 T24 6 T36 6 T48 6" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+        </div>
+
+        <nav class="cw-pager">
+            <% if (prev) { %>
+            <a class="cw-pager-link is-prev" href="<%- url_for(prev.url) %>" data-cw-prev style="--tint:<%= prev.tint %>">
+                <span class="cw-pager-label"><span class="cw-arrow" aria-hidden="true">←</span><%= prev.no %></span>
+                <span class="cw-pager-title"><%= prev.title %><% if (prev.part) { %> <span class="cw-part"><%= prev.part %></span><% } %></span>
+            </a>
+            <% } else { %><span class="cw-pager-link is-empty"></span><% } %>
+
+            <a class="cw-pager-back" href="<%- url_for(album.url) %>">曲目</a>
+
+            <% if (next) { %>
+            <a class="cw-pager-link is-next" href="<%- url_for(next.url) %>" data-cw-next style="--tint:<%= next.tint %>">
+                <span class="cw-pager-label"><%= next.no %><span class="cw-arrow" aria-hidden="true">→</span></span>
+                <span class="cw-pager-title"><%= next.title %><% if (next.part) { %> <span class="cw-part"><%= next.part %></span><% } %></span>
+            </a>
+            <% } else { %><span class="cw-pager-link is-empty"></span><% } %>
+        </nav>
+    </main>
+</body>
+</html>
+

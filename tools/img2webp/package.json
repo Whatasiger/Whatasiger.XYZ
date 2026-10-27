@@ -1,0 +1,5 @@
+{
+  "name": "img2webp-tool",
+  "private": true,
+  "description": "本地批量转 WebP 工具，与 Hexo 站点彼此独立"
+}

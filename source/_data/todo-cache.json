@@ -1,0 +1,182 @@
+{
+  "bangumi": {
+    "items": [
+      {
+        "id": 7978,
+        "name": "最果てのイマ",
+        "type": 4,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/3e/51/7978_hc6iN.jpg",
+        "epStatus": 0,
+        "eps": 0,
+        "updatedAt": "2026-10-01T22:01:29+08:00",
+        "url": "https://bgm.tv/subject/7978"
+      },
+      {
+        "id": 495291,
+        "name": "再见菈菈",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/18/af/495291_9WuBW.jpg",
+        "epStatus": 0,
+        "eps": 12,
+        "updatedAt": "2026-09-20T23:59:26+08:00",
+        "url": "https://bgm.tv/subject/495291"
+      },
+      {
+        "id": 2723,
+        "name": "KIRA☆KIRA 煌煌舞台",
+        "type": 4,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/c3/15/2723_RWt07.jpg",
+        "epStatus": 0,
+        "eps": 0,
+        "updatedAt": "2026-09-06T19:53:24+08:00",
+        "url": "https://bgm.tv/subject/2723"
+      },
+      {
+        "id": 493016,
+        "name": "异国日记",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/fe/bf/493016_Qqmf5.jpg",
+        "epStatus": 3,
+        "eps": 13,
+        "updatedAt": "2026-07-09T20:28:36+08:00",
+        "url": "https://bgm.tv/subject/493016"
+      },
+      {
+        "id": 465493,
+        "name": "anemoi -アネモイ-",
+        "type": 4,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/cc/5d/465493_e3A48.jpg",
+        "epStatus": 0,
+        "eps": 0,
+        "updatedAt": "2026-06-20T17:54:27+08:00",
+        "url": "https://bgm.tv/subject/465493"
+      },
+      {
+        "id": 10440,
+        "name": "我们仍未知道那天所看见的花的名字。",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/6c/e8/10440_8HP6O.jpg",
+        "epStatus": 0,
+        "eps": 11,
+        "updatedAt": "2026-06-08T20:21:51+08:00",
+        "url": "https://bgm.tv/subject/10440"
+      },
+      {
+        "id": 606263,
+        "name": "主播女孩重度依赖",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/8d/c7/606263_cpB1P.jpg",
+        "epStatus": 4,
+        "eps": 13,
+        "updatedAt": "2026-04-26T13:07:14+08:00",
+        "url": "https://bgm.tv/subject/606263"
+      },
+      {
+        "id": 493724,
+        "name": "淡岛百景",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/bd/33/493724_V6lXx.jpg",
+        "epStatus": 0,
+        "eps": 12,
+        "updatedAt": "2026-04-03T12:14:42+08:00",
+        "url": "https://bgm.tv/subject/493724"
+      },
+      {
+        "id": 295957,
+        "name": "夏日口袋 REFLECTION BLUE",
+        "type": 4,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/ab/76/295957_PsQ80.jpg",
+        "epStatus": 0,
+        "eps": 0,
+        "updatedAt": "2023-11-12T00:24:33+08:00",
+        "url": "https://bgm.tv/subject/295957"
+      },
+      {
+        "id": 845,
+        "name": "Little Busters! EX",
+        "type": 4,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/b8/6e/845_u43XO.jpg",
+        "epStatus": 0,
+        "eps": 0,
+        "updatedAt": "2023-10-21T03:12:49+08:00",
+        "url": "https://bgm.tv/subject/845"
+      }
+    ],
+    "fetchedAt": "2026-10-27T09:48:52.810Z"
+  },
+  "netease": {
+    "songs": [
+      {
+        "id": 2111740365,
+        "name": "itsuka",
+        "artists": "ひとひら",
+        "cover": "https://p2.music.126.net/19xlS-oxqi3yG7890PEehA==/109951173986849987.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2111740365"
+      },
+      {
+        "id": 26405133,
+        "name": "Girl meets NUMBER GIRL",
+        "artists": "きのこ帝国",
+        "cover": "https://p2.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=26405133"
+      },
+      {
+        "id": 26405131,
+        "name": "スクールフィクション",
+        "artists": "きのこ帝国",
+        "cover": "https://p2.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=26405131"
+      },
+      {
+        "id": 2722426126,
+        "name": "おとぎ",
+        "artists": "RAY",
+        "cover": "https://p2.music.126.net/Xe4VfKSkHYkIO1dQNXp-rQ==/109951171402189439.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2722426126"
+      },
+      {
+        "id": 2712589107,
+        "name": "春の嵐",
+        "artists": "羊文学",
+        "cover": "https://p2.music.126.net/jd5vRmlAEaJ40ao4HK2Wag==/109951171268447043.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2712589107"
+      },
+      {
+        "id": 2066755272,
+        "name": "飞松",
+        "artists": "陈粒",
+        "cover": "https://p2.music.126.net/cGIdZW4EEtPhd3rB775SaQ==/109951168857920159.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2066755272"
+      },
+      {
+        "id": 2600524616,
+        "name": "流れゆく季節",
+        "artists": "Haruka Nakamura",
+        "cover": "https://p2.music.126.net/TZyy6V0geCU5zP0j9lLDZg==/109951169703704961.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2600524616"
+      },
+      {
+        "id": 3428529559,
+        "name": "EP07M07 从哪里开始才是现实",
+        "artists": "StJimmyL / Ray1-睿壹 / 小欣Xier",
+        "cover": "https://p2.music.126.net/R6Gm6V1C_abBY3f_XbKIug==/109951173855089233.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=3428529559"
+      },
+      {
+        "id": 2748701151,
+        "name": "doll",
+        "artists": "羊文学",
+        "cover": "https://p2.music.126.net/hTnLSH8R5Wj0_seLnUw_0A==/109951172051293982.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2748701151"
+      },
+      {
+        "id": 2055877719,
+        "name": "死にゆく季節のきみへ",
+        "artists": "麻枝准 / やなぎなぎ",
+        "cover": "https://p2.music.126.net/ePjJOVKbnCIOh9xmwaGiwQ==/109951169954583836.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2055877719"
+      }
+    ],
+    "fetchedAt": "2026-10-27T09:48:54.088Z"
+  }
+}

@@ -1,0 +1,11 @@
+<main>
+    <div class="wrap min">
+        <section class="page-title">
+            <h2><%= page.title ? page.title : "没有标题的页面" %></h2>
+        </section>
+        <article class="page-content">
+            <%- page.content %>
+        </article>
+        <%- partial('_partial/comments') %>
+    </div>
+</main>

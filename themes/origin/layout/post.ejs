@@ -1,0 +1,90 @@
+<main>
+    <div class="wrap min">
+        <section class="post-title">
+            <h2><%= page.title ? page.title : "没有标题的文章" %></h2>
+            <div class="post-meta">
+                <time class="date"><%= date(page.date, "YYYY.MM.DD") %></time>
+
+                <%
+                var countStr = String(symbolsCount(page));
+                if (countStr.toLowerCase().indexOf('k') !== -1) {
+                    // 提取数字部分并乘以 1000，Math.round 用来消除浮点误差
+                    countStr = Math.round(parseFloat(countStr) * 1000);
+                }
+
+                // 使用总分钟展示阅读时长，避免插件在 >=60 分钟时返回 "h:mm" 格式。
+                var awl = (config.symbols_count_time && config.symbols_count_time.awl) || 4;
+                var wpm = (config.symbols_count_time && config.symbols_count_time.wpm) || 275;
+                var readMinutes = Math.max(1, Math.round((page.length || 0) / (awl * wpm)));
+                %>
+                <span class="word-count">约 <%= countStr %> 字</span>
+                <span class="read-time">预计阅读 <%= readMinutes %> 分钟</span>
+                <span id="busuanzi_container_page_pv" class="view" style="display:none;">
+                    <span id="busuanzi_value_page_pv"></span> 次阅读
+                </span>
+            <% if (page.categories && page.categories.length){ %>
+                <span class="category"><%- list_categories(page.categories, {
+                    show_count: false,
+                    class: "",
+                    style: "none",
+                    separator: "，"
+                    }) %></span>
+            <% } %>
+            </div>
+        </section>
+        <article class="post-content">
+            <%- page.content %>
+        </article>
+
+        <% if (page.tags && page.tags.length){ %>
+            <section class="post-tags">
+            <%- list_tags(page.tags, {
+                show_count: false,
+                class: "",
+                style: "none",
+                separator: ""
+                }) %>
+            </section>
+        <% } %>
+    <% if (theme.author && theme.author_text) { %>
+        <section class="post-author">
+        <% if (theme.author_avatar) { %>
+            <figure class="author-avatar">
+                <img src="<%- theme.author_avatar %>" alt="<%= theme.author %>" />
+            </figure>
+        <% } %>
+            <div class="author-info">
+                <h4><%= theme.author %></h4>
+                <p><%- theme.author_text %></p>
+            </div>
+        </section>
+    <% } %>
+    <%- partial('_partial/comments') %>
+    </div>
+</main>
+
+<script>
+    (function () {
+        // 文章有封面图时，将整站背景替换为该封面
+        // 但"关于网站"页面使用主页背景
+        var cover = <%- JSON.stringify(page.cover || "") %>;
+        var pageTitle = <%- JSON.stringify(page.title || "") %>;
+        
+        if (!cover) return;
+        
+        // 如果是"关于网站"页面，不使用封面图，使用主页背景
+        if (pageTitle === "关于网站") {
+            document.body.style.removeProperty("--page-bg-image");
+            return;
+        }
+
+        // 等待 DOM 就绪后再修改 CSS 变量，避免和首屏样式冲突
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", function () {
+                document.body.style.setProperty("--page-bg-image", "url(" + cover + ")");
+            });
+        } else {
+            document.body.style.setProperty("--page-bg-image", "url(" + cover + ")");
+        }
+    })();
+</script>

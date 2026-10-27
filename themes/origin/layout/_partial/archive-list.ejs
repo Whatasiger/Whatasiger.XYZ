@@ -1,0 +1,48 @@
+<section class="home-posts">
+    <% if (is_home() && page.current === 1) {
+        var cwWave = 'M0 50';
+        for (var cx = 0; cx < 1600; cx += 40) cwWave += ' Q' + (cx + 10) + ' 38 ' + (cx + 20) + ' 50 T' + (cx + 40) + ' 50';
+    %>
+        <a class="post-item card-style cw-card" href="/carrier_wave/">
+            <div class="cw-card-wave-box" aria-hidden="true">
+                <svg class="cw-card-wave" viewBox="0 0 1600 100" preserveAspectRatio="none">
+                    <path class="cw-card-strand is-ghost" d="<%= cwWave %>"/>
+                    <path class="cw-card-strand" d="<%= cwWave %>"/>
+                </svg>
+            </div>
+            <div class="cw-card-body">
+                <h2 class="cw-card-title">CARRiER WAVE.</h2>
+                <p class="cw-card-sub">载波<i></i>短篇辑</p>
+            </div>
+        </a>
+    <% } %>
+    <% page.posts.each((post, i) => { %>
+        <% if (post.title !== '关于网站') { %>
+        <div class="post-item card-style" onclick="window.location.href='<%- url_for(post.path) %>'">
+            <div class="post-card-bg" style="background-image: url('<%- post.cover || theme.background %>');"></div>
+
+            <div class="post-card-overlay">
+                <h2 class="post-card-title">
+                    <a href="<%- url_for(post.path) %>"><%- post.title || '未命名' %></a>
+                </h2>
+
+                <div class="post-card-info">
+                    <p class="post-card-description">
+                        <%- post.description || strip_html(post.excerpt).substring(0, 60) + '...' || strip_html(post.content).substring(0, 60) + '...' %>
+                    </p>
+                    <div class="post-card-meta">
+                        <span class="meta-date"><%- date(post.date, "YYYY-MM-DD") %></span>
+                        <% if (post.tags && post.tags.length){ %>
+                            <span class="meta-tags">
+                                <% post.tags.forEach(function(tag){ %>
+                                    #<%- tag.name %>
+                                <% }) %>
+                            </span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+    <% }) %>
+</section>

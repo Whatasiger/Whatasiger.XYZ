@@ -1,0 +1,78 @@
+<%
+    var todoCfg = theme.todo || {};
+    var todo = get_todo_data();
+    // 「在看」(动画) 在上、「在玩」(游戏) 在下，各自成组
+    var bgmGroups = [{ type: 2, label: "在看" }, { type: 4, label: "在玩" }].map(function (g) {
+        g.items = todo.bangumi.filter(function (item) { return item.type === g.type; });
+        return g;
+    }).filter(function (g) { return g.items.length; });
+    var fetchedDate = todo.songsFetchedAt ? date(todo.songsFetchedAt, "YYYY-MM-DD") : "";
+%>
+<%# 抽屉与标签同处一个容器、只由容器位移，两者天然贴合 %>
+<div class="todo-drawer">
+<aside class="todo-sidebar" id="todo-sidebar" aria-label="TO DO" data-bgm-user="<%= todoCfg.bangumi_user || '' %>">
+    <div class="todo-head">
+        <h2>TO DO</h2>
+        <button class="todo-close" type="button" aria-label="收起"><i class="fa fa-times" aria-hidden="true"></i></button>
+    </div>
+
+    <section class="todo-block">
+        <h3>
+            <a href="https://bgm.tv/user/<%= todoCfg.bangumi_user %>" target="_blank" rel="noopener">Bangumi</a>
+        </h3>
+        <div class="todo-bgm">
+            <% if (bgmGroups.length) { %>
+                <% bgmGroups.forEach(function (group) { %>
+                <p class="todo-sub"><%= group.label %></p>
+                <ul class="todo-list">
+                    <% group.items.forEach(function (item) { %>
+                    <li>
+                        <a href="<%= item.url %>" target="_blank" rel="noopener">
+                            <img src="<%= item.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+                            <span class="todo-text">
+                                <span class="todo-title"><%= item.name %></span>
+                                <% if (item.type === 2) { %><span class="todo-meta"><%= item.epStatus %> / <%= item.eps || "?" %></span><% } %>
+                            </span>
+                        </a>
+                    </li>
+                    <% }) %>
+                </ul>
+                <% }) %>
+            <% } else { %>
+                <p class="todo-empty">暂无数据</p>
+            <% } %>
+        </div>
+    </section>
+
+    <section class="todo-block">
+        <h3>
+            <a href="https://music.163.com/#/user/songs/rank?id=<%= todoCfg.netease_uid %>" target="_blank" rel="noopener">本周听歌 Top 10</a>
+        </h3>
+        <ol class="todo-list todo-music">
+            <% if (todo.songs.length) { %>
+                <% todo.songs.forEach(function (song, i) { %>
+                <li>
+                    <a href="<%= song.url %>" target="_blank" rel="noopener">
+                        <span class="todo-rank"><%= i + 1 %></span>
+                        <img src="<%= song.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+                        <span class="todo-text">
+                            <span class="todo-title"><%= song.name %></span>
+                            <span class="todo-meta"><%= song.artists %></span>
+                        </span>
+                    </a>
+                </li>
+                <% }) %>
+            <% } else { %>
+                <li class="todo-empty">暂无数据</li>
+            <% } %>
+        </ol>
+        <% if (fetchedDate) { %>
+            <p class="todo-note">更新于 <%= fetchedDate %></p>
+        <% } %>
+    </section>
+</aside>
+<button class="todo-toggle" type="button" aria-controls="todo-sidebar" aria-expanded="false" title="TO DO">
+    <i class="fa fa-list-ul" aria-hidden="true"></i>
+    <span>TO DO</span>
+</button>
+</div>

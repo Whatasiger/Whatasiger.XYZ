@@ -1,0 +1,239 @@
+<head>
+    <%- partial('_partial/ui-switch') %>
+    <%
+        // ===== 标题 =====
+        let title = "没有标题";
+
+        if(is_home()){
+            title = config.title;
+        }
+        else{
+            if(is_category()){
+                title = page.category;
+            }
+            else if(is_archive()){
+                title = page.year ? (
+                    page.year + " 年" + (page.month ? " " + page.month + " 月" : "")
+                ) : "归档";
+            }
+            else if(is_tag()){
+                title = page.tag;
+            }
+            else if(is_post() || is_page() && page.title){
+                title = page.title;
+            }
+
+            title = title + " - " + config.title;
+        }
+
+        // ===== 描述 / 关键词 / 封面 / 链接：用于 SEO + 社交分享 =====
+        function _stripHtml(s) {
+            return String(s || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+        }
+
+        let pageDescription = "";
+        if (page.description) {
+            pageDescription = _stripHtml(page.description);
+        } else if (page.excerpt) {
+            pageDescription = _stripHtml(page.excerpt);
+        } else if (is_home() || is_archive() || is_category() || is_tag()) {
+            pageDescription = config.description || "";
+        } else if (page.content) {
+            pageDescription = _stripHtml(page.content);
+        }
+        if (pageDescription.length > 200) {
+            pageDescription = pageDescription.slice(0, 200) + "…";
+        }
+
+        let pageKeywords = "";
+        if (page.tags && page.tags.length) {
+            pageKeywords = page.tags.map(function (t) { return t.name; }).join(",");
+        } else if (page.keywords) {
+            pageKeywords = page.keywords;
+        } else {
+            pageKeywords = config.keywords || "";
+        }
+
+        let pageImage = "";
+        if (page.cover) {
+            pageImage = full_url_for(page.cover);
+        } else if (theme.background) {
+            pageImage = full_url_for(theme.background);
+        }
+
+        let pageUrl = full_url_for(page.path || "");
+        let ogLocale = String(config.language || "zh-CN").replace("-", "_");
+    %>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title><%= title %></title>
+
+    <%- favicon_tag("static/img/icon.png") %>
+    <link rel="icon" href="<%- url_for('/static/img/icon.png') %>" sizes="192x192"/>
+    <%# Origin 是 Glint 的另一套界面（同一份内容）：规范链接指向 Glint 的同一页，本身不进搜索索引 %>
+    <link rel="canonical" href="<%= pageUrl.replace('/origin/', '/') %>">
+    <meta name="robots" content="noindex, follow">
+
+    <!-- 基本 SEO -->
+    <meta name="description" content="<%= pageDescription %>">
+    <% if (pageKeywords) { %><meta name="keywords" content="<%= pageKeywords %>"><% } %>
+    <meta name="author" content="<%= config.author %>">
+    <meta name="theme-color" content="#0e0e10">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="<%= config.title %>">
+    <meta property="og:type" content="<%= is_post() ? 'article' : 'website' %>">
+    <meta property="og:locale" content="<%= ogLocale %>">
+    <meta property="og:url" content="<%= pageUrl %>">
+    <meta property="og:title" content="<%= title %>">
+    <meta property="og:description" content="<%= pageDescription %>">
+    <% if (pageImage) { %><meta property="og:image" content="<%= pageImage %>"><% } %>
+    <% if (is_post()) { %>
+    <meta property="article:published_time" content="<%= date_xml(page.date) %>">
+    <% if (page.updated) { %><meta property="article:modified_time" content="<%= date_xml(page.updated) %>"><% } %>
+    <% if (page.tags && page.tags.length) { page.tags.forEach(function (t) { %><meta property="article:tag" content="<%= t.name %>"><% }) } %>
+    <% } %>
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="<%= pageImage ? 'summary_large_image' : 'summary' %>">
+    <meta name="twitter:title" content="<%= title %>">
+    <meta name="twitter:description" content="<%= pageDescription %>">
+    <% if (pageImage) { %><meta name="twitter:image" content="<%= pageImage %>"><% } %>
+
+    <!-- RSS / Atom（hexo-generator-feed 启用后可用） -->
+    <% if (config.feed) {
+        var feedTypes = Array.isArray(config.feed.type) ? config.feed.type : [config.feed.type || 'atom'];
+        feedTypes.forEach(function (ft) {
+            var fpath = (config.feed[ft + '_path']) || (ft === 'rss2' ? 'rss2.xml' : (ft === 'atom' ? 'atom.xml' : ''));
+            if (!fpath) return;
+            var fmime = ft === 'rss2' ? 'application/rss+xml' : 'application/atom+xml';
+    %><link rel="alternate" type="<%= fmime %>" title="<%= config.title %>" href="/<%- fpath %>"><%
+        });
+    } %>
+
+    <!-- Sitemap（hexo-generator-sitemap 启用后可用） -->
+    <% if (config.sitemap && config.sitemap.path) { %>
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/<%- Array.isArray(config.sitemap.path) ? config.sitemap.path[0] : config.sitemap.path %>">
+    <% } %>
+
+    <!-- 主题样式 -->
+    <%- css("static/kico.css", "static/hingle.css") %>
+    <%- css("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css") %>
+
+    <% if (theme.background) { %>
+    <style>body{ --page-bg-image: url(<%- theme.background %>) }</style>
+    <% } %>
+
+    <!-- 思源黑体（Noto Sans SC）：国内镜像优先 + 本机字体名回退 -->
+    <link rel="preconnect" href="https://fonts.loli.net">
+    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="preload" as="style" href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet"
+          href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap"
+          media="print" onload="this.media='all'; this.onload=null;">
+    <% if (is_home()) { %>
+    <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Cormorant+Garamond:wght@300&display=swap">
+    <!-- 卡片副题「载波·短篇辑」与目录页同用思源宋体；只取这几个字，字体文件很小 -->
+    <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300&text=<%- encodeURIComponent('载波短篇辑') %>&display=swap">
+    <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」，其余跳转一律跳过 -->
+    <style>@view-transition { navigation: auto; } @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }</style>
+    <script>
+        (function () {
+            var root = document.documentElement;
+            var target = '/carrier_wave/'; // CARRiER WAVE. 只有根路径下这一份，不分界面主题
+            function norm(u) {
+                try { return new URL(u, location.href).pathname.replace(/index\.html$/, ''); } catch (err) { return ''; }
+            }
+            window.addEventListener('pageswap', function (e) {
+                var to = e.activation && e.activation.entry && e.activation.entry.url;
+                // 给目录页留一份来源记录：它拿不到 navigation.activation.from 时据此判断是否从首页来
+                try { sessionStorage.setItem('cw-vt-hop', JSON.stringify({ from: norm(location.href), to: to ? norm(to) : '', t: Date.now() })); } catch (err) {}
+                if (!e.viewTransition) return;
+                if (!to || norm(to) !== target) e.viewTransition.skipTransition();
+            });
+            // 从目录页回来：整屏收回成卡片；卡片不在视口内（如恢复了滚动位置）就不做
+            // 只在从往返缓存恢复时做：全新加载要等首页渲染，旧画面会先冻住，首帧布局也未定型，形变起止对不上
+            var revealed = false;
+            window.addEventListener('pagereveal', function (e) {
+                var restored = revealed;
+                revealed = true;
+                root.classList.remove('cw-back');
+                if (!e.viewTransition) return;
+                if (!restored) { e.viewTransition.skipTransition(); return; }
+                var act = window.navigation && navigation.activation;
+                var from = act && act.from && act.from.url;
+                var card = document.querySelector('.post-item.cw-card');
+                var r = card && card.getBoundingClientRect();
+                if (!from || norm(from) !== target || !r || r.bottom <= 0 || r.top >= innerHeight) {
+                    e.viewTransition.skipTransition();
+                    return;
+                }
+                // cw-came-back 不随过渡结束移除：卡片的入场动画一旦恢复就会重播，造成落定后再闪一下
+                root.classList.add('cw-back', 'cw-came-back');
+                e.viewTransition.finished.finally(function () { root.classList.remove('cw-back'); });
+            });
+
+            // 预取目录页及其阻塞渲染的字体样式表：跨页面过渡要求新页面在约 4 秒内完成首帧，否则浏览器静默放弃
+            // 首页加载完后空闲时预取；首页还没加载完时，指针移上、按下或聚焦卡片就提前预取
+            // 字体地址须与 _partial/carrier-wave-head.ejs 中的保持一致，否则预取的缓存用不上
+            var warmed = false;
+            function warm() {
+                if (warmed) return;
+                warmed = true;
+                [target, 'https://fonts.loli.net/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Serif+SC:wght@300;400;500&display=swap']
+                    .forEach(function (href) {
+                        var l = document.createElement('link');
+                        l.rel = 'prefetch';
+                        l.href = href;
+                        document.head.appendChild(l);
+                    });
+            }
+            document.addEventListener('DOMContentLoaded', function () {
+                var card = document.querySelector('.post-item.cw-card');
+                if (!card) return;
+                ['pointerenter', 'pointerdown', 'touchstart', 'focus'].forEach(function (t) {
+                    card.addEventListener(t, warm, { once: true, passive: true });
+                });
+                window.addEventListener('load', function () {
+                    if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 3000 });
+                    else setTimeout(warm, 1000);
+                });
+            });
+        })();
+    </script>
+    <%- partial('_partial/vt-debug') %>
+    <% } %>
+    <noscript>
+        <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap">
+    </noscript>
+
+    <!-- 结构化数据：让搜索引擎更准确地理解文章 -->
+    <% if (is_post()) {
+        var ld = {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "mainEntityOfPage": pageUrl,
+            "headline": page.title || "",
+            "datePublished": date_xml(page.date),
+            "dateModified": date_xml(page.updated || page.date),
+            "author": { "@type": "Person", "name": config.author },
+            "publisher": { "@type": "Organization", "name": config.title }
+        };
+        if (pageImage) ld.image = pageImage;
+        if (pageDescription) ld.description = pageDescription;
+    %>
+    <script type="application/ld+json"><%- JSON.stringify(ld) %></script>
+    <% } else if (is_home()) { %>
+    <script type="application/ld+json"><%- JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": config.title,
+        "url": config.url,
+        "description": config.description || "",
+        "author": { "@type": "Person", "name": config.author }
+    }) %></script>
+    <% } %>
+</head>

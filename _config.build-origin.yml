@@ -1,0 +1,21 @@
+# 「Origin」界面的构建配置：叠加在 _config.yml 之上，只由 tools/build-origin.js 使用（npm run build 会自动调用）
+# Origin 是同一份内容配上 themes/origin（本轮界面改版前的主题）生成的另一个站点，放在 /origin/ 下
+# 注意：不要改名为 _config.origin.yml——那是 Hexo 约定的「origin 主题配置」文件名，会被当成主题配置读取
+url: https://whatasiger.xyz/origin
+root: /origin/
+theme: origin
+public_dir: public/origin
+
+# 订阅源只保留 Glint 那一份；Origin 的 <head> 里订阅源、站点地图的链接也直接指向根路径下的
+feed:
+  enable: false
+
+# 图片等静态资源只在 Glint 根路径下放一份：文章与主题里引用的都是 /images/... 绝对路径
+# （数组会整体覆盖 _config.yml 的 exclude，前四项照抄那里）
+exclude:
+  - '**/node_modules/**'
+  - '**/package.json'
+  - '**/package-lock.json'
+  - '**/*.bak'
+  - 'images/**'
+  - 'robots.txt'

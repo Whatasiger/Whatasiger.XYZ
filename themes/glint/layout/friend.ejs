@@ -1,0 +1,45 @@
+<%
+var friends = [];
+if (typeof get_friend_cards === 'function') {
+    friends = get_friend_cards();
+}
+%>
+<main>
+    <div class="wrap min">
+        <div class="reading-sheet">
+        <section class="page-title">
+            <h2><%= page.title ? page.title : "友情链接" %></h2>
+        </section>
+
+        <% if (page.content && page.content.trim()) { %>
+        <article class="page-content friend-intro">
+            <%- page.content %>
+        </article>
+        <% } %>
+
+        <section class="friend-list" aria-label="友情链接列表">
+            <% if (friends.length > 0) { %>
+                <% friends.forEach(function(friend) { %>
+                    <a
+                        class="friend-card"
+                        href="<%= friend.url %>"
+                        target="_blank"
+                        rel="noopener noreferrer nofollow external">
+                        <div class="friend-card-avatar">
+                            <img src="<%= friend.avatar %>" alt="<%= friend.name %> 头像" loading="lazy">
+                        </div>
+                        <div class="friend-card-content">
+                            <h3 class="friend-card-title"><%= friend.name %></h3>
+                            <p class="friend-card-desc"><%= friend.description %></p>
+                        </div>
+                    </a>
+                <% }) %>
+            <% } else { %>
+                <div class="friend-empty">暂无友情链接，请先在 <code>source/_data/friends.yml</code> 添加网址。</div>
+            <% } %>
+        </section>
+        </div>
+
+        <%- partial('_partial/comments') %>
+    </div>
+</main>
