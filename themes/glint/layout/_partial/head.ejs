@@ -167,6 +167,9 @@
     <!-- 文章卡片同样预渲染（指针停留 / 按下即开始）：点击后过渡立即开始，不必等文章页下载、解析、出首帧
          预渲染会执行文章页脚本，所以不蒜子等页面真正打开才加载计数（footer.ejs），评论等过渡结束（post-vt.ejs 的 vtSettled） -->
     <script type="speculationrules">{"prerender": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "moderate"}]}</script>
+    <!-- 首页载入后先把各卡片文章页的 HTML 预取下来（只下载、不执行）：预渲染没来得及跑完就点下去时，也不必再等网络（实测 0.5–1.7s → 0.2–0.3s）；
+         悬停 / 按下开始的预渲染同样直接用这份响应 -->
+    <script type="speculationrules">{"prefetch": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "immediate"}]}</script>
     <!-- 卡片副题「载波·短篇辑」与目录页同用思源宋体；只取这几个字，字体文件很小 -->
     <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300&text=<%- encodeURIComponent('载波短篇辑') %>&display=swap">
     <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」与「首页 → 文章」（文章卡片一镜到底），其余跳转一律跳过 -->
