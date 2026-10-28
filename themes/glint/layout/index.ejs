@@ -45,9 +45,9 @@
 </main>
 <% if (theme.todo && theme.todo.enable) { %>
 <%- partial("_partial/todo-sidebar") %>
-<script src="/static/todo-sidebar.js"></script>
+<script src="<%- asset_url('static/todo-sidebar.js') %>"></script>
 <% } %>
-<script src="/static/water-ripple.js"></script>
+<script src="<%- asset_url('static/water-ripple.js') %>"></script>
 <%# Gizmo 入口：浮在右侧水面上的叶片（顶栏导航收起时隐藏，入口改在导航卡片里）；运动与水波交互见 gizmo-leaf.js %>
 <a class="gizmo-leaf" href="<%- url_for('/gizmo/') %>" aria-label="Gizmo：随手做的小玩意">
     <span class="gizmo-leaf-float">
@@ -57,4 +57,4 @@
     </span>
     <span class="gizmo-leaf-tag">Gizmo</span>
 </a>
-<script src="/static/gizmo-leaf.js"></script>
+<script src="<%- asset_url('static/gizmo-leaf.js') %>"></script>

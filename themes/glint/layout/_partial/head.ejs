@@ -116,7 +116,9 @@
     <% } %>
 
     <!-- 主题样式 -->
-    <%- css("static/kico.css", "static/glint.css") %>
+    <%# 地址带内容哈希（scripts/asset-version.js），改了文件缓存即失效 %>
+    <link rel="stylesheet" href="<%- asset_url('static/kico.css') %>">
+    <link rel="stylesheet" href="<%- asset_url('static/glint.css') %>">
     <%- css("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css") %>
 
     <%

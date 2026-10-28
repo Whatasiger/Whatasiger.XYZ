@@ -21,8 +21,10 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）
 - 【特殊】短篇辑 CARRiER WAVE.：正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/` 单独生成
 - 主题：`themes/glint`（Glint，自定义 EJS；Origin 见上），样式在 `themes/glint/source/static/glint.css`（按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，注释风格为中文行尾注释）
-- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取
+- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、`asset_url` 静态资源版本号
+- Glint 引用主题自己的 CSS / JS 一律写 `<%- asset_url('static/xxx.js') %>`（`scripts/asset-version.js`，地址带内容哈希 `?v=`），不要再写死 `/static/xxx` 或用 `css()` / `js()`：否则手机常拿新 HTML 配缓存里的旧 CSS（曾致导航卡片的 Gizmo 长条变成普通磁贴）。CW 页面另用 `carrier_wave.yml` 的 `version`
 - 【Gizmo】小玩意陈列页 `/gizmo/`：`source/gizmo/index.md` 只有 front matter（`layout: gizmo`），模板 `themes/glint/layout/gizmo.ejs`，篇目在 `source/_data/gizmo.yml`（加东西只改数据）；站内独立的小玩意放 `source/gizmo/<名字>/`，由 `_config.yml` 的 `skip_render: gizmo/*/**` 原样输出、不套主题。Gizmo 页不算阅读页（`layout.ejs` 的 `isReading`、`header.ejs` 的 `isArticle` 都排除 `page.layout === 'gizmo'`，body 挂 `gizmo-page`），底栏只留版权信息
+- 【Gizmo 示范】小游戏《一叶》`source/gizmo/yiye/`（点水成涟、把叶子推进夕照倒影）：`sim.js` 纯物理与关卡（无 DOM，固定步长、结果确定），`game.js` 画面 / 输入 / 声音 / 界面，`index.html` 结构与样式。叶子路径与首页 Gizmo 叶片相同；首帧前读博客的主题色（`whatasiger_reader_settings.accent`）与日夜（sessionStorage `theme`）。改关卡后跑 `node tools/yiye-solve.js` 检验可解并参考 par（求解器只模拟「停稳再点」，步数是上界）。改了 `game.js` / `sim.js` 记得把 `index.html` 里的 `?v=` 加一。进度存 localStorage `whatasiger_gizmo_yiye`。今后的独立小玩意可照此组织：自包含、相对路径（返回链接写 `../`，Origin 的 `/origin/gizmo/` 下同样可用）
 - 图片统一 webp，放 `source/images/webp/`；外链图转换用 `tools/external_images_to_webp.py`
 
 ## 主题与样式要点

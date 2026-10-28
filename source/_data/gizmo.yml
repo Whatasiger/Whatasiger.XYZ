@@ -15,4 +15,9 @@
 #   link: /gizmo/some-game/
 #   date: 2026-11-01
 
-[]
+- name: 一叶
+  desc: 点水成涟，送一片叶子回到夕照里。十处水面，三十枚印记
+  icon: leaf
+  type: 小游戏
+  link: /gizmo/yiye/
+  date: 2026-10-28
