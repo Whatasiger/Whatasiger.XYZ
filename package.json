@@ -5,8 +5,12 @@
   "scripts": {
     "build": "hexo generate && node tools/build-origin.js",
     "clean": "hexo clean && node -e \"require('fs').rmSync('.origin-build',{recursive:true,force:true})\"",
-    "deploy": "hexo deploy && node tools/push-source.js",
-    "server": "hexo server"
+    "deploy": "hexo deploy",
+    "source:preview": "node tools/push-source.js",
+    "source:publish": "node tools/push-source.js --publish",
+    "server": "hexo server",
+    "test": "node --test tests/*.test.js",
+    "test:build": "node tools/verify-build.js"
   },
   "hexo": {
     "version": "8.1.1"
@@ -31,5 +35,9 @@
     "hexo-theme-landscape": "^1.0.0",
     "hexo-wordcount": "^6.0.1",
     "marked-footnote": "^1.4.0"
+  },
+  "devDependencies": {
+    "ejs": "3.1.10",
+    "jsdom": "25.0.1"
   }
 }

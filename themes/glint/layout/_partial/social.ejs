@@ -38,9 +38,17 @@
                 a.addEventListener("pointerenter", function (e) {
                     if (e.pointerType === "touch") return;
                     clearTimeout(leaveTimer);
+                    dock.classList.remove("tip-off");
                     place(a);
                 });
-                a.addEventListener("focus", function () { place(a); });
+                a.addEventListener("focus", function () {
+                    clearTimeout(leaveTimer);
+                    // 键盘聚焦不出名称标签；鼠标点击带来的聚焦照旧（悬停时已显示）
+                    var keyboard = true;
+                    try { keyboard = a.matches(":focus-visible"); } catch (e) {}
+                    if (keyboard) dock.classList.add("tip-off");
+                    place(a);
+                });
             });
             // 图标之间有空隙，稍等再收起，免得划过空隙时闪一下
             function leave() {
@@ -48,7 +56,10 @@
                 leaveTimer = setTimeout(function () { dock.classList.remove("is-pointing"); }, 120);
             }
             dock.addEventListener("pointerleave", leave);
-            dock.addEventListener("focusout", leave);
+            dock.addEventListener("focusout", function (e) {
+                if (dock.contains(e.relatedTarget)) return;
+                leave();
+            });
             dock.addEventListener("pointerenter", function () { clearTimeout(leaveTimer); });
         })();
     </script>

@@ -5,7 +5,9 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 ## 常用命令
 - `npm run server` 本地预览（只有 Glint）/ `npm run build` 生成（Glint + Origin）/ `npm run clean`
 - 预览两套界面：`npm run build` 后 `npx hexo server -s`（静态模式，直接伺服 public/）
-- 部署：先 `npm run build`，再 `npm run deploy`（hexo-deployer-git → Whatasiger.github.io main；随后 `tools/push-source.js` 把整个工作区提交为「部署 日期时间」并推送到源码展示仓库 Whatasiger/Whatasiger.XYZ main，工作区本身即该仓库，生成物见 `.gitignore`）—— 只在我明确要求时执行；**不要只跑 `hexo generate` 就部署**，那样 Origin 不会更新
+- 部署：先 `npm run build`，再 `npm run deploy`（只运行 hexo-deployer-git → Whatasiger.github.io main，不再发布源码）—— 只在我明确要求时执行；**不要只跑 `hexo generate` 就部署**，那样 Origin 不会更新
+- 源码发布（Whatasiger/Whatasiger.XYZ main）与部署分开：`npm run source:preview` 离线列出待推提交与文件；人工审核、手动提交且工作区干净后，经我明确授权才执行 `npm run source:publish -- --confirm --review <完整HEAD SHA>`。工具不会 add / commit，遇敏感路径拒绝发布
+- 测试：`npm test`（Node + jsdom 回归）；完整构建后 `npm run test:build` 检查 sitemap / 跳转 / 双主题产物
 
 ## 界面主题：Glint / Origin
 - 全站有两套界面，在设置卡片里切换：**Glint**（当前设计，`themes/glint`，站点根路径）与 **Origin**（本轮改版前的界面，`themes/origin`，取自 `blog_bak/themes/hingle`，生成在 `/origin/` 下）
@@ -21,7 +23,9 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）
 - 【特殊】短篇辑 CARRiER WAVE.：正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/` 单独生成
 - 主题：`themes/glint`（Glint，自定义 EJS；Origin 见上），样式在 `themes/glint/source/static/glint.css`（按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，注释风格为中文行尾注释）
-- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、`asset_url` 静态资源版本号
+- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、旧链接跳转（`redirects.js`）、`asset_url` 静态资源版本号
+- 改 permalink 时，把有明确替代文章的旧路径补进 `scripts/redirects.js` 的 `OLD_LINKS`（根构建生成 `public/_redirects`，构建时校验目标存在；Cloudflare 边缘是否命中须部署后验证）；没有替代内容的旧页面保持 404，不跳首页
+- 站点地图由 `hexo-generator-sitemap` 生成；不该收录的页面在 front matter 写 `sitemap: false`（如 404 页）
 - Glint 引用主题自己的 CSS / JS 一律写 `<%- asset_url('static/xxx.js') %>`（`scripts/asset-version.js`，地址带内容哈希 `?v=`），不要再写死 `/static/xxx` 或用 `css()` / `js()`：否则手机常拿新 HTML 配缓存里的旧 CSS（曾致导航卡片的 Gizmo 长条变成普通磁贴）。CW 页面另用 `carrier_wave.yml` 的 `version`
 - 【Gizmo】小玩意陈列页 `/gizmo/`：`source/gizmo/index.md` 只有 front matter（`layout: gizmo`），模板 `themes/glint/layout/gizmo.ejs`，篇目在 `source/_data/gizmo.yml`（加东西只改数据）；站内独立的小玩意放 `source/gizmo/<名字>/`，由 `_config.yml` 的 `skip_render: gizmo/*/**` 原样输出、不套主题。Gizmo 页不算阅读页（`layout.ejs` 的 `isReading`、`header.ejs` 的 `isArticle` 都排除 `page.layout === 'gizmo'`，body 挂 `gizmo-page`），底栏只留版权信息
 - 【Gizmo 示范】小游戏《一叶》`source/gizmo/yiye/`（点水成涟、把叶子推进夕照倒影）：`sim.js` 纯物理与关卡（无 DOM，固定步长、结果确定），`game.js` 画面 / 输入 / 声音 / 界面，`index.html` 结构与样式。叶子路径与首页 Gizmo 叶片相同；首帧前读博客的主题色（`whatasiger_reader_settings.accent`）与日夜（sessionStorage `theme`）。改关卡后跑 `node tools/yiye-solve.js` 检验可解并参考 par（求解器只模拟「停稳再点」，步数是上界）。改了 `game.js` / `sim.js` 记得把 `index.html` 里的 `?v=` 加一。进度存 localStorage `whatasiger_gizmo_yiye`。今后的独立小玩意可照此组织：自包含、相对路径（返回链接写 `../`，Origin 的 `/origin/gizmo/` 下同样可用）
@@ -50,7 +54,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 浮层卡片（设置面板、手机端导航卡片）共用 `--glass-*` 变量（第 0 节定义、第 1 节夜间覆盖）：毛玻璃 + squircle 圆角（`corner-shape`，不支持时退回普通圆角）+ 展开用 `--ease-spring`、收起用 `--ease-exit`；新增浮层沿用这套
 - 顶栏导航的展开 / 收起不按宽度断点，而由 `header.ejs` 中紧跟 nav 的内联脚本实测：四个按钮居中排开会碰到左侧 Logo 或右侧搜索框 / 按钮（或宽度 < 600px）时给 html 挂 `.nav-collapsed`，导航变为汉堡按钮 + 卡片。相关 CSS 用 `html.nav-collapsed` / `html:not(.nav-collapsed)` 区分，不要再写进 600px 媒体查询；设置面板仍按 600px 切换
 - 顶栏配色走 `--hd-*` 变量（挂在 body 上，因为导航 `.head-menu` 在 header 之外；第 2 节为夜间，第 8 节白天覆盖）。页顶时较透，`header:before` 是滚动后渐显的实层（`animation-timeline: scroll()`，前 160px）。桌面导航的强调框是 nav 里唯一一枚 `.head-menu-pill`，由 `header.ejs` 的脚本写 `--pill-x/--pill-w` 在各项之间滑动（缓动 `--ease-glide`，支持 `linear()` 时为带回弹的弹簧）；`.head-menu > a` 的左右 padding / margin-right 改动时须同步收起判断里的 `PAD` / `SPACE`。Logo 版本名写死在 `header.ejs` 的 `.header-logo-ver`（现为 Ciel），发版时手动改；站名与版本号靠 `text-box: trim-both cap alphabetic` 按字形中线对齐
-- 沉浸模式（设置开关，`whatasiger_reader_settings.immersive`，默认关）：开启后 body 挂 `.immersive`，glint.js `setupImmersive()` 在下滑时给 html 挂 `.header-hidden`（顶栏与桌面横排导航一起收起，目录卡片 / 迷你目录上移到 1em），上滑须在 450ms 内滚过 ≥250px 才唤出（`REVEAL_WINDOW / REVEAL_DISTANCE`），离页顶 64px 内或有浮层 / 搜索时始终显示
+- 沉浸模式（设置开关，`whatasiger_reader_settings.immersive`，默认关）：开启后 body 挂 `.immersive`，glint.js `setupImmersive()` 在下滑时给 html 挂 `.header-hidden`（顶栏与桌面横排导航一起收起，目录卡片 / 迷你目录上移到 1em），上滑须在 450ms 内滚过 ≥500px 才唤出（`REVEAL_WINDOW / REVEAL_DISTANCE`），离页顶 64px 内或有浮层 / 搜索时始终显示
 - 带 backdrop-filter 的浮层不能放进 `<header>`（header 自身有 backdrop-filter，嵌套会让毛玻璃失效），所以设置面板放在 header 之外；手机端导航图标在主题 `_config.yml` 的 `menu_icons`
 - kico.css 会给 checkbox 加 `::before/::after` 方框对勾、给 range 加 `overflow:hidden` 和 `min-height`；设置面板的开关与滑动条已针对性覆盖，新增表单控件时注意；两个浮层同时打开时由 glint.js 的 `bringToFront` 挂 `.on-top` 决定上下
 - Gizmo 入口：桌面端（`html:not(.nav-collapsed)`）是首页右侧水面上的叶片 `.gizmo-leaf`（`index.ejs` + `static/gizmo-leaf.js`，图形是 `_partial/gizmo-leaf-svg.ejs`，与 Gizmo 页标题处的 `.gizmo-emblem` 共用）；顶栏导航收起时叶片隐藏，入口是导航卡片里横占一整排的 `.head-menu-gizmo`（桌面横排导航里 display:none，收起判断与强调框的当前项都要排除它）。叶片随风漂动、留尾流，靠 `window.waterRipple` 的 `drop / stroke` 激发水波、`setProbe / sample` 取叶片处水面（PBO + fence 异步读回，不阻塞 GPU）被水波推动；推力系数在 `gizmo-leaf.js` 的 CFG，注释里有实测位移。首页 → Gizmo 叶片一镜到底：`head.ejs` 的 `leaveToGizmo` 在 pageswap 给叶身挂 `gizmo-leaf` 并写 sessionStorage `gizmo-leaf-hop`，`_partial/gizmo-vt.ejs` 据此接过渡，内容在 `gizmo-from-leaf` 期间隐藏、落定后浮现（常驻的 `gizmo-leaf-in` 关掉内容的入场动画）
