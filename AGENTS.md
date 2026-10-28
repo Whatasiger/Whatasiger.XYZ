@@ -22,13 +22,16 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 【特殊】短篇辑 CARRiER WAVE.：正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/` 单独生成
 - 主题：`themes/glint`（Glint，自定义 EJS；Origin 见上），样式在 `themes/glint/source/static/glint.css`（按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，注释风格为中文行尾注释）
 - 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取
+- 【Gizmo】小玩意陈列页 `/gizmo/`：`source/gizmo/index.md` 只有 front matter（`layout: gizmo`），模板 `themes/glint/layout/gizmo.ejs`，篇目在 `source/_data/gizmo.yml`（加东西只改数据）；站内独立的小玩意放 `source/gizmo/<名字>/`，由 `_config.yml` 的 `skip_render: gizmo/*/**` 原样输出、不套主题。Gizmo 页不算阅读页（`layout.ejs` 的 `isReading`、`header.ejs` 的 `isArticle` 都排除 `page.layout === 'gizmo'`，body 挂 `gizmo-page`），底栏只留版权信息
 - 图片统一 webp，放 `source/images/webp/`；外链图转换用 `tools/external_images_to_webp.py`
 
 ## 主题与样式要点
 - 主题色：全站强调色取自 glint.css 第 0 节的色阶 `--tc-ice / pale / light / glow / soft / main / dim / deep / ink / warm / warm-deep`（按明度排列，各处按用途取不同级；`--blue`、`--hd-*`、`--footer-*`、`--hero-*` 都引用它）。默认「天青」即原先的蓝，数值原样；其余主题由 `html[data-accent]` 设 `--tc-h`，整组用 OKLCH 同明度同彩度只换色相。半透明一律写 `color-mix(in srgb, var(--tc-x) N%, transparent)`，**新增样式不要再写死蓝色 hex / rgba**。设置保存在 `whatasiger_reader_settings.accent`，`header.ejs` 开头首帧前挂属性；新增主题色要同时改第 0 节与 `header.ejs` 的 `accents` 列表。CARRiER WAVE. 页面不加载 glint.css，不受主题色影响
 - 日夜模式：`body.dark-theme` 为夜间；默认即夜间，仅当 sessionStorage `theme=light` 时为白天（逻辑在 `layout/_partial/header.ejs` 开头）
 - 只改白天模式时，选择器统一用 `body:not(.dark-theme) …`，集中写在 glint.css 第 8 节；夜间同理用 `.dark-theme …`
-- 背景图：`body:before` 伪元素，由 `--page-bg-image` / `--bg-opacity` / `--bg-blur` 控制；有 cover 的文章会把背景换成封面；阅读页加 `.bg-faded` 淡化
+- 背景图：`body:before` 伪元素，由 `--page-bg-image` / `--bg-opacity` / `--bg-blur` 控制；有 cover 的文章会把背景换成封面；阅读页加 `.bg-faded` 淡化——阅读页首帧就挂 `.bg-faded`、模糊度直接取最终值（`header.ejs`），**不要再改回进页后靠过渡变淡**：载入时主线程忙，过渡时间线照走，看起来就是亮背景硬切成灰
+- 阅读页等字体：`head.ejs` 在字体样式表后给 html 挂 `page-loading`，`main` / 迷你目录 `visibility: hidden`、其中入场动画暂停在起点，思源黑体就绪（`document.fonts.ready`）后撤掉、动画从头播；超 300ms 才浮出 `body.post-page:after` 转圈，最多等 1.2s；选系统字体不等；等待期间脚本读正文文字**不要用 `innerText`**（visibility: hidden 的文字会被跳过，取到空串，目录曾因此只剩竖线），用 `textContent`；卡片一镜到底时 `post-vt.ejs` 在 pagereveal 调 `pageReveal()` 立即撤掉。样式在 glint.css「阅读页等字体」
+- 顶栏字体：顶栏与导航（`header`、`.head-menu`）先用内联的思源黑体 600 子集 `Glint UI`（`_partial/ui-font.ejs`，只含站名、版本名、导航四项、Gizmo 长条、搜索框占位的字），首帧即是思源黑体；**顶栏 / 导航改字（含发版改版本名）须重新取子集**，否则新字会回退到外链字体、又出现先雅黑后思源。选了系统字体时 html 挂 `font-system`（`header.ejs` 首帧 + glint.js 设置）不用它
 - 手机端滚动性能（< 600px）：
   - 背景模糊由 glint.js 的 `bgBake` 在页面载入约 1s 后用 canvas 烤进一张 blob 图，写回 `--page-bg-image` 并给 body 挂 `.bg-baked`（`body:before` 不再挂 blur 滤镜，白天的提亮 / 饱和照留）；拖模糊度滑块时先撤回 CSS 模糊预览，松手再烤。改背景层的滤镜时记得同步 `.bg-baked` / `html.bg-prebaked` 的几条规则
   - **桌面端同样烘焙**（全屏固定层挂实时模糊时，上面任何东西在动——卡片悬停、跨页过渡——GPU 每帧都要重算整屏模糊）；画布密度按模糊半径降低（`min(dpr, 4 / blur)` px / CSS px）
@@ -48,6 +51,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 沉浸模式（设置开关，`whatasiger_reader_settings.immersive`，默认关）：开启后 body 挂 `.immersive`，glint.js `setupImmersive()` 在下滑时给 html 挂 `.header-hidden`（顶栏与桌面横排导航一起收起，目录卡片 / 迷你目录上移到 1em），上滑须在 450ms 内滚过 ≥250px 才唤出（`REVEAL_WINDOW / REVEAL_DISTANCE`），离页顶 64px 内或有浮层 / 搜索时始终显示
 - 带 backdrop-filter 的浮层不能放进 `<header>`（header 自身有 backdrop-filter，嵌套会让毛玻璃失效），所以设置面板放在 header 之外；手机端导航图标在主题 `_config.yml` 的 `menu_icons`
 - kico.css 会给 checkbox 加 `::before/::after` 方框对勾、给 range 加 `overflow:hidden` 和 `min-height`；设置面板的开关与滑动条已针对性覆盖，新增表单控件时注意；两个浮层同时打开时由 glint.js 的 `bringToFront` 挂 `.on-top` 决定上下
+- Gizmo 入口：桌面端（`html:not(.nav-collapsed)`）是首页右侧水面上的叶片 `.gizmo-leaf`（`index.ejs` + `static/gizmo-leaf.js`，图形是 `_partial/gizmo-leaf-svg.ejs`，与 Gizmo 页标题处的 `.gizmo-emblem` 共用）；顶栏导航收起时叶片隐藏，入口是导航卡片里横占一整排的 `.head-menu-gizmo`（桌面横排导航里 display:none，收起判断与强调框的当前项都要排除它）。叶片随风漂动、留尾流，靠 `window.waterRipple` 的 `drop / stroke` 激发水波、`setProbe / sample` 取叶片处水面（PBO + fence 异步读回，不阻塞 GPU）被水波推动；推力系数在 `gizmo-leaf.js` 的 CFG，注释里有实测位移。首页 → Gizmo 叶片一镜到底：`head.ejs` 的 `leaveToGizmo` 在 pageswap 给叶身挂 `gizmo-leaf` 并写 sessionStorage `gizmo-leaf-hop`，`_partial/gizmo-vt.ejs` 据此接过渡，内容在 `gizmo-from-leaf` 期间隐藏、落定后浮现（常驻的 `gizmo-leaf-in` 关掉内容的入场动画）
 - 首页水波纹 `static/water-ripple.js`：WebGL2 实现，物理与渲染都在 GPU；画布 `z-index:-1` 平时隐藏，激发时把 body 底色 + `body:before` 背景图（读其实际 opacity/blur）合成为纹理，静水时与 CSS 背景一致，改动背景层叠方式时需同步这里；物理网格按 CSS px 定格宽（`minCell`），手机与桌面波速一致；波动系数 `stiffness` 必须 < 2（显式格式稳定极限），物理通道用 texelFetch 取格并钳位，否则个别手机 GPU 上会发散成满屏泛白
 - CARRiER WAVE. 阅读页标题字号取 `min(原 clamp, 200cqi / --len)`，`--len` 由 reader 模板按字数（序号折算 1.5 字）写入，长标题自动缩小以保持篇名与序号同行居中
 - 首页博主信息（`index.ejs` 的 `.home-hero` + `_partial/social.ejs`）：一整张毛玻璃卡片，宽度 / 圆角 24px / 投影与下方文章卡片一致；头像在顶端居中，ID / 座右铭 / 社交图标依次居中纵排（头像链接 `display: contents`，头像与 ID 各占一行）。卡片自身有 backdrop-filter，里面的元素不能再用毛玻璃（名称标签用实色底）。配色走 `--hero-*`（第 3 节夜间，第 8 节白天）。座右铭文字写在 `index.ejs` 顶部的 `motto` 变量，隐形整句与打字文字叠在同一格，打字时行高不跳。社交图标是 SVG 遮罩 + `currentColor`（新增图标照 `.fa-xxx-icon` 写 `mask-image`）；社交栏的强调框 / 名称标签与顶栏导航强调框同一套做法（`social.ejs` 内联脚本写 `--x/--w`）。入场动画必须挂在玻璃元素自身：祖先透明度 < 1 时其中的 backdrop-filter 会失效；`.home-title` 归档页也在用，首页专属样式一律限定 `.home-hero`

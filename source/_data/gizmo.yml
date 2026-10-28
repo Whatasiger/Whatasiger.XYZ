@@ -1,0 +1,18 @@
+# Gizmo 陈列：随手（或认真）做出来的小玩意，由 themes/glint/layout/gizmo.ejs 循环渲染
+# 每项字段：
+#   name   名称
+#   desc   一句话简介
+#   icon   FontAwesome 4 图标名（不带 fa- 前缀），如 gamepad / puzzle-piece / code / magic
+#   type   类型标签：插件 / 脚本 / 小游戏 / 彩蛋 …（随意写）
+#   link   链接：站内独立页面放在 source/gizmo/<名字>/ 下（原样输出、不套主题），写 /gizmo/<名字>/；外链写完整网址
+#   date   可选，做出来的日期（YYYY-MM-DD）
+#
+# 示例：
+# - name: 某个小游戏
+#   desc: 一句话说说它是什么
+#   icon: gamepad
+#   type: 小游戏
+#   link: /gizmo/some-game/
+#   date: 2026-11-01
+
+[]

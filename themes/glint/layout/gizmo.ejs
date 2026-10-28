@@ -1,0 +1,46 @@
+<%
+// Gizmo 陈列页：篇目来自 source/_data/gizmo.yml，以后添东西只改数据，不碰模板
+// 站内的独立小玩意放在 source/gizmo/<名字>/ 下（_config.yml 的 skip_render 让它们原样输出，不套主题）
+var gizmos = (site.data && Array.isArray(site.data.gizmo)) ? site.data.gizmo : [];
+%>
+<main>
+    <div class="wrap min">
+        <section class="gizmo-head">
+            <%# 首页叶片一镜到底的落点（view-transition-name: gizmo-leaf，见 _partial/gizmo-vt.ejs） %>
+            <span class="gizmo-emblem" id="gizmo-emblem"><%- partial("_partial/gizmo-leaf-svg") %></span>
+            <h2><%= page.title || "Gizmo" %></h2>
+            <p>随手（或认真）做出来的小玩意</p>
+        </section>
+
+        <% if (page.content && page.content.trim()) { %>
+        <article class="page-content gizmo-intro">
+            <%- page.content %>
+        </article>
+        <% } %>
+
+        <section class="gizmo-shelf" aria-label="小玩意列表">
+            <% if (gizmos.length) { %>
+                <% gizmos.forEach(function (g) { %>
+                    <% var external = /^https?:\/\//.test(g.link || ""); %>
+                    <a class="gizmo-card" href="<%- external ? g.link : url_for(g.link || '/gizmo/') %>"<% if (external) { %> target="_blank" rel="noopener"<% } %>>
+                        <span class="gizmo-card-icon" aria-hidden="true"><i class="fa fa-<%= g.icon || 'cube' %>"></i></span>
+                        <span class="gizmo-card-text">
+                            <span class="gizmo-card-name"><%= g.name %></span>
+                            <% if (g.desc) { %><span class="gizmo-card-desc"><%= g.desc %></span><% } %>
+                        </span>
+                        <% if (g.type || g.date) { %>
+                        <span class="gizmo-card-meta">
+                            <% if (g.type) { %><span class="gizmo-card-type"><%= g.type %></span><% } %>
+                            <% if (g.date) { %><time><%= date(g.date, "YYYY-MM-DD") %></time><% } %>
+                        </span>
+                        <% } %>
+                    </a>
+                <% }) %>
+            <% } else { %>
+                <div class="gizmo-empty">
+                    <p>这里暂时还空着。</p>
+                </div>
+            <% } %>
+        </section>
+    </div>
+</main>

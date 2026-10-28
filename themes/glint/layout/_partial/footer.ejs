@@ -1,5 +1,7 @@
 <footer>
     <div class="wrap min">
+        <%# Gizmo 陈列页只留版权信息，不要最新文章 / 时光机 / 标签云三张卡片 %>
+        <% if (page.layout !== 'gizmo') { %>
         <section class="widget">
             <div class="footer-grid">
                 <div class="footer-card">
@@ -17,6 +19,7 @@
                 </div>
             </div>
         </section>
+        <% } %>
         <section class="sub-footer">
             <p>© <%= date(new Date, "YYYY") %> <a href="<%= url_for() %>"><%= config.title %></a>. All Rights Reserved. Theme Glint, based on <a href="https://github.com/Dreamer-Paul/Hingle" target="_blank" rel="nofollow">Hingle</a>.</p>
         </section>

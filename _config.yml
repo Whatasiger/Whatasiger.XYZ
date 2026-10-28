@@ -33,6 +33,7 @@ category_dir: categories
 code_dir: downloads/code
 i18n_dir: :lang
 skip_render:
+  - gizmo/*/** # Gizmo 里的独立网页 / 游戏 / 脚本原样输出，不套主题
 
 # Writing
 new_post_name: :title.md # File name of new posts

@@ -1,0 +1,24 @@
+<%# Gizmo 页一侧的「叶片一镜到底」：只接从首页点叶片进来的这一次（首页在 pageswap 里给叶片挂名并写下 gizmo-leaf-hop），其余跳转一律跳过
+   首页叶片飞到标题处的 #gizmo-emblem；背景两边相同不用处理，页面内容先藏着，叶片落定后再浮现（glint.css「Gizmo」） %>
+<%# 首帧要等到落点解析完，否则新页快照里没有它，配不上对 %>
+<link rel="expect" href="#gizmo-emblem" blocking="render">
+<style>@view-transition { navigation: auto; } @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }</style>
+<script>
+    (function () {
+        var root = document.documentElement;
+        window.addEventListener('pagereveal', function (e) {
+            if (!e.viewTransition) return;
+            var hop = 0;
+            try { hop = +sessionStorage.getItem('gizmo-leaf-hop') || 0; sessionStorage.removeItem('gizmo-leaf-hop'); } catch (err) {}
+            if (Date.now() - hop > 10000) { e.viewTransition.skipTransition(); return; }
+            // gizmo-from-leaf 期间内容隐藏、落点静止；过渡结束（或被跳过）后撤掉，内容按 CSS 过渡浮现
+            // gizmo-leaf-in 不随过渡结束移除：它关掉了内容自带的入场动画，一旦恢复就会重播
+            root.classList.add('gizmo-from-leaf', 'gizmo-leaf-in');
+            e.viewTransition.finished.finally(function () { root.classList.remove('gizmo-from-leaf'); });
+        });
+        // 离开 Gizmo 页：不做过渡
+        window.addEventListener('pageswap', function (e) {
+            if (e.viewTransition) e.viewTransition.skipTransition();
+        });
+    })();
+</script>

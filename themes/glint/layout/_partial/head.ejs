@@ -147,6 +147,8 @@
     </script>
     <% } %>
 
+    <!-- 顶栏固定文字的思源黑体子集，内联，首帧即可用 -->
+    <%- partial('_partial/ui-font') %>
     <!-- 思源黑体（Noto Sans SC）：国内镜像优先 + 本机字体名回退 -->
     <link rel="preconnect" href="https://fonts.loli.net">
     <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
@@ -155,7 +157,45 @@
     <link rel="preload" as="style" href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet"
           href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap"
-          media="print" onload="this.media='all'; this.onload=null;">
+          media="print" onload="this.media='all'; this.onload=null;" id="font-css">
+    <% if ((is_post() || is_page()) && page.layout !== 'gizmo') { %>
+    <%# 阅读页：正文等思源黑体就绪再显示，免得先用微软雅黑排一遍、再整页跳成思源黑体
+       等待期间 main 隐藏（背景与顶栏照常），入场动画暂停在起点，就绪后从头播；超过 300ms 才浮出加载指示
+       最多等 1.2s（首次访问网络慢时），之后照常显示、字体到了再换；选了系统字体就不等
+       从首页卡片一镜到底进来时由 post-vt.ejs 在 pagereveal 立即撤掉（首帧须有正文标题配对）；样式见 glint.css「阅读页等字体」 %>
+    <script>
+        (function () {
+            var root = document.documentElement;
+            try {
+                var s = JSON.parse(localStorage.getItem('whatasiger_reader_settings')) || {};
+                if (s.fontFamily && s.fontFamily !== 'noto-sans-sc') return;
+            } catch (err) {}
+            if (!document.fonts || !document.fonts.ready) return;
+            root.classList.add('page-loading');
+            var done = false;
+            function reveal() {
+                if (done) return;
+                done = true;
+                root.classList.remove('page-loading');
+            }
+            window.pageReveal = reveal;
+            setTimeout(reveal, 1200);
+            var link = document.getElementById('font-css');
+            function cssReady() { return !link || link.media === 'all'; }
+            // 样式表与正文都就绪后量一次版面，让首屏用到的字形切片开始下载，再等它们载完
+            function wait() {
+                if (done || !cssReady() || document.readyState === 'loading') return;
+                void document.body.offsetWidth;
+                document.fonts.ready.then(function () { requestAnimationFrame(reveal); });
+            }
+            if (link) {
+                link.addEventListener('load', function () { setTimeout(wait); });
+                link.addEventListener('error', reveal);
+            }
+            document.addEventListener('DOMContentLoaded', wait);
+        })();
+    </script>
+    <% } %>
     <% if (is_home() || is_post()) { %>
     <%- partial('_partial/vt-flip') %>
     <% } %>
@@ -172,12 +212,13 @@
     <script type="speculationrules">{"prefetch": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "immediate"}]}</script>
     <!-- 卡片副题「载波·短篇辑」与目录页同用思源宋体；只取这几个字，字体文件很小 -->
     <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300&text=<%- encodeURIComponent('载波短篇辑') %>&display=swap">
-    <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」与「首页 → 文章」（文章卡片一镜到底），其余跳转一律跳过 -->
+    <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」「首页 → 文章」（文章卡片一镜到底）与「首页 → Gizmo」（叶片一镜到底），其余跳转一律跳过 -->
     <style>@view-transition { navigation: auto; } @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }</style>
     <script>
         (function () {
             var root = document.documentElement;
             var target = '<%- url_for("/carrier_wave/") %>';
+            var gizmo = '<%- url_for("/gizmo/") %>';
             function norm(u) {
                 try { return new URL(u, location.href).pathname.replace(/index\.html$/, ''); } catch (err) { return ''; }
             }
@@ -186,6 +227,7 @@
                 // 给目录页留一份来源记录：它拿不到 navigation.activation.from 时据此判断是否从首页来
                 try { sessionStorage.setItem('cw-vt-hop', JSON.stringify({ from: norm(location.href), to: to ? norm(to) : '', t: Date.now() })); } catch (err) {}
                 if (!e.viewTransition) return;
+                if (to && norm(to) === gizmo && leaveToGizmo()) return;
                 if (to && norm(to) !== target && leaveToPost(norm(to))) return;
                 if (!to || norm(to) !== target) { e.viewTransition.skipTransition(); return; }
                 // 快照前把卡片收回静止状态：悬停时标题字距变宽、载波鼓起变色，与目录页首屏对不上，交叉淡化时会出现重影
@@ -231,6 +273,22 @@
                 }
                 return false;
             }
+            // Gizmo 叶片一镜到底：叶片飞到 Gizmo 页标题处（落点与过渡编排见 _partial/gizmo-vt.ejs）
+            // 叶片隐藏（导航收起、从导航卡片进去）或不在视口内就不做；留一份记录，Gizmo 页据此决定是否等叶片落定再显示内容
+            function leaveToGizmo() {
+                var leaf = document.querySelector('.gizmo-leaf.is-landed');
+                var r = leaf && leaf.getClientRects()[0];
+                if (!r || r.bottom <= 0 || r.top >= innerHeight) return false;
+                leaf.querySelector('.gizmo-leaf-body').style.viewTransitionName = 'gizmo-leaf';
+                root.classList.add('gizmo-leaving');
+                try { sessionStorage.setItem('gizmo-leaf-hop', String(Date.now())); } catch (err) {}
+                return true;
+            }
+            function resetGizmoLeaf() {
+                root.classList.remove('gizmo-leaving');
+                var body = document.querySelector('.gizmo-leaf-body');
+                if (body) body.style.viewTransitionName = '';
+            }
             function resetPostCard() {
                 root.classList.remove('post-leaving');
                 var card = document.querySelector('.post-item.vt-active');
@@ -255,6 +313,7 @@
                 root.classList.remove('cw-back', 'cw-leaving');
                 resetWave();
                 resetPostCard();
+                resetGizmoLeaf();
                 if (!e.viewTransition) return;
                 if (!restored) { e.viewTransition.skipTransition(); return; }
                 var act = window.navigation && navigation.activation;
@@ -326,6 +385,9 @@
         })();
     </script>
     <%- partial('_partial/vt-debug') %>
+    <% } %>
+    <% if (page.layout === 'gizmo') { %>
+    <%- partial('_partial/gizmo-vt') %>
     <% } %>
     <% if (is_post()) { %>
     <%- partial('_partial/post-vt') %>

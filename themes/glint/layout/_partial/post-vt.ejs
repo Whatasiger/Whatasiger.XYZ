@@ -31,6 +31,8 @@
             if (!e.viewTransition) { settle(); return; }
             if (!fromHome()) { e.viewTransition.skipTransition(); settle(); return; }
             e.viewTransition.finished.finally(settle);
+            // 不等字体（head.ejs 的 page-loading）：首帧须有正文标题与卡片标题配对
+            if (window.pageReveal) pageReveal();
             // vt-card-in 不随过渡结束移除：标题区的入场动画一旦恢复就会重播
             root.classList.add('vt-from-card', 'vt-card-in');
             // 封面与标题的形变只动 transform，交给合成线程：文章页正在加载时主线程再忙也不掉帧（见 _partial/vt-flip.ejs）

@@ -4,9 +4,11 @@
   <%
     // 有目录的阅读页在服务端就挂上 has-trees（正文让出目录的位置），首帧即是最终版面：
     // 否则要等 glint.js 的 tree() 才挂，正文标题在一镜到底途中横移。判断与 tree() 一致：正文里脚注之外有标题
-    var hasTrees = (is_post() || is_page()) && /<h[1-6][\s>]/i.test(String(page.content || '').replace(/<section class="footnotes"[\s\S]*?<\/section>/gi, ''));
+    // Gizmo 陈列页虽是独立页面，但不是阅读页：不挂 post-page（背景不淡化、不模糊），与 header.ejs 的 isArticle 一致
+    var isReading = (is_post() || is_page()) && page.layout !== 'gizmo';
+    var hasTrees = isReading && /<h[1-6][\s>]/i.test(String(page.content || '').replace(/<section class="footnotes"[\s\S]*?<\/section>/gi, ''));
   %>
-  <body class="dark-theme <%- (is_post() || is_page()) ? 'post-page' : '' %><%- hasTrees ? ' has-trees' : '' %>">
+  <body class="dark-theme <%- isReading ? 'post-page' : '' %><%- page.layout === 'gizmo' ? 'gizmo-page' : '' %><%- hasTrees ? ' has-trees' : '' %>">
     <%- partial("_partial/header") %>
     <%- body %>
     <%- partial("_partial/footer") %>

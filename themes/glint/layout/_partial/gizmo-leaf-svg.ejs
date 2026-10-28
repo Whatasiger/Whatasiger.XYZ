@@ -1,0 +1,12 @@
+<%# Gizmo 叶片图形：首页右侧的叶片入口与 Gizmo 页标题处的叶片共用（一镜到底时两者对接）；配色见 glint.css「Gizmo」的 --leaf-* %>
+<svg viewBox="0 0 64 40" aria-hidden="true">
+    <defs>
+        <linearGradient id="gizmo-leaf-fill" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" class="gizmo-leaf-stop-a"/>
+            <stop offset="1" class="gizmo-leaf-stop-b"/>
+        </linearGradient>
+    </defs>
+    <path class="gizmo-leaf-blade" d="M4 21C14 6 40 2 62 18C42 34 16 36 4 21Z" fill="url(#gizmo-leaf-fill)"/>
+    <path class="gizmo-leaf-gloss" d="M11 15C21 7.5 38 5.5 54 12.5"/>
+    <path class="gizmo-leaf-vein" d="M0 23.5Q2.5 22 4.5 21Q32 19.5 60 18.2M16 20.6Q20 14 26 11M28 20Q33 13 39 10.5M40 19.4Q45 14 50 13M18 20.6Q23 26 30 28.5M31 20Q36 25 42 26.5"/>
+</svg>
