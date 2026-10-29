@@ -14,3 +14,24 @@ source/**/package-lock.json
 .origin-build/
 .idea/
 .cursor/
+
+# 本机配置、凭证、私钥：ignore 不会保护已经 tracked 的文件
+.env*
+!.env.example
+!.env.sample
+!.env.template
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+.ssh/
+.aws/
+.azure/
+.gnupg/
+.kube/
+.vscode/
+*.swp
+*.swo
+*~

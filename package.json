@@ -5,7 +5,9 @@
   "scripts": {
     "build": "hexo generate && node tools/build-origin.js",
     "clean": "hexo clean && node -e \"require('fs').rmSync('.origin-build',{recursive:true,force:true})\"",
-    "deploy": "hexo deploy && node tools/push-source.js",
+    "deploy": "hexo deploy",
+    "source:preview": "node tools/push-source.js",
+    "source:publish": "node tools/push-source.js --publish",
     "server": "hexo server"
   },
   "hexo": {
