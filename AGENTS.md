@@ -7,7 +7,6 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 预览两套界面：`npm run build` 后 `npx hexo server -s`（静态模式，直接伺服 public/）
 - 部署：先 `npm run build`，再 `npm run deploy`（只运行 hexo-deployer-git → Whatasiger.github.io main，不再发布源码）—— 只在我明确要求时执行；**不要只跑 `hexo generate` 就部署**，那样 Origin 不会更新
 - 源码发布（Whatasiger/Whatasiger.XYZ main）与部署分开：`npm run source:preview` 离线列出待推提交与文件；人工审核、手动提交且工作区干净后，经我明确授权才执行 `npm run source:publish -- --confirm --review <完整HEAD SHA>`。工具不会 add / commit，遇敏感路径拒绝发布
-- 测试：`npm test`（Node + jsdom 回归）；完整构建后 `npm run test:build` 检查 sitemap / 跳转 / 双主题产物
 
 ## 界面主题：Glint / Origin
 - 全站有两套界面，在设置卡片里切换：**Glint**（当前设计，`themes/glint`，站点根路径）与 **Origin**（本轮改版前的界面，`themes/origin`，取自 `blog_bak/themes/hingle`，生成在 `/origin/` 下）
@@ -23,8 +22,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）
 - 【特殊】短篇辑 CARRiER WAVE.：正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/` 单独生成
 - 主题：`themes/glint`（Glint，自定义 EJS；Origin 见上），样式在 `themes/glint/source/static/glint.css`（按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，注释风格为中文行尾注释）
-- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、旧链接跳转（`redirects.js`）、`asset_url` 静态资源版本号
-- 改 permalink 时，把有明确替代文章的旧路径补进 `scripts/redirects.js` 的 `OLD_LINKS`（根构建生成 `public/_redirects`，构建时校验目标存在；Cloudflare 边缘是否命中须部署后验证）；没有替代内容的旧页面保持 404，不跳首页
+- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、`asset_url` 静态资源版本号
 - 站点地图由 `hexo-generator-sitemap` 生成；不该收录的页面在 front matter 写 `sitemap: false`（如 404 页）
 - Glint 引用主题自己的 CSS / JS 一律写 `<%- asset_url('static/xxx.js') %>`（`scripts/asset-version.js`，地址带内容哈希 `?v=`），不要再写死 `/static/xxx` 或用 `css()` / `js()`：否则手机常拿新 HTML 配缓存里的旧 CSS（曾致导航卡片的 Gizmo 长条变成普通磁贴）。CW 页面另用 `carrier_wave.yml` 的 `version`
 - 【Gizmo】小玩意陈列页 `/gizmo/`：`source/gizmo/index.md` 只有 front matter（`layout: gizmo`），模板 `themes/glint/layout/gizmo.ejs`，篇目在 `source/_data/gizmo.yml`（加东西只改数据）；站内独立的小玩意放 `source/gizmo/<名字>/`，由 `_config.yml` 的 `skip_render: gizmo/*/**` 原样输出、不套主题。Gizmo 页不算阅读页（`layout.ejs` 的 `isReading`、`header.ejs` 的 `isArticle` 都排除 `page.layout === 'gizmo'`，body 挂 `gizmo-page`），底栏只留版权信息
