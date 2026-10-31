@@ -2,6 +2,26 @@
   "bangumi": {
     "items": [
       {
+        "id": 502499,
+        "name": "GROTESQQQUE -グロテスク-",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/f4/fc/502499_oxoci.jpg",
+        "epStatus": 1,
+        "eps": 3,
+        "updatedAt": "2026-10-31T17:52:08+08:00",
+        "url": "https://bgm.tv/subject/502499"
+      },
+      {
+        "id": 495291,
+        "name": "再见菈菈",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/18/af/495291_9WuBW.jpg",
+        "epStatus": 2,
+        "eps": 12,
+        "updatedAt": "2026-10-31T16:36:43+08:00",
+        "url": "https://bgm.tv/subject/495291"
+      },
+      {
         "id": 7978,
         "name": "最果てのイマ",
         "type": 4,
@@ -10,16 +30,6 @@
         "eps": 0,
         "updatedAt": "2026-10-01T22:01:29+08:00",
         "url": "https://bgm.tv/subject/7978"
-      },
-      {
-        "id": 495291,
-        "name": "再见菈菈",
-        "type": 2,
-        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/18/af/495291_9WuBW.jpg",
-        "epStatus": 0,
-        "eps": 12,
-        "updatedAt": "2026-09-20T23:59:26+08:00",
-        "url": "https://bgm.tv/subject/495291"
       },
       {
         "id": 2723,
@@ -102,7 +112,7 @@
         "url": "https://bgm.tv/subject/845"
       }
     ],
-    "fetchedAt": "2026-10-28T07:25:05.111Z"
+    "fetchedAt": "2026-10-31T16:02:03.447Z"
   },
   "netease": {
     "songs": [
@@ -135,48 +145,48 @@
         "url": "https://music.163.com/#/song?id=26405131"
       },
       {
-        "id": 2712589107,
-        "name": "春の嵐",
-        "artists": "羊文学",
-        "cover": "https://p2.music.126.net/jd5vRmlAEaJ40ao4HK2Wag==/109951171268447043.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2712589107"
+        "id": 3445011911,
+        "name": "チェイス",
+        "artists": "ひとひら",
+        "cover": "https://p2.music.126.net/eSdq3aeLpbCjnwMzjiX8xA==/109951174070142556.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=3445011911"
       },
       {
-        "id": 2066755272,
-        "name": "飞松",
-        "artists": "陈粒",
-        "cover": "https://p2.music.126.net/cGIdZW4EEtPhd3rB775SaQ==/109951168857920159.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2066755272"
+        "id": 3382353203,
+        "name": "遭難信号",
+        "artists": "海風邪",
+        "cover": "https://p2.music.126.net/XXBk5WhoB9E2FbcqkWytQw==/109951173225388935.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=3382353203"
       },
       {
-        "id": 2600524616,
-        "name": "流れゆく季節",
-        "artists": "Haruka Nakamura",
-        "cover": "https://p2.music.126.net/TZyy6V0geCU5zP0j9lLDZg==/109951169703704961.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2600524616"
+        "id": 3363527827,
+        "name": "芽吹くとき",
+        "artists": "yonige",
+        "cover": "https://p2.music.126.net/mkcHO_3dQ9jgyoK6fpFCmw==/109951172946101598.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=3363527827"
       },
       {
-        "id": 3428529559,
-        "name": "EP07M07 从哪里开始才是现实",
-        "artists": "StJimmyL / Ray1-睿壹 / 小欣Xier",
-        "cover": "https://p2.music.126.net/R6Gm6V1C_abBY3f_XbKIug==/109951173855089233.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=3428529559"
+        "id": 28095028,
+        "name": "FLOWER GIRL",
+        "artists": "きのこ帝国",
+        "cover": "https://p2.music.126.net/o7w7szxFLTeSnDJJa9hoKw==/109951163560123952.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=28095028"
       },
       {
-        "id": 2748701151,
-        "name": "doll",
-        "artists": "羊文学",
-        "cover": "https://p2.music.126.net/hTnLSH8R5Wj0_seLnUw_0A==/109951172051293982.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2748701151"
+        "id": 2755669136,
+        "name": "円",
+        "artists": "ひとひら",
+        "cover": "https://p2.music.126.net/DHTQoT7PIvWPE0cxjYfv-A==/109951172272826626.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2755669136"
       },
       {
-        "id": 1997152503,
-        "name": "夏気球",
-        "artists": "麻枝准 / やなぎなぎ",
-        "cover": "https://p2.music.126.net/Ou3mKy2eeUUWngLJvdTDWg==/109951169954567646.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=1997152503"
+        "id": 2744488734,
+        "name": "天体",
+        "artists": "RAY",
+        "cover": "https://p2.music.126.net/LcsEn0Yz6g_7Go401fzPIA==/109951171991978996.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2744488734"
       }
     ],
-    "fetchedAt": "2026-10-28T07:25:06.720Z"
+    "fetchedAt": "2026-10-31T16:02:02.327Z"
   }
 }

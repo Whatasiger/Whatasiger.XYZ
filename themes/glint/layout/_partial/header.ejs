@@ -240,6 +240,27 @@
     <% } %>
     <%# Gizmo 入口：只在收起式导航卡片里出现，四块磁贴下方横占一整排；桌面端的入口是首页右侧的叶片（gizmo-leaf.js） %>
     <a href="<%- url_for('/gizmo/') %>" class="head-menu-gizmo<% if (is_current('/gizmo/')) { %> current<% } %>"><i class="fa fa-leaf"></i><span>Gizmo</span><small>随手做的小玩意</small></a>
+    <% if (is_home()) { %>
+    <%# 首页轻音乐（导航收起时）：一整排，曲名 + 播放 / 暂停 + 「…」展开曲目；导航横排时入口在首页右上角（index.ejs） %>
+    <div class="head-menu-music">
+        <div class="head-menu-music-row">
+            <i class="fa fa-music"></i>
+            <span class="head-menu-music-name music-now">首页音乐</span>
+            <button type="button" class="music-play" aria-label="播放音乐" aria-pressed="false"></button>
+            <button type="button" class="music-more" aria-label="选择音乐" aria-expanded="false"></button>
+        </div>
+        <div class="head-menu-music-list">
+            <div class="music-list" role="radiogroup" aria-label="首页音乐"><%- partial("_partial/music-tracks") %></div>
+        </div>
+    </div>
+    <% } %>
+    <% if (is_home() && (site.data.backgrounds || []).length) { %>
+    <%# 首页背景切换（导航收起时）：卡片最下方一整排缩略图；导航横排时入口在首页右上角（index.ejs）。不是 a，不进导航宽度的测量与强调框 %>
+    <div class="head-menu-bg">
+        <div class="head-menu-bg-title"><i class="fa fa-picture-o"></i><span>首页背景</span></div>
+        <div class="bg-tiles" role="radiogroup" aria-label="首页背景"><%- partial("_partial/bg-tiles") %></div>
+    </div>
+    <% } %>
 </nav>
 <script>
     // 顶栏导航是否收起：按钮居中排开时若会碰到左侧 Logo 或右侧搜索框 / 按钮，就收进汉堡菜单（html.nav-collapsed）

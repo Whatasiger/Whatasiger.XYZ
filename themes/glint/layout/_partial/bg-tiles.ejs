@@ -1,0 +1,9 @@
+<%# 首页背景的缩略图磁贴（首页右上角浮层 index.ejs 与导航卡片 header.ejs 共用），篇目见 _data/backgrounds.yml
+   极缩略图由 glint.js setupBgSwitch 在打开浮层 / 导航卡片时才写上，原图选中后才加载；路径与 tools/bg-thumbs.py 一致 %>
+<% (site.data.backgrounds || []).forEach(function (b) { %>
+    <% var thumb = b.thumb || b.src.replace(/\/([^\/]+)$/, '/thumb/$1'); %>
+    <button type="button" class="bg-tile" role="radio" aria-checked="false" aria-label="<%= b.name %>" data-bg-id="<%= b.id %>" data-bg-src="<%= b.src %>" data-bg-thumb="<%= thumb %>"<% if (b.src === theme.background) { %> data-bg-default<% } %>>
+        <span class="bg-tile-img"></span>
+        <span class="bg-tile-name"><%= b.name %></span>
+    </button>
+<% }) %>

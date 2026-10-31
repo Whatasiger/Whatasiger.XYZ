@@ -1,0 +1,14 @@
+# 首页轻音乐：首页右上角背景按钮下方的竖排播放控件（顶栏导航收起时在导航卡片里），只在首页出现，进文章就没有
+# 一键播放 / 暂停，「…」里选曲；所选曲目存在读者浏览器里，本次浏览中回到首页会从刚才的位置接着放（浏览器允许时）
+# 平时不加载音频，按下播放才开始下载；播完接下一首，列表循环（只有一首时单曲循环）
+# 音频放 source/music/，建议 mp3 / m4a，单首控制在几 MB 内；id 存进 localStorage，定下后不要改
+#
+# - id: example
+#   name: 曲名
+#   artist: 作者        # 可省略
+#   src: /music/example.mp3
+
+- id: umareochiru-sekai
+  name: 生まれ落ちる世界
+  artist: PMMK
+  src: /music/umareochiru-sekai.mp3

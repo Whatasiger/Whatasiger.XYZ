@@ -129,6 +129,27 @@
     <% if (bgImage) { %>
     <style>body{ --page-bg-image: url(<%- bgImage %>) }</style>
     <% } %>
+    <%
+        // 首页背景可切换（_data/backgrounds.yml，glint.js setupBgSwitch）：用主页背景的页面首帧前换成所选的那张，默认那张不必加载
+        var bgChoices = {};
+        (site.data.backgrounds || []).forEach(function (b) { if (b.id && b.src) bgChoices[b.id] = b.src; });
+    %>
+    <% if (bgImage && bgImage === theme.background && Object.keys(bgChoices).length > 1) { %>
+    <script>
+        (function () {
+            try {
+                var choices = <%- JSON.stringify(bgChoices) %>;
+                var id = localStorage.getItem('whatasiger_home_bg'); // 与 glint.js setupBgSwitch 的 BG_KEY 一致
+                var src = id && Object.prototype.hasOwnProperty.call(choices, id) ? choices[id] : '';
+                if (!src || src === <%- JSON.stringify(theme.background) %>) return;
+                var st = document.createElement('style');
+                st.id = 'bg-choice';
+                st.textContent = 'body{--page-bg-image:url("' + src + '")}';
+                document.head.appendChild(st);
+            } catch (err) {}
+        })();
+    </script>
+    <% } %>
     <% if (is_post() && bgImage) { %>
     <%# 首页指针移上卡片时已按文章页的模糊度把这张图烤好（glint.js bgBake.prebake）：首帧就用烤好的图，背景层不挂实时的全屏模糊
        图、模糊度（设置里的 bgBlur，缺省 8，与 glint.js defaultSettings 一致）、视口尺寸都对得上才用；glint.js 载入后接管 %>

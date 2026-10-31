@@ -1,0 +1,26 @@
+# 首页背景：首页右上角的按钮（顶栏导航收起时在导航卡片里）可在这几张之间切换，选择存在读者浏览器里
+# 主题 _config.yml 的 background 即默认背景，须在其中（这里与它 src 相同的那一项）
+# 凡是用主页背景的页面（首页、归档、独立页面、无封面的文章）都换成所选的那张；有封面的文章照旧用封面
+# 极缩略图放 source/images/webp/thumb/ 同名文件（160px 宽），加图后跑 py -3.9 tools/bg-thumbs.py 生成
+# 平时只加载极缩略图（打开切换浮层 / 导航卡片时才加载），选中后才加载原图
+- id: sunset          # 唯一标识，存进 localStorage，定下后不要改
+  name: Afterglow
+  src: /images/webp/44ccd674949c189c.webp
+- id: blue-night
+  name: 蓝夜
+  src: /images/webp/124089112_p0.webp
+- id: ice-bloom
+  name: 冰花
+  src: /images/webp/118435175_p0.webp
+- id: summer-cloud
+  name: 夏云
+  src: /images/webp/144486189_p0.webp
+- id: dusk-field
+  name: 晚霞
+  src: /images/webp/21315033_p0.webp
+- id: checker-hall
+  name: 回廊
+  src: /images/webp/6095368_p0.webp
+- id: twilight-rail
+  name: 暮色
+  src: /images/webp/81829877_p0.webp

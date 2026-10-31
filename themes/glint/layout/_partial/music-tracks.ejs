@@ -1,0 +1,12 @@
+<%# 首页轻音乐的曲目列表（首页右上角浮层 index.ejs 与导航卡片 header.ejs 共用），篇目见 _data/music.yml；逻辑见 glint.js setupHomeMusic %>
+<% var musicTracks = (site.data.music || []).filter(function (m) { return m && m.id && m.src; }); %>
+<% if (!musicTracks.length) { %>
+    <div class="music-empty">还没有放音乐</div>
+<% } %>
+<% musicTracks.forEach(function (m) { %>
+    <button type="button" class="music-track" role="radio" aria-checked="false" data-music-id="<%= m.id %>" data-music-src="<%= m.src %>" data-music-name="<%= m.name || m.id %>" data-music-artist="<%= m.artist || '' %>">
+        <span class="music-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="music-track-name"><%= m.name || m.id %></span>
+        <% if (m.artist) { %><span class="music-track-artist"><%= m.artist %></span><% } %>
+    </button>
+<% }) %>

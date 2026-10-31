@@ -58,3 +58,23 @@
     <span class="gizmo-leaf-tag">Gizmo</span>
 </a>
 <script src="<%- asset_url('static/gizmo-leaf.js') %>"></script>
+<% if ((site.data.backgrounds || []).length) { %>
+<%# 首页背景切换：顶栏下方右上角的按钮 + 浮层（顶栏导航收起时隐藏，入口改在导航卡片里，见 header.ejs）；逻辑见 glint.js setupBgSwitch %>
+<button type="button" class="bg-switch" aria-label="切换首页背景" aria-controls="bg-picker" aria-expanded="false"></button>
+<%# 浮层从按钮本身长出来（corner-morph：起点与按钮同位置、同大小、同底色，按钮叠在上面不动），见 glint.css「首页右上角浮层」 %>
+<div class="bg-picker corner-morph" id="bg-picker" inert aria-hidden="true">
+    <div class="corner-morph-inner">
+        <div class="bg-tiles" role="radiogroup" aria-label="首页背景"><%- partial("_partial/bg-tiles") %></div>
+    </div>
+</div>
+<% } %>
+<%# 首页轻音乐：右上角最上方的竖排胶囊（上播放 / 暂停、下「…」选曲），背景按钮在它下方，选曲浮层同背景浮层；顶栏导航收起时入口在导航卡片里（header.ejs）；逻辑见 glint.js setupHomeMusic %>
+<div class="music-dock" role="group" aria-label="首页音乐">
+    <button type="button" class="music-play" aria-label="播放音乐" aria-pressed="false"></button>
+    <button type="button" class="music-more" aria-label="选择音乐" aria-controls="music-picker" aria-expanded="false"></button>
+</div>
+<div class="music-picker corner-morph" id="music-picker" inert aria-hidden="true">
+    <div class="corner-morph-inner">
+        <div class="music-list" role="radiogroup" aria-label="首页音乐"><%- partial("_partial/music-tracks") %></div>
+    </div>
+</div>
