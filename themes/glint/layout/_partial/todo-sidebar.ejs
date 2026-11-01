@@ -13,25 +13,28 @@
 <aside class="todo-sidebar" id="todo-sidebar" aria-label="TO DO" data-bgm-user="<%= todoCfg.bangumi_user || '' %>">
     <div class="todo-head">
         <h2>TO DO</h2>
-        <button class="todo-close" type="button" aria-label="收起"><i class="fa fa-times" aria-hidden="true"></i></button>
+        <button class="todo-close" type="button" aria-label="收起"><i class="fa fa-angle-left" aria-hidden="true"></i></button>
     </div>
 
     <section class="todo-block">
         <h3>
-            <a href="https://bgm.tv/user/<%= todoCfg.bangumi_user %>" target="_blank" rel="noopener">Bangumi</a>
+            <a href="https://bgm.tv/user/<%= todoCfg.bangumi_user %>" target="_blank" rel="noopener"><i class="fa fa-television" aria-hidden="true"></i><span>Bangumi</span></a>
         </h3>
         <div class="todo-bgm">
             <% if (bgmGroups.length) { %>
                 <% bgmGroups.forEach(function (group) { %>
                 <p class="todo-sub"><%= group.label %></p>
                 <ul class="todo-list">
-                    <% group.items.forEach(function (item) { %>
-                    <li>
+                    <% group.items.forEach(function (item, i) { %>
+                    <li style="--i: <%= i %>">
                         <a href="<%= item.url %>" target="_blank" rel="noopener">
                             <img src="<%= item.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">
                             <span class="todo-text">
                                 <span class="todo-title"><%= item.name %></span>
-                                <% if (item.type === 2) { %><span class="todo-meta"><%= item.epStatus %> / <%= item.eps || "?" %></span><% } %>
+                                <% if (item.type === 2) { %>
+                                <span class="todo-meta"><%= item.epStatus %> / <%= item.eps || "?" %></span>
+                                <% if (item.eps) { %><span class="todo-progress" style="--p: <%= Math.min(1, (item.epStatus || 0) / item.eps).toFixed(3) %>"></span><% } %>
+                                <% } %>
                             </span>
                         </a>
                     </li>
@@ -46,12 +49,12 @@
 
     <section class="todo-block">
         <h3>
-            <a href="https://music.163.com/#/user/songs/rank?id=<%= todoCfg.netease_uid %>" target="_blank" rel="noopener">本周听歌 Top 10</a>
+            <a href="https://music.163.com/#/user/songs/rank?id=<%= todoCfg.netease_uid %>" target="_blank" rel="noopener"><i class="fa fa-music" aria-hidden="true"></i><span>本周听歌 Top 10</span></a>
         </h3>
         <ol class="todo-list todo-music">
             <% if (todo.songs.length) { %>
                 <% todo.songs.forEach(function (song, i) { %>
-                <li>
+                <li style="--i: <%= i %>">
                     <a href="<%= song.url %>" target="_blank" rel="noopener">
                         <span class="todo-rank"><%= i + 1 %></span>
                         <img src="<%= song.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">

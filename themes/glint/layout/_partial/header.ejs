@@ -189,17 +189,17 @@
                 <label class="settings-row settings-row-range">
                     <i class="fa fa-bold"></i>
                     <span>字重</span>
-                    <input type="range" id="setting-font-weight" min="1" max="5" step="1">
+                    <input type="range" id="setting-font-weight" min="1" max="5" step="any">
                 </label>
                 <label class="settings-row settings-row-range">
                     <i class="fa fa-text-width"></i>
                     <span>字间距</span>
-                    <input type="range" id="setting-letter-spacing" min="-2" max="8" step="1">
+                    <input type="range" id="setting-letter-spacing" min="-2" max="8" step="any">
                 </label>
                 <label class="settings-row settings-row-range">
                     <i class="fa fa-text-height"></i>
                     <span>字号</span>
-                    <input type="range" id="setting-font-size" min="90" max="130" step="10">
+                    <input type="range" id="setting-font-size" min="90" max="130" step="any">
                 </label>
             </div>
             <div class="settings-group-title">背景</div>
@@ -207,12 +207,12 @@
                 <label class="settings-row settings-row-range">
                     <i class="fa fa-eye"></i>
                     <span>可见度</span>
-                    <input type="range" id="setting-bg-opacity" min="0" max="50" step="2.5">
+                    <input type="range" id="setting-bg-opacity" min="0" max="50" step="any">
                 </label>
                 <label class="settings-row settings-row-range">
                     <i class="fa fa-tint"></i>
                     <span>模糊度</span>
-                    <input type="range" id="setting-bg-blur" min="0" max="20" step="1">
+                    <input type="range" id="setting-bg-blur" min="0" max="20" step="any">
                 </label>
             </div>
             <%# 主题色：色相与 glint.css 第 0 节 html[data-accent] 一一对应；色块颜色取该主题的 --tc-soft 一级 %>
@@ -260,6 +260,10 @@
         <div class="head-menu-bg-title"><i class="fa fa-picture-o"></i><span>首页背景</span></div>
         <div class="bg-tiles" role="radiogroup" aria-label="首页背景"><%- partial("_partial/bg-tiles") %></div>
     </div>
+    <% } %>
+    <% if (is_home()) { %>
+    <%# 首页沉浸（导航收起时）：卡片最下方一整排开关；导航横排时在首页右上角的 .bg-dock。不是 a，不进导航测量与强调框 %>
+    <button type="button" class="head-menu-zen zen-switch" aria-pressed="false"><i class="fa fa-expand"></i><span>沉浸：只留背景</span></button>
     <% } %>
 </nav>
 <script>
