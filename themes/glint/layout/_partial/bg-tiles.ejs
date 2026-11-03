@@ -1,8 +1,15 @@
 <%# 首页背景的缩略图磁贴（首页右上角浮层 index.ejs 与导航卡片 header.ejs 共用），篇目见 _data/backgrounds.yml
-   极缩略图由 glint.js setupBgSwitch 在打开浮层 / 导航卡片时才写上，原图选中后才加载；路径与 tools/bg-thumbs.py 一致 %>
+   极缩略图由 glint.js setupBgSwitch 在打开浮层 / 导航卡片时才写上，原图选中后才加载；路径与 tools/bg-thumbs.py 一致
+   最前面一张「每日轮换」：按日期在下面几张之间轮换（id 为 @daily，head.ejs 首帧与 glint.js 用同一个算法挑当天那张） %>
+<% if ((site.data.backgrounds || []).length > 1) { %>
+    <button type="button" class="bg-tile is-daily" role="radio" aria-checked="false" aria-label="每日轮换" data-bg-id="@daily">
+        <span class="bg-tile-img" aria-hidden="true"><i class="fa fa-calendar-o"></i></span>
+        <span class="bg-tile-name">每日轮换</span>
+    </button>
+<% } %>
 <% (site.data.backgrounds || []).forEach(function (b) { %>
     <% var thumb = b.thumb || b.src.replace(/\/([^\/]+)$/, '/thumb/$1'); %>
-    <button type="button" class="bg-tile" role="radio" aria-checked="false" aria-label="<%= b.name %>" data-bg-id="<%= b.id %>" data-bg-src="<%= b.src %>" data-bg-thumb="<%= thumb %>"<% if (b.src === theme.background) { %> data-bg-default<% } %>>
+    <button type="button" class="bg-tile" role="radio" aria-checked="false" aria-label="<%= b.name %>" data-bg-id="<%= b.id %>" data-bg-src="<%= b.src %>" data-bg-thumb="<%= thumb %>" data-bg-name="<%= b.name %>"<% if (b.artist) { %> data-bg-artist="<%= b.artist %>"<% } %><% if (b.link) { %> data-bg-link="<%= b.link %>"<% } %><% if (b.src === theme.background) { %> data-bg-default<% } %>>
         <span class="bg-tile-img"></span>
         <span class="bg-tile-name"><%= b.name %></span>
     </button>

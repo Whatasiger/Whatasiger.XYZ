@@ -1,5 +1,5 @@
 ﻿---
-title: 『Shamrock』 
+title: 『Shamrock』
 abbrlink: 3
 alias: /3/
 date: 2025-01-30

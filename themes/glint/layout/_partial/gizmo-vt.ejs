@@ -16,9 +16,9 @@
             root.classList.add('gizmo-from-leaf', 'gizmo-leaf-in');
             e.viewTransition.finished.finally(function () { root.classList.remove('gizmo-from-leaf'); });
         });
-        // 离开 Gizmo 页：不做过渡
+        // 离开 Gizmo 页：不做过渡（从搜索结果点进文章除外，见 _partial/title-hop.ejs）
         window.addEventListener('pageswap', function (e) {
-            if (e.viewTransition) e.viewTransition.skipTransition();
+            if (e.viewTransition && !takeTitleHop(e)) e.viewTransition.skipTransition();
         });
     })();
 </script>

@@ -1,0 +1,48 @@
+<%# 标题一镜到底（搜索结果 / 归档时间线 → 文章）：点下带标题的链接时，那段标题文字飞到文章页的正文标题处
+   - 点击时（glint.js 搜索、archive-timeline.ejs）把标题元素记在 window.glintTitleHopEl，并写 sessionStorage title-hop = { to, t }
+   - 离开本页的 pageswap 里调 takeTitleHop(e)：目标对得上、标题在屏上，就给它挂 post-title，返回 true（调用方不再 skipTransition）
+   - 文章页 post-vt.ejs 据 title-hop 判断来源，挂 vt-from-hop，只接 post-title 一组（vtFlip 走合成线程），页面整体淡入淡出
+   首页、文章页、Gizmo 页各自已有 pageswap / pagereveal（head.ejs / post-vt.ejs / gizmo-vt.ejs），都先问 takeTitleHop；
+   其余页面（归档、标签、独立页面）在这里声明 @view-transition 并默认跳过 %>
+<script>
+    (function () {
+        var root = document.documentElement;
+        function norm(u) {
+            try { return new URL(u, location.href).pathname.replace(/index\.html$/, ''); } catch (err) { return ''; }
+        }
+        window.takeTitleHop = function (e) {
+            var el = window.glintTitleHopEl;
+            window.glintTitleHopEl = null;
+            var to = e.activation && e.activation.entry && e.activation.entry.url;
+            if (!el || !to || !e.viewTransition) return false;
+            var hop = null;
+            try { hop = JSON.parse(sessionStorage.getItem('title-hop')); } catch (err) {}
+            if (!hop || hop.to !== norm(to) || Date.now() - hop.t > 10000) return false;
+            var r = el.getBoundingClientRect();
+            if (!r.width || r.bottom <= 0 || r.top >= innerHeight) return false;
+            el.classList.add('vt-hop-src');
+            el.style.viewTransitionName = 'post-title';
+            root.classList.add('title-leaving');
+            return true;
+        };
+        // 从往返缓存回来：撤掉离场时挂的名字
+        window.addEventListener('pageshow', function () {
+            root.classList.remove('title-leaving');
+            [].forEach.call(document.querySelectorAll('.vt-hop-src'), function (el) {
+                el.classList.remove('vt-hop-src');
+                el.style.viewTransitionName = '';
+            });
+        });
+    })();
+</script>
+<% if (!is_home() && !is_post() && page.layout !== 'gizmo') { %>
+<style>@view-transition { navigation: auto; } @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }</style>
+<script>
+    window.addEventListener('pageswap', function (e) {
+        if (e.viewTransition && !takeTitleHop(e)) e.viewTransition.skipTransition();
+    });
+    window.addEventListener('pagereveal', function (e) {
+        if (e.viewTransition) e.viewTransition.skipTransition();
+    });
+</script>
+<% } %>

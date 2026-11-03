@@ -86,8 +86,7 @@ hexo.extend.generator.register('carrier_wave', async function (locals) {
     caption: album.caption || '',
     epigraph: album.epigraph || '',
     url: '/' + BASE + '/',
-    total,
-    version: Date.now().toString(36)
+    total
   };
 
   const routes = [{

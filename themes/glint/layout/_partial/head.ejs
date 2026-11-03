@@ -119,12 +119,13 @@
     <%# 地址带内容哈希（scripts/asset-version.js），改了文件缓存即失效 %>
     <link rel="stylesheet" href="<%- asset_url('static/kico.css') %>">
     <link rel="stylesheet" href="<%- asset_url('static/glint.css') %>">
-    <%- css("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css") %>
+    <%# Font Awesome 4.7 只取用到的图标，字体子集内联在 fa.css 里（tools/fa-subset.py 生成；新增图标后重跑） %>
+    <link rel="stylesheet" href="<%- asset_url('static/fa/fa.css') %>">
 
     <%
-        // 文章有封面时整站背景换成封面（「关于网站」仍用主页背景）；直接写进样式，首帧就是封面，一镜到底的新页快照也能接上
+        // 文章有封面时整站背景换成封面；直接写进样式，首帧就是封面，一镜到底的新页快照也能接上
         var bgImage = theme.background;
-        if (is_post() && page.cover && page.title !== "关于网站") bgImage = page.cover;
+        if (is_post() && page.cover) bgImage = page.cover;
     %>
     <% if (bgImage) { %>
     <style>body{ --page-bg-image: url(<%- bgImage %>) }</style>
@@ -140,6 +141,10 @@
             try {
                 var choices = <%- JSON.stringify(bgChoices) %>;
                 var id = localStorage.getItem('whatasiger_home_bg'); // 与 glint.js setupBgSwitch 的 BG_KEY 一致
+                if (id === '@daily') {    // 每日轮换：按本地日期在各张之间轮换，算法与 glint.js todayId() 一致
+                    var ids = Object.keys(choices), d = new Date();
+                    id = ids[Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5) % ids.length];
+                }
                 var src = id && Object.prototype.hasOwnProperty.call(choices, id) ? choices[id] : '';
                 if (!src || src === <%- JSON.stringify(theme.background) %>) return;
                 var st = document.createElement('style');
@@ -186,12 +191,20 @@
        等待期间 main 隐藏（背景与顶栏照常），入场动画暂停在起点，就绪后从头播；超过 300ms 才浮出加载指示
        最多等 1.2s（首次访问网络慢时），之后照常显示、字体到了再换；选了系统字体就不等
        从首页卡片一镜到底进来时由 post-vt.ejs 在 pagereveal 立即撤掉（首帧须有正文标题配对）；样式见 glint.css「阅读页等字体」 %>
+    <%# 正文选了宋体（设置「正文字体」）：首帧前就插入思源宋体样式表（异步，同思源黑体），下面的等字体一并等它；地址须与 glint.js 的 SERIF_CSS 一致 %>
+    <script>
+        try {
+            if ((JSON.parse(localStorage.getItem('whatasiger_reader_settings')) || {}).bodyFont === 'serif') {
+                document.write('<link rel="stylesheet" id="font-serif-css" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'; this.onload=null;">');
+            }
+        } catch (err) {}
+    </script>
     <script>
         (function () {
             var root = document.documentElement;
             try {
                 var s = JSON.parse(localStorage.getItem('whatasiger_reader_settings')) || {};
-                if (s.fontFamily && s.fontFamily !== 'noto-sans-sc') return;
+                if (s.fontFamily && s.fontFamily !== 'noto-sans-sc' && s.bodyFont !== 'serif') return;
             } catch (err) {}
             if (!document.fonts || !document.fonts.ready) return;
             root.classList.add('page-loading');
@@ -204,17 +217,19 @@
             window.pageReveal = reveal;
             setTimeout(reveal, 1200);
             var link = document.getElementById('font-css');
-            function cssReady() { return !link || link.media === 'all'; }
+            var serifLink = document.getElementById('font-serif-css');
+            function cssReady() { return (!link || link.media === 'all') && (!serifLink || serifLink.media === 'all'); }
             // 样式表与正文都就绪后量一次版面，让首屏用到的字形切片开始下载，再等它们载完
             function wait() {
                 if (done || !cssReady() || document.readyState === 'loading') return;
                 void document.body.offsetWidth;
                 document.fonts.ready.then(function () { requestAnimationFrame(reveal); });
             }
-            if (link) {
-                link.addEventListener('load', function () { setTimeout(wait); });
-                link.addEventListener('error', reveal);
-            }
+            [link, serifLink].forEach(function (l) {
+                if (!l) return;
+                l.addEventListener('load', function () { setTimeout(wait); });
+                l.addEventListener('error', reveal);
+            });
             document.addEventListener('DOMContentLoaded', wait);
         })();
     </script>
@@ -222,6 +237,7 @@
     <% if (is_home() || is_post()) { %>
     <%- partial('_partial/vt-flip') %>
     <% } %>
+    <%- partial('_partial/title-hop') %>
     <% if (is_home()) { %>
     <!-- 卡片标题用内联的子集字体，不再外链 Cormorant Garamond -->
     <%- partial('_partial/cw-title-font') %>
@@ -230,9 +246,69 @@
     <!-- 文章卡片同样预渲染（指针停留 / 按下即开始）：点击后过渡立即开始，不必等文章页下载、解析、出首帧
          预渲染会执行文章页脚本，所以不蒜子等页面真正打开才加载计数（footer.ejs），评论等过渡结束（post-vt.ejs 的 vtSettled） -->
     <script type="speculationrules">{"prerender": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "moderate"}]}</script>
-    <!-- 首页载入后先把各卡片文章页的 HTML 预取下来（只下载、不执行）：预渲染没来得及跑完就点下去时，也不必再等网络（实测 0.5–1.7s → 0.2–0.3s）；
-         悬停 / 按下开始的预渲染同样直接用这份响应 -->
-    <script type="speculationrules">{"prefetch": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "immediate"}]}</script>
+    <!-- 卡片文章页的 HTML 先预取下来（只下载、不执行）：预渲染没来得及跑完就点下去时，也不必再等网络（实测 0.5–1.7s → 0.2–0.3s）；
+         悬停 / 按下开始的预渲染同样直接用这份响应。
+         只预取「看得到或快滚到」的卡片（视口上下各一屏内）：读者只能点屏幕上的卡片，而滚到下一张远比下载一篇慢，手感与全部预取相同，流量按实际浏览走。
+         省流量（Save-Data）/ 2G 时不预取。触屏没有悬停、按下才开始预渲染太晚：滚动停下后，完整停在屏幕中央附近超过 0.6s 的那张卡片先预渲染（同时只留一张） -->
+    <script>
+        (function () {
+            var SEL = 'a.post-item.card-style:not(.cw-card)';
+            if (!window.HTMLScriptElement || !HTMLScriptElement.supports || !HTMLScriptElement.supports('speculationrules')) return;
+            var conn = navigator.connection;
+            if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) return;
+            function rules(kind, urls) {
+                var s = document.createElement('script');
+                s.type = 'speculationrules';
+                var r = {};
+                r[kind] = [{ urls: urls, eagerness: 'immediate' }];
+                s.textContent = JSON.stringify(r);
+                document.head.appendChild(s);
+                return s;
+            }
+            document.addEventListener('DOMContentLoaded', function () {
+                var cards = [].slice.call(document.querySelectorAll(SEL));
+                if (!cards.length) return;
+                var done = {};
+                if (window.IntersectionObserver) {
+                    var io = new IntersectionObserver(function (entries) {
+                        var urls = [];
+                        entries.forEach(function (en) {
+                            if (!en.isIntersecting) return;
+                            io.unobserve(en.target);
+                            var u = en.target.href;
+                            if (!done[u]) { done[u] = 1; urls.push(u); }
+                        });
+                        if (urls.length) rules('prefetch', urls);
+                    }, { rootMargin: '100% 0px' });
+                    cards.forEach(function (c) { io.observe(c); });
+                } else {
+                    rules('prefetch', cards.map(function (c) { return c.href; }));
+                }
+
+                if (!matchMedia('(pointer: coarse)').matches) return;
+                var dwell = null, dwellUrl = '', timer = 0;
+                function pick() {
+                    var mid = innerHeight / 2, best = null, bestD = Infinity;
+                    cards.forEach(function (c) {
+                        var r = c.getBoundingClientRect();
+                        if (!r.height || r.top < 0 || r.bottom > innerHeight) return;   // 只认完整在屏上的
+                        var d = Math.abs((r.top + r.bottom) / 2 - mid);
+                        if (d < bestD) { bestD = d; best = c; }
+                    });
+                    if (!best || best.href === dwellUrl) return;
+                    if (dwell) dwell.remove();      // 撤掉上一条规则即取消那次预渲染
+                    dwellUrl = best.href;
+                    dwell = rules('prerender', [dwellUrl]);
+                }
+                function arm() {
+                    clearTimeout(timer);
+                    if (!document.hidden && !document.documentElement.classList.contains('home-zen')) timer = setTimeout(pick, 600);
+                }
+                window.addEventListener('scroll', arm, { passive: true });
+                window.addEventListener('load', arm);
+            });
+        })();
+    </script>
     <!-- 卡片副题「载波·短篇辑」与目录页同用思源宋体；只取这几个字，字体文件很小 -->
     <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300&text=<%- encodeURIComponent('载波短篇辑') %>&display=swap">
     <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」「首页 → 文章」（文章卡片一镜到底）与「首页 → Gizmo」（叶片一镜到底），其余跳转一律跳过 -->
@@ -250,6 +326,7 @@
                 // 给目录页留一份来源记录：它拿不到 navigation.activation.from 时据此判断是否从首页来
                 try { sessionStorage.setItem('cw-vt-hop', JSON.stringify({ from: norm(location.href), to: to ? norm(to) : '', t: Date.now() })); } catch (err) {}
                 if (!e.viewTransition) return;
+                if (takeTitleHop(e)) return;     // 从搜索结果点进文章：标题飞过去（_partial/title-hop.ejs）
                 if (to && norm(to) === gizmo && leaveToGizmo()) return;
                 if (to && norm(to) !== target && leaveToPost(norm(to))) return;
                 if (!to || norm(to) !== target) { e.viewTransition.skipTransition(); return; }

@@ -38,6 +38,15 @@
             document.body.style.fontFamily = fontChoice === "noto-sans-sc" ? sourceHanFontStack : systemFontStack;
             if (fontChoice !== "noto-sans-sc") document.documentElement.classList.add("font-system"); // 顶栏不用内联的 Glint UI
             if (savedSettings && savedSettings.hideTodo) document.body.classList.add("hide-todo");
+            // 阅读排版（行距 / 段距 / 行宽 / 缩进 / 宋体）：阅读页首帧前就按设置排好，glint.js 载入后照同样的值接管
+            if (isArticle && savedSettings) {
+                var bs = document.body.style;
+                if (typeof savedSettings.lineHeight === "number") bs.setProperty("--reader-line-height", String(savedSettings.lineHeight));
+                if (typeof savedSettings.paraSpacing === "number") bs.setProperty("--reader-para", savedSettings.paraSpacing + "em");
+                if (typeof savedSettings.readWidth === "number") bs.setProperty("--reader-width", savedSettings.readWidth + "em");
+                if (savedSettings.indent) bs.setProperty("--reader-indent", "2em");
+                if (savedSettings.bodyFont === "serif") document.body.classList.add("reader-serif");
+            }
             // 主题色：首帧前挂到 html 上，避免先闪一下默认的蓝
             if (savedSettings && savedSettings.accent && savedSettings.accent !== "blue") {
                 document.documentElement.setAttribute("data-accent", savedSettings.accent);
@@ -134,100 +143,137 @@
         <button type="button" class="toggle-btn" aria-label="导航" aria-controls="header-menu" aria-expanded="false"></button>
         <button type="button" class="light-btn" aria-label="切换日夜模式"></button>
         <button type="button" class="settings-btn" aria-label="阅读设置" aria-controls="reader-settings-panel" aria-expanded="false"></button>
-        <% if (!is_post()) { %>
-            <button type="button" class="search-btn" aria-label="搜索文章" aria-controls="header-search" aria-expanded="false"></button>
-        <% } %>
+        <button type="button" class="search-btn" aria-label="搜索文章" aria-controls="header-search" aria-expanded="false"></button>
     </div>
 
-    <% if (!is_post()) { %>
-        <div class="head-search" id="header-search">
-            <label class="sr-only" for="local-search-input">搜索文章（标题 / 标签 / 正文）</label>
-            <input type="text" id="local-search-input" name="s" placeholder="标题 / 标签 / 正文" aria-controls="local-search-result" aria-expanded="false">
-            <div id="local-search-result" aria-live="polite"></div>
-        </div>
-    <% } %>
+    <%# 所有页面都有搜索；结果在 header 外的 .search-panel 里（header 自带 backdrop-filter，嵌套的毛玻璃会失效）。逻辑见 glint.js setupSearch %>
+    <div class="head-search" id="header-search">
+        <label class="sr-only" for="local-search-input">搜索文章、CARRiER WAVE. 与页面（空格分隔多个词）</label>
+        <input type="search" id="local-search-input" name="s" placeholder="标题 / 标签 / 正文" autocomplete="off" enterkeyhint="search"
+               role="combobox" aria-autocomplete="list" aria-controls="local-search-result" aria-expanded="false">
+    </div>
 </header>
+<%# 搜索面板：从搜索框下方长出来的毛玻璃卡片（glint.css「站内搜索」）。没输入时列出标签与归档入口 %>
+<div class="search-panel" id="search-panel" inert aria-hidden="true">
+    <div class="search-panel-inner">
+        <div class="search-empty">
+            <div class="search-empty-title"><i class="fa fa-tags" aria-hidden="true"></i>按标签浏览</div>
+            <div class="search-chips">
+                <% site.tags.sort('name').each(function (t) { %><a class="search-chip" href="<%- url_for(t.path) %>">#<%= t.name %><small><%= t.length %></small></a><% }) %>
+                <a class="search-chip is-archive" href="<%- url_for('/archives/') %>"><i class="fa fa-archive" aria-hidden="true"></i>全部归档</a>
+            </div>
+            <p class="search-empty-tip">可搜文章、CARRiER WAVE.、页面与 Gizmo；空格分隔多个词，须全部命中</p>
+        </div>
+        <div class="search-status" role="status" aria-live="polite"></div>
+        <div class="search-results" id="local-search-result" role="listbox" aria-label="搜索结果"><span class="search-pill" aria-hidden="true"></span></div>
+        <div class="search-foot" aria-hidden="true">
+            <span><kbd>↑</kbd><kbd>↓</kbd>选择</span><span><kbd>↵</kbd>打开</span><span><kbd>Esc</kbd>关闭</span><span class="search-foot-key"><kbd>/</kbd>随时唤起</span>
+        </div>
+    </div>
+</div>
 <%# 设置面板放在 header 外：header 自带 backdrop-filter，嵌套在内会让面板的毛玻璃失效 %>
 <div class="settings-panel" id="reader-settings-panel" inert aria-hidden="true">
     <div class="settings-panel-inner">
+        <%# 标题栏：右侧是「恢复默认」图标按钮（原先单独占一排） %>
         <div class="settings-panel-header">
             <i class="fa fa-sliders"></i>
             <span class="settings-panel-title">阅读设置</span>
+            <button type="button" id="setting-reset-btn" class="settings-reset-btn" title="恢复默认" aria-label="恢复默认"><i class="fa fa-undo"></i></button>
         </div>
-        <div class="settings-panel-body">
-            <div class="settings-group">
-                <%# 界面主题：切到 Origin 会跳到 Origin 界面的同一页（见 _partial/ui-switch.ejs） %>
-                <div class="settings-row">
-                    <i class="fa fa-desktop"></i>
-                    <span>界面</span>
-                    <div class="settings-segment" id="setting-ui" data-value="glint" role="radiogroup" aria-label="界面">
-                        <button type="button" role="radio" data-value="glint" aria-checked="true">Glint</button>
-                        <button type="button" role="radio" data-value="origin" aria-checked="false">Origin</button>
+        <%# 两个分页：外观（界面 / 字体 / 开关 / 背景 / 主题色）与阅读（正文的字与排版）；强调块弹簧滑动，内容按方向滑入
+            两页叠在同一格里（面板高度取两者较高者，切换时不跳）；阅读页默认打开「阅读」，其余页面打开「外观」，逻辑见 glint.js setupSettingsTabs %>
+        <div class="settings-tabs" role="tablist" aria-label="设置分类" data-tab="look">
+            <button type="button" role="tab" id="st-tab-look" data-tab="look" aria-controls="st-pane-look" aria-selected="true">外观</button>
+            <button type="button" role="tab" id="st-tab-read" data-tab="read" aria-controls="st-pane-read" aria-selected="false">阅读</button>
+        </div>
+        <div class="settings-panes">
+            <div class="settings-pane" id="st-pane-look" role="tabpanel" aria-labelledby="st-tab-look" data-pane="look">
+                <div class="settings-group">
+                    <%# 界面主题：切到 Origin 会跳到 Origin 界面的同一页（见 _partial/ui-switch.ejs） %>
+                    <div class="settings-row">
+                        <i class="fa fa-desktop"></i>
+                        <span>界面</span>
+                        <div class="settings-segment" id="setting-ui" data-value="glint" role="radiogroup" aria-label="界面">
+                            <button type="button" role="radio" data-value="glint" aria-checked="true">Glint</button>
+                            <button type="button" role="radio" data-value="origin" aria-checked="false">Origin</button>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <i class="fa fa-font"></i>
+                        <span>字体</span>
+                        <div class="settings-segment" id="setting-font-family" role="radiogroup" aria-label="字体">
+                            <button type="button" role="radio" data-value="noto-sans-sc">思源黑体</button>
+                            <button type="button" role="radio" data-value="system-default">系统默认</button>
+                        </div>
                     </div>
                 </div>
-                <label class="settings-row">
-                    <i class="fa fa-expand"></i>
-                    <span>沉浸模式</span>
-                    <input type="checkbox" id="setting-immersive">
-                </label>
-                <label class="settings-row">
-                    <i class="fa fa-list-ul"></i>
-                    <span>关闭首页 TODO 显示</span>
-                    <input type="checkbox" id="setting-hide-todo">
-                </label>
-                <div class="settings-row">
-                    <i class="fa fa-font"></i>
-                    <span>字体</span>
-                    <div class="settings-segment" id="setting-font-family" role="radiogroup" aria-label="字体">
-                        <button type="button" role="radio" data-value="noto-sans-sc">思源黑体</button>
-                        <button type="button" role="radio" data-value="system-default">系统默认</button>
+                <%# 开关：一排小胶囊（复选框藏在里面，亮起即开启） %>
+                <div class="settings-chips">
+                    <label class="settings-chip"><input type="checkbox" id="setting-immersive"><i class="fa fa-expand"></i>沉浸模式</label>
+                    <label class="settings-chip"><input type="checkbox" id="setting-hide-todo"><i class="fa fa-list-ul"></i>隐藏首页 TODO</label>
+                </div>
+                <div class="settings-tiles">
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-eye"></i>背景可见度</span>
+                        <input type="range" id="setting-bg-opacity" min="0" max="50" step="any">
+                    </label>
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-tint"></i>背景模糊</span>
+                        <input type="range" id="setting-bg-blur" min="0" max="20" step="any">
+                    </label>
+                </div>
+                <%# 主题色：色相与 glint.css 第 0 节 html[data-accent] 一一对应；色块颜色取该主题的 --tc-soft 一级 %>
+                <% var accents = [["blue", "天青", 247], ["lavender", "藤紫", 300], ["sakura", "樱粉", 355], ["mikan", "蜜柑", 62], ["wakakusa", "若草", 135], ["mint", "薄荷", 185]]; %>
+                <div class="settings-group settings-accent-group">
+                    <div class="settings-accent-head"><span>主题色</span><small id="setting-accent-name">天青</small></div>
+                    <div class="settings-accent" id="setting-accent" role="radiogroup" aria-label="主题色">
+                        <% accents.forEach(function (a) { %>
+                            <button type="button" role="radio" data-value="<%= a[0] %>" data-name="<%= a[1] %>" aria-label="<%= a[1] %>" title="<%= a[1] %>" style="--sw: <%= a[0] === 'blue' ? '#8bb4e0' : 'oklch(0.756 0.078 ' + a[2] + ')' %>"></button>
+                        <% }) %>
                     </div>
                 </div>
             </div>
-            <div class="settings-group-title">文字<small>仅在文章页对正文生效</small></div>
-            <div class="settings-group">
-                <label class="settings-row settings-row-range">
-                    <i class="fa fa-bold"></i>
-                    <span>字重</span>
-                    <input type="range" id="setting-font-weight" min="1" max="5" step="any">
-                </label>
-                <label class="settings-row settings-row-range">
-                    <i class="fa fa-text-width"></i>
-                    <span>字间距</span>
-                    <input type="range" id="setting-letter-spacing" min="-2" max="8" step="any">
-                </label>
-                <label class="settings-row settings-row-range">
-                    <i class="fa fa-text-height"></i>
-                    <span>字号</span>
-                    <input type="range" id="setting-font-size" min="90" max="130" step="any">
-                </label>
-            </div>
-            <div class="settings-group-title">背景</div>
-            <div class="settings-group">
-                <label class="settings-row settings-row-range">
-                    <i class="fa fa-eye"></i>
-                    <span>可见度</span>
-                    <input type="range" id="setting-bg-opacity" min="0" max="50" step="any">
-                </label>
-                <label class="settings-row settings-row-range">
-                    <i class="fa fa-tint"></i>
-                    <span>模糊度</span>
-                    <input type="range" id="setting-bg-blur" min="0" max="20" step="any">
-                </label>
-            </div>
-            <%# 主题色：色相与 glint.css 第 0 节 html[data-accent] 一一对应；色块颜色取该主题的 --tc-soft 一级 %>
-            <% var accents = [["blue", "天青", 247], ["lavender", "藤紫", 300], ["sakura", "樱粉", 355], ["mikan", "蜜柑", 62], ["wakakusa", "若草", 135], ["mint", "薄荷", 185]]; %>
-            <div class="settings-group-title">主题色<small id="setting-accent-name">天青</small></div>
-            <div class="settings-group">
-                <div class="settings-accent" id="setting-accent" role="radiogroup" aria-label="主题色">
-                    <% accents.forEach(function (a) { %>
-                        <button type="button" role="radio" data-value="<%= a[0] %>" data-name="<%= a[1] %>" aria-label="<%= a[1] %>" title="<%= a[1] %>" style="--sw: <%= a[0] === 'blue' ? '#8bb4e0' : 'oklch(0.756 0.078 ' + a[2] + ')' %>"></button>
-                    <% }) %>
+            <div class="settings-pane" id="st-pane-read" role="tabpanel" aria-labelledby="st-tab-read" data-pane="read">
+                <div class="settings-group">
+                    <%# 正文字体：黑体（随「外观」里的字体）或思源宋体（选中才加载，head.ejs / glint.js loadSerif） %>
+                    <div class="settings-row">
+                        <i class="fa fa-paragraph"></i>
+                        <span>正文</span>
+                        <div class="settings-segment" id="setting-body-font" role="radiogroup" aria-label="正文字体">
+                            <button type="button" role="radio" data-value="sans">黑体</button>
+                            <button type="button" role="radio" data-value="serif">宋体</button>
+                        </div>
+                        <label class="settings-chip is-small"><input type="checkbox" id="setting-indent"><i class="fa fa-indent"></i>缩进</label>
+                    </div>
                 </div>
+                <div class="settings-tiles">
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-bold"></i>字重</span>
+                        <input type="range" id="setting-font-weight" min="1" max="5" step="any">
+                    </label>
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-text-height"></i>字号</span>
+                        <input type="range" id="setting-font-size" min="90" max="130" step="any">
+                    </label>
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-text-width"></i>字间距</span>
+                        <input type="range" id="setting-letter-spacing" min="-2" max="8" step="any">
+                    </label>
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-align-justify"></i>行距</span>
+                        <input type="range" id="setting-line-height" min="1.5" max="2.4" step="any">
+                    </label>
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-arrows-v"></i>段距</span>
+                        <input type="range" id="setting-para-spacing" min="0" max="2" step="any">
+                    </label>
+                    <label class="settings-tile">
+                        <span class="settings-tile-label"><i class="fa fa-arrows-h"></i>行宽</span>
+                        <input type="range" id="setting-read-width" min="36" max="60" step="any">
+                    </label>
+                </div>
+                <p class="settings-note">只在文章与独立页面对正文生效</p>
             </div>
-        </div>
-        <div class="settings-panel-footer">
-            <button id="setting-reset-btn" class="settings-reset-btn"><i class="fa fa-undo"></i>恢复默认</button>
         </div>
     </div>
 </div>
@@ -235,25 +281,15 @@
 <nav class="head-menu" id="header-menu" aria-label="主导航">
     <span class="head-menu-pill" aria-hidden="true"></span>
     <a href="<%= url_for() %>"<% if (is_home()) { %> class="current"<% } %>><i class="fa fa-<%= menuIcons['首页'] || 'home' %>"></i><span>首页</span></a>
-    <% for (var i in theme.menu){ %>
-        <a href="<%- url_for(theme.menu[i]) %>"<% if (is_current(theme.menu[i])) { %> class="current"<% } %>><i class="fa fa-<%= menuIcons[i] || 'circle-o' %>"></i><span><%= i %></span></a>
+    <% for (var i in theme.menu){
+        // 归档：标签页、按年月的归档页也算它；导航收起时在卡片里与 Gizmo 并排成第三排（head-menu-wide 只是标记，小字不显示）
+        var isArchive = /^\/archives\/?$/.test(theme.menu[i]);
+        var cur = isArchive ? (is_archive() || is_tag()) : is_current(theme.menu[i]);
+        var cls = [isArchive ? 'head-menu-wide' : '', cur ? 'current' : ''].filter(Boolean).join(' '); %>
+        <a href="<%- url_for(theme.menu[i]) %>"<% if (cls) { %> class="<%= cls %>"<% } %>><i class="fa fa-<%= menuIcons[i] || 'circle-o' %>"></i><span><%= i %></span><% if (isArchive) { %><small>所有文章 · 标签</small><% } %></a>
     <% } %>
-    <%# Gizmo 入口：只在收起式导航卡片里出现，四块磁贴下方横占一整排；桌面端的入口是首页右侧的叶片（gizmo-leaf.js） %>
+    <%# Gizmo 入口：只在收起式导航卡片里出现，与「归档」并排成第三排；桌面端的入口是首页右侧的叶片（gizmo-leaf.js） %>
     <a href="<%- url_for('/gizmo/') %>" class="head-menu-gizmo<% if (is_current('/gizmo/')) { %> current<% } %>"><i class="fa fa-leaf"></i><span>Gizmo</span><small>随手做的小玩意</small></a>
-    <% if (is_home()) { %>
-    <%# 首页轻音乐（导航收起时）：一整排，曲名 + 播放 / 暂停 + 「…」展开曲目；导航横排时入口在首页右上角（index.ejs） %>
-    <div class="head-menu-music">
-        <div class="head-menu-music-row">
-            <i class="fa fa-music"></i>
-            <span class="head-menu-music-name music-now">首页音乐</span>
-            <button type="button" class="music-play" aria-label="播放音乐" aria-pressed="false"></button>
-            <button type="button" class="music-more" aria-label="选择音乐" aria-expanded="false"></button>
-        </div>
-        <div class="head-menu-music-list">
-            <div class="music-list" role="radiogroup" aria-label="首页音乐"><%- partial("_partial/music-tracks") %></div>
-        </div>
-    </div>
-    <% } %>
     <% if (is_home() && (site.data.backgrounds || []).length) { %>
     <%# 首页背景切换（导航收起时）：卡片最下方一整排缩略图；导航横排时入口在首页右上角（index.ejs）。不是 a，不进导航宽度的测量与强调框 %>
     <div class="head-menu-bg">
@@ -267,6 +303,55 @@
     <% } %>
 </nav>
 <script>
+    // 拖动选择（顶栏导航、设置面板的二选一与分页共用，glint.js 也用它）：在一排选项上按住拖动，强调框跟着指针走，
+    // 松手时选中指针下最近的那一项；只是点一下照旧走各自的 click。拖动过后紧跟着的那次 click 会被吞掉，免得重复触发
+    //   o.items()        → 可选的元素（按从左到右）
+    //   o.move(x, item)  → 拖动中：x 是指针的 clientX，item 是离它最近的一项
+    //   o.end(item)      → 松手（pointercancel 时 item 为 null，表示放弃）
+    //   o.enabled()      → 可选；返回 false 时不接管
+    window.glintDragPick = function (box, o) {
+        var id = null, sx = 0, moved = false, swallowUntil = 0;
+        function nearest(x) {          // 指针落在哪一项上就是哪一项，落在空隙里取中心最近的
+            var best = null, bd = Infinity;
+            o.items().forEach(function (el) {
+                var r = el.getBoundingClientRect();
+                if (!r.width) return;
+                var d = x >= r.left && x <= r.right ? -1 : Math.abs(x - (r.left + r.right) / 2);
+                if (d < bd) { bd = d; best = el; }
+            });
+            return best;
+        }
+        box.addEventListener("pointerdown", function (e) {
+            if ((e.pointerType === "mouse" && e.button !== 0) || (o.enabled && !o.enabled())) return;
+            id = e.pointerId; sx = e.clientX; moved = false;
+        });
+        box.addEventListener("pointermove", function (e) {
+            if (e.pointerId !== id) return;
+            if (!moved) {
+                if (Math.abs(e.clientX - sx) < 6) return;
+                moved = true;
+                try { box.setPointerCapture(id); } catch (err) {}
+                box.classList.add("is-dragging");
+            }
+            o.move(e.clientX, nearest(e.clientX));
+        });
+        function finish(e, cancel) {
+            if (e.pointerId !== id) return;
+            id = null;
+            if (!moved) return;
+            moved = false;
+            box.classList.remove("is-dragging");
+            swallowUntil = performance.now() + 350;
+            o.end(cancel ? null : nearest(e.clientX));
+        }
+        box.addEventListener("pointerup", function (e) { finish(e, false); });
+        box.addEventListener("pointercancel", function (e) { finish(e, true); });
+        box.addEventListener("click", function (e) {
+            if (performance.now() < swallowUntil && e.isTrusted) { e.preventDefault(); e.stopPropagation(); swallowUntil = 0; }
+        }, true);
+        box.addEventListener("dragstart", function (e) { e.preventDefault(); });   // 链接默认可拖出，会打断指针事件
+    };
+
     // 顶栏导航是否收起：按钮居中排开时若会碰到左侧 Logo 或右侧搜索框 / 按钮，就收进汉堡菜单（html.nav-collapsed）
     // 紧跟在 nav 后同步执行，首帧即为正确布局；按钮宽度用 canvas 量文字算出，不必来回切换布局
     (function () {
@@ -354,6 +439,27 @@
             a.addEventListener("blur", function () { place(current); });
         });
 
+        // 拖动选择：按住在各项上拖，强调框跟着指针走（宽度随最近的一项），松手即前往那一项（收起成卡片时不接管）
+        var items = [].slice.call(nav.querySelectorAll(":scope > a:not(.head-menu-gizmo)"));
+        window.glintDragPick(nav, {
+            items: function () { return items; },
+            enabled: function () { return !root.classList.contains("nav-collapsed"); },
+            move: function (x, a) {
+                clearTimeout(leaveTimer);
+                var navLeft = nav.getBoundingClientRect().left;
+                var w = a ? a.offsetWidth : pill.offsetWidth;
+                pill.classList.add("is-on");
+                pill.classList.toggle("is-current", a === current);
+                pill.style.setProperty("--pill-w", w + "px");
+                pill.style.setProperty("--pill-x", Math.max(0, Math.min(nav.clientWidth - w, x - navLeft - w / 2)) + "px");
+            },
+            end: function (a) {
+                if (!a) { place(current); return; }
+                place(a);
+                if (a !== current) a.click();
+            }
+        });
+
         update();
         window.addEventListener("resize", update);
         // 字体加载完成或在设置里切换字体后，文字宽度会变
@@ -361,6 +467,14 @@
             document.fonts.ready.then(update);
             document.fonts.addEventListener("loadingdone", update);
         }
-        new MutationObserver(update).observe(document.body, { attributes: true, attributeFilter: ["style"] });
+        // 设置里切换字体时写的是 body 的内联 font-family；body 的 style 还会被滑动条（--bg-blur、--reader-* 等）逐帧改写，
+        // 只比对字体这一项的字符串（不触发样式计算），真的变了才重新量，拖滑动条时不再每帧强制重排
+        var lastFont = document.body.style.fontFamily;
+        new MutationObserver(function () {
+            var f = document.body.style.fontFamily;
+            if (f === lastFont) return;
+            lastFont = f;
+            update();
+        }).observe(document.body, { attributes: true, attributeFilter: ["style"] });
     })();
 </script>

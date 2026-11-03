@@ -219,7 +219,8 @@
     <!-- 目录页：曲目列表解析完才渲染首帧，从阅读页返回时才能在首帧前滚到原位 -->
     <link rel="expect" href="#cw-foot" blocking="render">
     <% } %>
-    <link rel="stylesheet" href="<%- url_for('/static/carrier-wave/cw.css') %>?v=<%= page.album.version %>">
-    <script src="<%- url_for('/static/carrier-wave/cw.js') %>?v=<%= page.album.version %>" defer></script>
+    <%# 地址带内容哈希（asset_url）：文件没改就沿用缓存，原先按构建时间取版本号，每次部署都会失效 %>
+    <link rel="stylesheet" href="<%- asset_url('static/carrier-wave/cw.css') %>">
+    <script src="<%- asset_url('static/carrier-wave/cw.js') %>" defer></script>
 </head>
 

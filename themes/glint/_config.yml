@@ -28,14 +28,16 @@ social:
     link: 'mailto:g25811pr@gmail.com'
 background: '/images/webp/44ccd674949c189c.webp' # 主题背景
 menu: # 页眉菜单项目
-  '关于我': /about-me
-  '关于网站': /about-website
-  '留言板': /comments
+  '关于我': /about-me/
+  '关于网站': /about-website/
+  '留言板': /comments/
+  '归档': /archives/ # 导航收起时在卡片里与 Gizmo 并排
 menu_icons: # 手机端导航卡片图标（FontAwesome 4 图标名，按菜单名对应）
   '首页': home
   '关于我': user
   '关于网站': info-circle
   '留言板': comments
+  '归档': archive
 config:
   copyright: false # 复制的时候弹出保留原站链接说明
   night: true # 自动切换夜间模式

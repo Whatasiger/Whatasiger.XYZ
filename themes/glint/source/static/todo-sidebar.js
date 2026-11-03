@@ -203,6 +203,16 @@
         });
     }
 
+    // 周榜的抓取时间换成相对说法：今天 / 昨天 / x 天前（超过 60 天仍写日期）——数据只在构建时更新，读者能看出新旧
+    [].forEach.call(document.querySelectorAll(".todo-note[data-time]"), function (el) {
+        var t = new Date(el.getAttribute("data-time"));
+        if (isNaN(t)) return;
+        function dayNo(d) { return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5); }
+        var n = dayNo(new Date()) - dayNo(t);
+        if (n < 0 || n > 60) return;
+        el.textContent = "更新于 " + (n === 0 ? "今天" : n === 1 ? "昨天" : n + " 天前");
+    });
+
     var savedOpen = false;
     try { savedOpen = sessionStorage.getItem(STATE_KEY) === "1"; } catch (e) {}
     if (savedOpen) setOpen(true);

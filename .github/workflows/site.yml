@@ -1,0 +1,81 @@
+# 构建与检查（源码仓库 Whatasiger/Whatasiger.XYZ）
+#
+# - 推送到 main / 提 PR：完整构建（Glint + Origin + 压缩），再跑 tools/check-site.js（站内链接、页面体积、图片格式、一叶关卡）
+# - 每天北京时间 06:30 定时构建：顺带重新抓取网易云周榜、Bangumi 与友链，检查是否仍能构建通过
+# - 手动运行（Actions 页面 Run workflow）：可勾选「部署」
+#
+# 部署默认关闭，只在以下情况发生，且须先在仓库 Settings 里配好：
+#   - Secrets → DEPLOY_TOKEN：对 Whatasiger/Whatasiger.github.io 有 Contents 读写权限的 fine-grained token
+#   - 手动运行时勾选 deploy；或 Variables → AUTO_DEPLOY 设为 true 后，定时构建也会自动部署（刷新 TODO 周榜）
+# 部署方式与 hexo-deployer-git 等价：把 public/ 的内容提交到 Whatasiger.github.io 的 main（保留其提交历史，不强推）
+
+name: 构建与检查
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '30 22 * * *'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: '构建通过后部署到 Whatasiger.github.io'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: Asia/Shanghai
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建（Glint + Origin + 压缩）
+        run: npm run build
+
+      - name: 检查站点
+        run: node tools/check-site.js
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: public
+          path: public
+          retention-days: 7
+
+      - name: 部署到 Whatasiger.github.io
+        if: >-
+          env.DEPLOY_TOKEN != '' && github.ref == 'refs/heads/main' &&
+          ((github.event_name == 'workflow_dispatch' && inputs.deploy) ||
+           (github.event_name == 'schedule' && vars.AUTO_DEPLOY == 'true'))
+        run: |
+          git clone --depth 1 "https://x-access-token:${DEPLOY_TOKEN}@github.com/Whatasiger/Whatasiger.github.io.git" deploy
+          rsync -a --delete --exclude .git public/ deploy/
+          cd deploy
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有变化，不必部署"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Site updated: $(date '+%Y-%m-%d %H:%M:%S')（${{ github.event_name }}）"
+          git push origin HEAD:main

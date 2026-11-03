@@ -70,7 +70,8 @@
             <% } %>
         </ol>
         <% if (fetchedDate) { %>
-            <p class="todo-note">更新于 <%= fetchedDate %></p>
+            <%# 周榜在构建时抓取：显示「更新于 x 天前」（todo-sidebar.js 换算），悬停看具体日期 %>
+            <p class="todo-note" data-time="<%= todo.songsFetchedAt %>" title="<%= fetchedDate %>">更新于 <%= fetchedDate %></p>
         <% } %>
     </section>
 </aside>

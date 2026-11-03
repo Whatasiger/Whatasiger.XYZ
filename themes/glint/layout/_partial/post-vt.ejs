@@ -23,12 +23,30 @@
                 return !!hop && Date.now() - hop.t < 10000 && hop.to === norm(location.href) && isHome(hop.from);
             } catch (err) { return false; }
         }
+        // 从搜索结果 / 归档时间线点进来（_partial/title-hop.ejs 写下的 title-hop）
+        function fromTitleHop() {
+            try {
+                var hop = JSON.parse(sessionStorage.getItem('title-hop'));
+                if (!hop || hop.to !== norm(location.href) || Date.now() - hop.t > 10000) return false;
+                sessionStorage.removeItem('title-hop');
+                return true;
+            } catch (err) { return false; }
+        }
         // 过渡结束的信号：评论（Twikoo）等重活等它落定再开始，免得在过渡中途占住主线程（见 _partial/comments.ejs）
         var settle;
         window.vtSettled = new Promise(function (r) { settle = r; });
         if (!('onpagereveal' in window)) settle();
         window.addEventListener('pagereveal', function (e) {
             if (!e.viewTransition) { settle(); return; }
+            if (fromTitleHop()) {
+                // 只有标题一组：旧页的标题文字飞到正文标题处，页面整体交叉淡化（glint.css「标题一镜到底」）
+                e.viewTransition.finished.finally(settle);
+                if (window.pageReveal) pageReveal();
+                root.classList.add('vt-from-hop', 'vt-card-in');
+                vtFlip(e.viewTransition, { 'post-title': { old: 'auto', new: 'auto', el: '#vt-post-title' } });
+                e.viewTransition.finished.finally(function () { root.classList.remove('vt-from-hop'); });
+                return;
+            }
             if (!fromHome()) { e.viewTransition.skipTransition(); settle(); return; }
             e.viewTransition.finished.finally(settle);
             // 不等字体（head.ejs 的 page-loading）：首帧须有正文标题与卡片标题配对
@@ -45,9 +63,9 @@
             });
             e.viewTransition.finished.finally(function () { root.classList.remove('vt-from-card'); });
         });
-        // 离开文章页：不做过渡
+        // 离开文章页：不做过渡（从搜索结果点进另一篇文章除外，见 _partial/title-hop.ejs）
         window.addEventListener('pageswap', function (e) {
-            if (e.viewTransition) e.viewTransition.skipTransition();
+            if (e.viewTransition && !takeTitleHop(e)) e.viewTransition.skipTransition();
         });
     })();
 </script>

@@ -47,12 +47,17 @@ var Glint = function (config) {
         immersive: false,      // 沉浸模式：下滑收起顶栏，快速上滑才重新出现
         hideTodo: false,       // 是否关闭首页 TODO 侧边栏
         fontFamily: "noto-sans-sc", // 字体：noto-sans-sc（思源黑体）或 system-default（系统默认）
-        fontWeight: getWeightFromLevel(3), // 正文字重第三档
-        letterSpacing: 3,      // 字间距第六档（-2起步，第6个=3）
-        fontSize: 100,         // 字号第三档（90起步，第3heo个=110）
+        fontWeight: getWeightFromLevel(3), // 正文字重：五档中的第三档（500）
+        letterSpacing: 3,      // 字间距（-2 ~ 8，单位 0.01em，滑动条无级）
+        fontSize: 100,         // 字号百分比（90 ~ 130，滑动条无级）
         bgOpacity: 55,         // 背景可见度默认 55%（设置滑块按一半数值显示）
         bgBlur: 8,             // 背景模糊度（0~20px），文章页默认8px
-        accent: "blue"         // 主题色：blue（天青）/ lavender / sakura / mikan / wakakusa / mint，见 glint.css 第 0 节
+        accent: "blue",        // 主题色：blue（天青）/ lavender / sakura / mikan / wakakusa / mint，见 glint.css 第 0 节
+        bodyFont: "sans",      // 阅读页正文字体：sans（随「字体」）/ serif（思源宋体，选中才加载）
+        lineHeight: 1.8,       // 正文行距（1.5 ~ 2.4）
+        paraSpacing: 1,        // 段距（0 ~ 2em）
+        readWidth: 50,         // 行宽（36 ~ 60em，桌面端正文的最大宽度）
+        indent: false          // 段首缩进两字
     };
 
     var currentSettings = (function () {
@@ -336,17 +341,28 @@ var Glint = function (config) {
     function setupBgPrebake() {
         if (!document.querySelector(".home-hero")) return;
         ks(".post-item.card-style:not(.cw-card)").each(function (card) {
-            var layer = card.querySelector(".post-card-img:not(.post-card-blur)");
+            var layer = card.querySelector(".post-card-img[data-cover]");   // 卡片显示的是缩小的封面，文章页背景用原图（archive-list.ejs 记在 data-cover）
             if (!layer) return;
             function go() {
-                var m = layer.style.backgroundImage.match(/url\(\s*["']?([^"')]+)["']?\s*\)/);
+                var src = layer.getAttribute("data-cover");
                 var blur = typeof currentSettings.bgBlur === "number" ? currentSettings.bgBlur : defaultSettings.bgBlur;
-                if (m) bgBake.prebake(m[1], Math.max(0, Math.min(20, blur)));
+                if (src) bgBake.prebake(src, Math.max(0, Math.min(20, blur)));
             }
             ["pointerenter", "pointerdown", "focus"].forEach(function (t) {
                 card.addEventListener(t, go, { passive: true });
             });
         });
+    }
+
+    // 思源宋体：选「宋体」正文时才加载（首帧前由 head.ejs 按设置插入；在设置里切换时由这里插入），地址须与 head.ejs 一致
+    var SERIF_CSS = "https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap";
+    function loadSerif() {
+        if (document.getElementById("font-serif-css")) return;
+        var l = document.createElement("link");
+        l.rel = "stylesheet";
+        l.id = "font-serif-css";
+        l.href = SERIF_CSS;
+        document.head.appendChild(l);
     }
 
     function applyReadingSettings() {
@@ -399,6 +415,13 @@ var Glint = function (config) {
             body.style.setProperty("--reader-font-weight", String(currentSettings.fontWeight));
             body.style.setProperty("--reader-letter-spacing", (currentSettings.letterSpacing / 100) + "em");
             body.style.setProperty("--reader-font-size", (currentSettings.fontSize / 100) + "rem");
+            body.style.setProperty("--reader-line-height", String(currentSettings.lineHeight));
+            body.style.setProperty("--reader-para", currentSettings.paraSpacing + "em");
+            body.style.setProperty("--reader-width", currentSettings.readWidth + "em");
+            body.style.setProperty("--reader-indent", currentSettings.indent ? "2em" : "0");
+            var serif = currentSettings.bodyFont === "serif";
+            if (serif) loadSerif();
+            body.classList.toggle("reader-serif", serif);
         }
     }
 
@@ -407,7 +430,7 @@ var Glint = function (config) {
     }
 
     function updateAllSliderFills() {
-        var sliders = document.querySelectorAll(".settings-row-range input[type='range']");
+        var sliders = document.querySelectorAll(".settings-row-range input[type='range'], .settings-tile input[type='range']");
         for (var i = 0; i < sliders.length; i++) updateSliderFill(sliders[i]);
     }
 
@@ -420,7 +443,10 @@ var Glint = function (config) {
         "setting-letter-spacing": { format: function (v) { return (v > 0.05 ? "+" : "") + v.toFixed(1); } },
         "setting-font-size": { format: function (v) { return Math.round(v) + "%"; } },
         "setting-bg-opacity": { format: function (v) { return Math.round(v * 2) + "%"; } },
-        "setting-bg-blur": { format: function (v) { return v.toFixed(1) + "px"; } }
+        "setting-bg-blur": { format: function (v) { return v.toFixed(1) + "px"; } },
+        "setting-line-height": { format: function (v) { return v.toFixed(2); } },
+        "setting-para-spacing": { format: function (v) { return v.toFixed(1) + "em"; } },
+        "setting-read-width": { format: function (v) { return Math.round(v) + "em"; } }
     };
 
     function makeSlider(input, opt) {
@@ -557,6 +583,18 @@ var Glint = function (config) {
         var resetBtn = document.getElementById("setting-reset-btn");
         var accentInput = document.getElementById("setting-accent");
         var accentName = document.getElementById("setting-accent-name");
+        var bodyFontInput = document.getElementById("setting-body-font");
+        var lineInput = document.getElementById("setting-line-height");
+        var paraInput = document.getElementById("setting-para-spacing");
+        var widthInput = document.getElementById("setting-read-width");
+        var indentInput = document.getElementById("setting-indent");
+        function setBodyFontSegment(value) {
+            if (!bodyFontInput) return;
+            bodyFontInput.setAttribute("data-value", value);
+            [].forEach.call(bodyFontInput.querySelectorAll("button"), function (b) {
+                b.setAttribute("aria-checked", String(b.getAttribute("data-value") === value));
+            });
+        }
 
         // 初始化表单值
         if (immersiveInput) immersiveInput.checked = !!currentSettings.immersive;
@@ -590,6 +628,14 @@ var Glint = function (config) {
         if (weightInput) weightInput.value = getLevelFromWeight(currentSettings.fontWeight);
         if (letterInput) letterInput.value = currentSettings.letterSpacing;
         if (sizeInput) sizeInput.value = currentSettings.fontSize;
+        if (lineInput) lineInput.value = currentSettings.lineHeight;
+        if (paraInput) paraInput.value = currentSettings.paraSpacing;
+        if (widthInput) widthInput.value = currentSettings.readWidth;
+        if (indentInput) indentInput.checked = !!currentSettings.indent;
+        if (bodyFontInput) {
+            bodyFontInput.querySelector('[data-value="serif"]').style.fontFamily = '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif';
+            setBodyFontSegment(currentSettings.bodyFont || "sans");
+        }
         if (bgInput) bgInput.value = ((typeof currentSettings.bgOpacity === "number"
             ? currentSettings.bgOpacity
             : defaultSettings.bgOpacity) / 2);
@@ -603,6 +649,60 @@ var Glint = function (config) {
         if (!body.style.getPropertyValue("--bg-blur")) body.style.setProperty("--bg-blur", initBlur + "px");
 
         updateAllSliderFills();
+
+        // 分页「外观 / 阅读」：阅读页默认打开「阅读」，其余页面打开「外观」；本次浏览中记住上次停在哪页
+        var tabBar = panel.querySelector(".settings-tabs");
+        if (tabBar) {
+            var TAB_KEY = "glint-settings-tab";
+            var tabBtns = [].slice.call(tabBar.querySelectorAll("[role='tab']"));
+            var panes = [].slice.call(panel.querySelectorAll(".settings-pane"));
+            var setTab = function (name, focus) {
+                tabBar.setAttribute("data-tab", name);
+                tabBtns.forEach(function (b) {
+                    var on = b.getAttribute("data-tab") === name;
+                    b.setAttribute("aria-selected", String(on));
+                    b.tabIndex = on ? 0 : -1;
+                    if (on && focus) b.focus();
+                });
+                panes.forEach(function (p) {
+                    var on = p.getAttribute("data-pane") === name;
+                    p.setAttribute("aria-hidden", String(!on));
+                    p.toggleAttribute("inert", !on);
+                });
+                try { sessionStorage.setItem(TAB_KEY, name); } catch (e) {}
+            };
+            var savedTab = null;
+            try { savedTab = sessionStorage.getItem(TAB_KEY); } catch (e) {}
+            setTab(savedTab === "look" || savedTab === "read" ? savedTab : (isPostPage ? "read" : "look"));
+            tabBar.addEventListener("click", function (e) {
+                var b = e.target.closest("[role='tab']");
+                if (b) setTab(b.getAttribute("data-tab"));
+            });
+            tabBar.addEventListener("keydown", function (e) {
+                if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                e.preventDefault();
+                setTab(tabBar.getAttribute("data-tab") === "look" ? "read" : "look", true);
+            });
+        }
+
+        // 二选一按钮与分页也能拖动选择：按住拖，白色滑块跟着指针走，松手选中最近的一项（glintDragPick 见 header.ejs）
+        if (window.glintDragPick) [].forEach.call(panel.querySelectorAll(".settings-segment, .settings-tabs"), function (box) {
+            var btns = [].slice.call(box.querySelectorAll("button"));
+            var pad = box.classList.contains("settings-tabs") ? 3 : 2;     // 与 glint.css 里滑块的内缩一致
+            window.glintDragPick(box, {
+                items: function () { return btns; },
+                move: function (x, b) {
+                    var r = box.getBoundingClientRect(), w = (r.width - pad * 2) / 2;
+                    box.style.setProperty("--drag-x", Math.max(0, Math.min(r.width - pad * 2 - w, x - r.left - pad - w / 2)) + "px");
+                    btns.forEach(function (o) { o.classList.toggle("is-drag-target", o === b); });
+                },
+                end: function (b) {
+                    box.style.removeProperty("--drag-x");
+                    btns.forEach(function (o) { o.classList.remove("is-drag-target"); });
+                    if (b && b.getAttribute("aria-checked") !== "true" && b.getAttribute("aria-selected") !== "true") b.click();
+                }
+            });
+        });
 
         var setPanelOpen = bindDisclosure(panel, btn, "open");
         // 打开 / 关闭面板
@@ -705,6 +805,40 @@ var Glint = function (config) {
             });
         }
 
+        function bindReaderSlider(input, key, round) {
+            if (!input) return;
+            input.addEventListener("input", function () {
+                var v = parseFloat(this.value);
+                if (isNaN(v)) v = defaultSettings[key];
+                currentSettings[key] = Math.round(v * round) / round;
+                persistSettings();
+                applyReadingSettings();
+                updateSliderFill(this);
+            });
+        }
+        bindReaderSlider(lineInput, "lineHeight", 100);
+        bindReaderSlider(paraInput, "paraSpacing", 100);
+        bindReaderSlider(widthInput, "readWidth", 10);
+        if (indentInput) {
+            indentInput.addEventListener("change", function () {
+                currentSettings.indent = !!this.checked;
+                persistSettings();
+                applyReadingSettings();
+            });
+        }
+        if (bodyFontInput) {
+            bodyFontInput.addEventListener("click", function (e) {
+                var opt = e.target.closest("button[data-value]");
+                if (!opt) return;
+                var value = opt.getAttribute("data-value");
+                if (value === (currentSettings.bodyFont || "sans")) return;
+                setBodyFontSegment(value);
+                currentSettings.bodyFont = value;
+                persistSettings();
+                applyReadingSettings();
+            });
+        }
+
         if (sizeInput) {
             sizeInput.addEventListener("input", function () {
                 currentSettings.fontSize = Math.round((parseFloat(this.value) || defaultSettings.fontSize) * 10) / 10;
@@ -754,6 +888,7 @@ var Glint = function (config) {
                 currentSettings.bgOpacity = defaultSettings.bgOpacity;
                 currentSettings.bgBlur = defaultSettings.bgBlur;
                 currentSettings.accent = defaultSettings.accent;
+                ["bodyFont", "lineHeight", "paraSpacing", "readWidth", "indent"].forEach(function (k) { currentSettings[k] = defaultSettings[k]; });
 
                 persistSettings();
                 applyReadingSettings();
@@ -770,6 +905,11 @@ var Glint = function (config) {
                 if (weightInput) weightInput.value = getLevelFromWeight(currentSettings.fontWeight);
                 if (letterInput) letterInput.value = currentSettings.letterSpacing;
                 if (sizeInput) sizeInput.value = currentSettings.fontSize;
+                if (lineInput) lineInput.value = currentSettings.lineHeight;
+                if (paraInput) paraInput.value = currentSettings.paraSpacing;
+                if (widthInput) widthInput.value = currentSettings.readWidth;
+                if (indentInput) indentInput.checked = !!currentSettings.indent;
+                setBodyFontSegment(currentSettings.bodyFont);
                 if (bgInput) bgInput.value = currentSettings.bgOpacity / 2;
                 if (bgBlurInput) bgBlurInput.value = resetBlur;
                 updateAllSliderFills();
@@ -778,8 +918,8 @@ var Glint = function (config) {
     }
 
     // 首页右上角从按钮本身长出来的浮层（.corner-morph，见 glint.css「首页右上角浮层」）：
-    // 打开前量好起点（按钮 / 胶囊的布局尺寸，不含按下时的缩放）与终点高度写进 CSS 变量；两张卡可以同时开着，互不遮挡
-    // onToggle(open, 终点高度)：开合时回调（含 Esc 收起），音乐卡片用它让下方的背景按钮跟着让位
+    // 打开前量好起点（按钮 / 胶囊的布局尺寸，不含按下时的缩放）与终点高度写进 CSS 变量
+    // onToggle(open, 终点高度)：开合时回调（含 Esc 收起），可选
     function cornerMorph(panel, trigger, anchor, onToggle) {
         var inner = panel.querySelector(".corner-morph-inner");
         var openH = 0;
@@ -806,10 +946,10 @@ var Glint = function (config) {
             e.stopPropagation();
             set(!panel.classList.contains("open"));
         });
-        // 点浮层外面收起；点另一张卡或另一个按钮不算（两张卡可以同时开着）
+        // 点浮层外面收起（点胶囊上的按钮不算）
         document.addEventListener("click", function (e) {
             if (!panel.classList.contains("open")) return;
-            if (e.target.closest && e.target.closest(".corner-morph, .music-dock, .bg-dock")) return;
+            if (e.target.closest && e.target.closest(".corner-morph, .bg-dock")) return;
             set(false);
         });
         return set;
@@ -822,11 +962,25 @@ var Glint = function (config) {
         var BG_KEY = "whatasiger_home_bg";      // 与 head.ejs 首帧读取的键一致
         var tiles = [].slice.call(document.querySelectorAll(".bg-tile[data-bg-id]"));
         if (!tiles.length) return;
+        var DAILY = "@daily";                   // 「每日轮换」：按日期在各张之间轮换，算法与 head.ejs 首帧一致
+        var real = [];                          // 真实的背景 id（按 backgrounds.yml 顺序，去重）
+        tiles.forEach(function (t) {
+            var id = t.getAttribute("data-bg-id");
+            if (id !== DAILY && real.indexOf(id) === -1) real.push(id);
+        });
+        function todayId() {
+            var d = new Date();
+            var day = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5);
+            return real[day % real.length];
+        }
+        function resolve(id) { return id === DAILY ? todayId() : id; }
+        var credits = [].slice.call(document.querySelectorAll(".bg-credit"));
         var btn = ks.select(".bg-switch");
         var picker = document.getElementById("bg-picker");
         var nav = document.querySelector(".head-menu");
 
         function srcOf(id) {
+            id = resolve(id);
             for (var i = 0; i < tiles.length; i++) {
                 if (tiles[i].getAttribute("data-bg-id") === id) return tiles[i].getAttribute("data-bg-src");
             }
@@ -837,17 +991,31 @@ var Glint = function (config) {
         var shown = defaultId;                  // 屏上正显示的那张
         try {
             var saved = localStorage.getItem(BG_KEY);
-            if (saved && srcOf(saved)) shown = saved;
+            if (saved && (saved === DAILY || srcOf(saved))) shown = saved;
         } catch (e) {}
         var chosen = shown;                     // 刚选中的那张（原图可能还在加载）
         var seq = 0;                            // 连点时只认最后一次
 
+        function tileOf(id) {
+            for (var i = 0; i < tiles.length; i++) if (tiles[i].getAttribute("data-bg-id") === id && tiles[i].hasAttribute("data-bg-src")) return tiles[i];
+            return null;
+        }
         function mark() {
+            var today = chosen === DAILY ? todayId() : "";
             tiles.forEach(function (t) {
                 var id = t.getAttribute("data-bg-id");
                 t.classList.toggle("is-current", id === chosen);
+                t.classList.toggle("is-today", id === today);   // 每日轮换时，当天轮到的那张描一圈虚线
                 t.classList.toggle("is-loading", id === chosen && id !== shown);
                 t.setAttribute("aria-checked", String(id === chosen));
+            });
+            // 署名：屏上那张的画师与出处
+            var t = tileOf(resolve(shown));
+            var name = t && t.getAttribute("data-bg-name"), artist = t && t.getAttribute("data-bg-artist"), link = t && t.getAttribute("data-bg-link");
+            credits.forEach(function (c) {
+                c.classList.toggle("is-empty", !artist);
+                c.innerHTML = artist ? (shown === DAILY ? '<span class="bg-credit-tag">今日</span>' : "") + "「" + name + "」by " +
+                    (link ? '<a href="' + link + '" target="_blank" rel="noopener">' + artist + '<i class="fa fa-external-link" aria-hidden="true"></i></a>' : artist) : "";
             });
         }
 
@@ -856,7 +1024,7 @@ var Glint = function (config) {
             if (thumbsLoaded) return;
             thumbsLoaded = true;
             tiles.forEach(function (t) {
-                t.querySelector(".bg-tile-img").style.backgroundImage = 'url("' + t.getAttribute("data-bg-thumb") + '")';
+                if (t.hasAttribute("data-bg-thumb")) t.querySelector(".bg-tile-img").style.backgroundImage = 'url("' + t.getAttribute("data-bg-thumb") + '")';
             });
         }
 
@@ -869,7 +1037,7 @@ var Glint = function (config) {
 
         function setChoice(id) {
             var st = document.getElementById("bg-choice");
-            if (id === defaultId) { if (st) st.remove(); return; }
+            if (resolve(id) === defaultId) { if (st) st.remove(); return; }
             if (!st) {
                 st = document.createElement("style");
                 st.id = "bg-choice";
@@ -882,6 +1050,13 @@ var Glint = function (config) {
             if (id === chosen) return;
             var my = ++seq;
             chosen = id;
+            if (resolve(id) === resolve(shown)) {          // 换成「每日轮换」而今天正好轮到屏上这张（或反之）：不必换图
+                save(id);
+                shown = id;
+                setChoice(id);
+                mark();
+                return;
+            }
             mark();
             var img = new Image();
             var ready = new Promise(function (resolve, reject) {
@@ -967,182 +1142,6 @@ var Glint = function (config) {
         mark(root.classList.contains("home-zen"));
     }
 
-    // 首页轻音乐（_data/music.yml）：首页右上角的胶囊 .music-dock + 选曲浮层 .music-picker，顶栏导航收起时在导航卡片的 .head-menu-music
-    // 两处的播放键 / 曲目同步；平时不加载音频（preload none），按下播放才下载；播放 / 暂停有短促的音量渐变
-    // 所选曲目存 localStorage，播放状态与进度存 sessionStorage：本次浏览中回到首页（翻页、从文章返回）接着放，浏览器不许自动播放时就停在暂停
-    function setupHomeMusic() {
-        var MUSIC_KEY = "whatasiger_home_music";    // 所选曲目 id
-        var SESSION_KEY = "glint-home-music";       // { id, t, on }
-        var VOLUME = 0.6;
-        var plays = [].slice.call(document.querySelectorAll(".music-play"));
-        if (!plays.length) return;
-        var firstList = document.querySelector(".music-list");
-        var list = firstList ? [].map.call(firstList.querySelectorAll(".music-track"), function (t) {
-            return { id: t.getAttribute("data-music-id"), src: t.getAttribute("data-music-src"),
-                name: t.getAttribute("data-music-name"), artist: t.getAttribute("data-music-artist") };
-        }) : [];
-        var tracks = [].slice.call(document.querySelectorAll(".music-track[data-music-id]"));
-        var holders = [].slice.call(document.querySelectorAll(".music-dock, .head-menu-music"));
-        var nows = [].slice.call(document.querySelectorAll(".music-now"));
-        var picker = document.getElementById("music-picker");
-        var dockMore = ks.select(".music-dock .music-more");
-        var navMusic = document.querySelector(".head-menu-music");
-
-        function find(id) {
-            for (var i = 0; i < list.length; i++) if (list[i].id === id) return i;
-            return -1;
-        }
-        var index = 0;
-        try { index = Math.max(0, find(localStorage.getItem(MUSIC_KEY))); } catch (e) {}
-        var audio = new Audio();
-        audio.preload = "none";
-        var playing = false, loading = false, fadeRaf = 0;
-
-        function sync() {
-            var cur = list[index];
-            plays.forEach(function (b) {
-                b.classList.toggle("is-playing", playing);
-                b.classList.toggle("is-loading", playing && loading);
-                b.setAttribute("aria-pressed", String(playing));
-                b.setAttribute("aria-label", playing ? "暂停音乐" : "播放音乐");
-            });
-            holders.forEach(function (h) { h.classList.toggle("is-playing", playing); });
-            tracks.forEach(function (t) {
-                var on = !!cur && t.getAttribute("data-music-id") === cur.id;
-                t.classList.toggle("is-current", on);
-                t.classList.toggle("is-playing", on && playing && !loading);
-                t.setAttribute("aria-checked", String(on));
-            });
-            nows.forEach(function (n) { n.textContent = cur ? cur.name : "首页音乐"; });
-        }
-
-        // 音量渐变（iOS 不许脚本改音量，渐变无效，直接播 / 停）
-        function fade(to, ms, done) {
-            cancelAnimationFrame(fadeRaf);
-            var from = audio.volume, start = performance.now();
-            (function step(now) {
-                var k = Math.min(1, (now - start) / ms);
-                audio.volume = from + (to - from) * k;
-                if (k < 1) fadeRaf = requestAnimationFrame(step);
-                else if (done) done();
-            })(start);
-        }
-
-        function load(i) {
-            index = i;
-            var cur = list[index];
-            if (audio.getAttribute("src") !== cur.src) audio.src = cur.src;
-            audio.loop = list.length === 1;
-            try { localStorage.setItem(MUSIC_KEY, cur.id); } catch (e) {}
-            if ("mediaSession" in navigator && window.MediaMetadata) {
-                navigator.mediaSession.metadata = new MediaMetadata({ title: cur.name, artist: cur.artist || "Whatasiger" });
-            }
-        }
-
-        function play(from) {
-            if (!list.length) { openList(); return; }
-            load(index);
-            if (from > 0) {
-                var seek = function () { try { audio.currentTime = from; } catch (e) {} };
-                if (audio.readyState >= 1) seek(); else audio.addEventListener("loadedmetadata", seek, { once: true });
-            }
-            playing = true;
-            loading = audio.readyState < 3;
-            sync();
-            audio.volume = 0;
-            var p = audio.play();
-            if (p && p.then) p.then(function () { if (playing) fade(VOLUME, 600); }, function () { playing = false; loading = false; sync(); });
-            else fade(VOLUME, 600);
-        }
-        function pause() {
-            playing = false;
-            loading = false;
-            sync();
-            fade(0, 350, function () { if (!playing) audio.pause(); });
-        }
-
-        audio.addEventListener("waiting", function () { if (playing) { loading = true; sync(); } });
-        audio.addEventListener("playing", function () { loading = false; sync(); });
-        audio.addEventListener("ended", function () {     // 只有一首时由 loop 单曲循环，不会走到这里
-            index = (index + 1) % list.length;
-            play(0);
-        });
-        audio.addEventListener("error", function () { if (playing) { playing = false; loading = false; sync(); } });
-
-        plays.forEach(function (b) {
-            b.addEventListener("click", function (e) {
-                e.stopPropagation();
-                if (playing) pause(); else play(audio.currentTime);
-            });
-        });
-        tracks.forEach(function (t) {
-            t.addEventListener("click", function () {
-                var i = find(t.getAttribute("data-music-id"));
-                if (i < 0) return;
-                if (i === index && playing) return;
-                var from = i === index ? audio.currentTime : 0;   // 点暂停中的当前曲目：接着放
-                index = i;
-                play(from);
-            });
-        });
-        if ("mediaSession" in navigator) {
-            try {
-                navigator.mediaSession.setActionHandler("play", function () { play(audio.currentTime); });
-                navigator.mediaSession.setActionHandler("pause", pause);
-                navigator.mediaSession.setActionHandler("nexttrack", function () { if (list.length > 1) { index = (index + 1) % list.length; play(0); } });
-            } catch (e) {}
-        }
-
-        // 选曲：桌面是浮层，导航卡片里是就地展开的一列
-        var dock = document.querySelector(".music-dock");
-        // 音乐那一块此刻的高度（胶囊或展开后的卡片）写到根上，背景按钮 / 卡片排在它下方（glint.css --music-stack）
-        function setStack(h) { document.documentElement.style.setProperty("--music-stack", h + "px"); }
-        if (dock) setStack(dock.offsetHeight);
-        var setPickerOpen = picker && dockMore && dock ? cornerMorph(picker, dockMore, dock, function (open, h) {
-            setStack(open ? h : dock.offsetHeight);
-        }) : null;
-        function openList() {
-            if (setPickerOpen && !document.documentElement.classList.contains("nav-collapsed")) setPickerOpen(true);
-            else if (navMusic) toggleNavList(true);
-        }
-        // 导航卡片里就地展开：高度按实测值过渡（不用 grid 行高，速率才是缓动曲线本身），曲目随后依次浮现
-        function toggleNavList(open) {
-            var box = navMusic.querySelector(".head-menu-music-list");
-            box.style.setProperty("--list-h", box.firstElementChild.offsetHeight + "px");
-            navMusic.classList.toggle("is-open", open);
-            navMusic.querySelector(".music-more").setAttribute("aria-expanded", String(open));
-            box.toggleAttribute("inert", !open); // 收着时不能 Tab 进去
-        }
-        if (navMusic) {
-            toggleNavList(false);
-            navMusic.querySelector(".music-more").addEventListener("click", function () {
-                toggleNavList(!navMusic.classList.contains("is-open"));
-            });
-        }
-
-        // 离开首页时记下进度；回来（含从文章后退、bfcache 恢复）时接着放
-        function remember() {
-            try {
-                var cur = list[index];
-                if (cur) sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: cur.id, t: audio.currentTime || 0, on: playing }));
-            } catch (e) {}
-        }
-        window.addEventListener("pagehide", remember);
-        window.addEventListener("pageshow", function (e) {
-            if (e.persisted && playing) { audio.volume = 0; audio.play().then(function () { fade(VOLUME, 600); }, pause); }
-        });
-        function resume() {
-            try {
-                var s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
-                if (s && s.on && list[index] && s.id === list[index].id) play(s.t || 0);
-            } catch (e) {}
-        }
-        sync();
-        if (document.prerendering) document.addEventListener("prerenderingchange", resume, { once: true });
-        else resume();
-    }
-
-    // 菜单按钮
     this.header = function () {
         var menu = document.getElementsByClassName("head-menu")[0];
         var toggleBtn = ks.select(".toggle-btn");
@@ -1201,7 +1200,6 @@ var Glint = function (config) {
         setupFancySliders();
         setupBgSwitch();
         setupHomeZen();
-        setupHomeMusic();
     };
 
     // 沉浸模式：向下滚动即收起顶栏；向上滚动要够快才唤出（慢慢往回翻不会打扰阅读）
@@ -1216,7 +1214,7 @@ var Glint = function (config) {
 
         // 有浮层打开或正在搜索时不收起，免得面板没了依托
         function busy() {
-            return !!document.querySelector(".settings-panel.open, .bg-picker.open, .music-picker.open, .head-menu.active, .head-search.active") ||
+            return !!document.querySelector(".settings-panel.open, .bg-picker.open, .head-menu.active, .head-search.active, .search-panel.open") ||
                 (document.activeElement && document.activeElement.id === "local-search-input");
         }
 
@@ -1365,9 +1363,12 @@ var Glint = function (config) {
             }, { timeout: 1500 });
         }
         function bake(el, done) {
-            var src = el.dataset.src || el.style.backgroundImage;
+            // 卡片封面可能是 image-set(1x, 2x)（archive-list.ejs）或还在 data-bg-style 里没写上：按设备像素比取对应那张来烤
+            var src = el.dataset.src || el.getAttribute("data-bg-style") || el.style.backgroundImage;
             el.dataset.src = src;       // 原图地址：重新烤时要从原图来，不能拿烤过的图再模糊
-            var m = src.match(/url\(\s*["']?([^"')]+)["']?\s*\)/);
+            var urls = [], um, ure = /url\(\s*["']?([^"')]+)["']?\s*\)/g;
+            while ((um = ure.exec(src))) urls.push(um[1]);
+            var m = urls.length ? [null, DPR > 1.25 ? urls[urls.length - 1] : urls[0]] : null;
             var w = el.offsetWidth, h = el.offsetHeight;   // 不用中间层的浏览器里它是 display: none，宽高为 0，跳过
             var L = LAYERS[el.classList.contains("post-card-soft") ? "post-card-soft" : "post-card-blur"];
             var BLUR = L.blur, BRIGHT = L.bright, Q = L.q * DPR;
@@ -1412,6 +1413,7 @@ var Glint = function (config) {
                         pre.src = url;
                         (pre.decode ? pre.decode() : Promise.resolve()).then(function () {
                             var old = el.dataset.blurUrl;
+                            el.removeAttribute("data-bg-style");   // 还没轮到延后加载时已烤好：不再写回封面
                             el.style.backgroundImage = 'url("' + url + '")';
                             el.classList.add("is-baked");
                             el.dataset.blurUrl = url;
@@ -1452,24 +1454,45 @@ var Glint = function (config) {
     }
 
     // 关灯切换 (使用 sessionStorage 记忆单次会话)
+    // 日夜切换：支持视图过渡时，新的配色从日月按钮处以圆形向外扩散铺满整屏（clip-path 动画挂在 ::view-transition-new(root) 上，
+    // 缓动先快后缓）；不支持或要求减少动效时直接切换。记忆仍在 sessionStorage（header.ejs 首帧前读取）
     this.night = function () {
-        if(body.classList.contains("dark-theme")){
-            body.classList.remove("dark-theme");
-            sessionStorage.setItem("theme", "light");
-        }
-        else{
-            body.classList.add("dark-theme");
-            sessionStorage.setItem("theme", "dark");
+        var btn = ks.select(".light-btn");
+        var root = document.documentElement;
+        function flip() {
+            if (body.classList.contains("dark-theme")) {
+                body.classList.remove("dark-theme");
+                sessionStorage.setItem("theme", "light");
+            } else {
+                body.classList.add("dark-theme");
+                sessionStorage.setItem("theme", "dark");
+            }
+            updateAllSliderFills();
         }
         // 日月图标转入：先摘掉再强制回流，连点时动画也能重新开始
-        var btn = ks.select(".light-btn");
-        if (btn) {
+        function spin() {
+            if (!btn) return;
             btn.classList.remove("is-flipping");
             void btn.offsetWidth;
             btn.classList.add("is-flipping");
             btn.addEventListener("animationend", function () { btn.classList.remove("is-flipping"); }, { once: true });
         }
-        updateAllSliderFills();
+        if (!document.startViewTransition || !btn || root.classList.contains("theme-flipping") ||
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            flip();
+            spin();
+            return;
+        }
+        var r = btn.getBoundingClientRect();
+        var x = r.left + r.width / 2, y = r.top + r.height / 2;
+        var R = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+        root.classList.add("theme-flipping");
+        var vt = document.startViewTransition(function () { flip(); spin(); });
+        vt.ready.then(function () {
+            root.animate({ clipPath: ["circle(0px at " + x + "px " + y + "px)", "circle(" + R + "px at " + x + "px " + y + "px)"] },
+                { duration: 720, easing: "cubic-bezier(.22, 1, .36, 1)", pseudoElement: "::view-transition-new(root)" });
+        }, function () {});
+        vt.finished.finally(function () { root.classList.remove("theme-flipping"); });
     };
 
     // 目录树
@@ -1828,6 +1851,109 @@ var Glint = function (config) {
     };
 
     // 自动添加外链
+    // 脚注就地预览（glint.css「脚注预览」）：不必跳到文末再跳回来
+    // - 有精确指针时：悬停 / 键盘聚焦脚注标号片刻即在旁边浮出一张小毛玻璃卡片，点标号照旧跳到文末
+    // - 触屏：点标号先浮出卡片（再点一次或点卡片里的「跳到文末」才跳），点别处 / 滚动即收起
+    // - 卡片从标号处弹出（transform-origin 对准标号，展开用 --ease-spring）；内容取自文末对应的脚注，去掉回跳符号
+    var fnPeek = null;
+    function setupFootnotePeek() {
+        if (!content || !content.querySelector("a[data-footnote-ref]")) return;
+        var fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+        var pop = document.createElement("div");
+        pop.className = "fn-peek";
+        pop.id = "fn-peek";
+        pop.setAttribute("role", "tooltip");
+        pop.setAttribute("aria-hidden", "true");
+        pop.innerHTML = '<div class="fn-peek-head"><span class="fn-peek-no"></span><a class="fn-peek-jump" href="#">跳到文末<i class="fa fa-angle-down" aria-hidden="true"></i></a></div><div class="fn-peek-body"></div>';
+        document.body.appendChild(pop);
+        var noEl = pop.querySelector(".fn-peek-no"), bodyEl = pop.querySelector(".fn-peek-body"), jump = pop.querySelector(".fn-peek-jump");
+        var current = null, showTimer = 0, hideTimer = 0;
+
+        function targetOf(a) {
+            var id = (a.getAttribute("href") || "").slice(1);
+            try { id = decodeURIComponent(id); } catch (e) {}
+            return id ? document.getElementById(id) : null;
+        }
+        function show(a) {
+            clearTimeout(hideTimer);
+            var li = targetOf(a);
+            if (!li) return;
+            if (current !== a) {
+                var clone = li.cloneNode(true);
+                [].forEach.call(clone.querySelectorAll("[data-footnote-backref]"), function (b) { b.remove(); });
+                bodyEl.innerHTML = clone.innerHTML;
+                noEl.textContent = "注 " + a.textContent.trim();
+                jump.setAttribute("href", a.getAttribute("href"));
+                if (current) current.removeAttribute("aria-describedby");
+                current = a;
+            }
+            a.setAttribute("aria-describedby", "fn-peek");
+            // 定位：优先放在标号下方，放不下就放上方；左右夹在视口内，弹出原点对准标号
+            var r = a.getBoundingClientRect();
+            var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+            var w = Math.min(352, vw - 24);
+            pop.style.width = w + "px";
+            pop.classList.add("is-measuring");
+            var h = pop.offsetHeight;
+            pop.classList.remove("is-measuring");
+            var cx = r.left + r.width / 2;
+            var left = Math.max(12, Math.min(vw - w - 12, cx - w / 2));
+            var below = r.bottom + 10 + h <= vh - 12 || r.top - 10 - h < 60;
+            var top = below ? r.bottom + 10 : r.top - 10 - h;
+            pop.style.left = left + "px";
+            pop.style.top = Math.max(60, top) + "px";
+            pop.style.setProperty("--ox", (cx - left) + "px");
+            pop.style.setProperty("--oy", below ? "-10px" : (h + 10) + "px");
+            pop.classList.toggle("is-above", !below);
+            pop.setAttribute("aria-hidden", "false");
+            pop.classList.add("open");
+        }
+        function hide(delay) {
+            clearTimeout(showTimer);
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(function () {
+                pop.classList.remove("open");
+                pop.setAttribute("aria-hidden", "true");
+                if (current) current.removeAttribute("aria-describedby");
+            }, delay || 0);
+        }
+        function isOpen() { return pop.classList.contains("open"); }
+
+        [].forEach.call(content.querySelectorAll("a[data-footnote-ref]"), function (a) {
+            if (fine) {
+                a.addEventListener("pointerenter", function () { clearTimeout(hideTimer); clearTimeout(showTimer); showTimer = setTimeout(function () { show(a); }, isOpen() ? 0 : 140); });
+                a.addEventListener("pointerleave", function () { hide(220); });
+            }
+            a.addEventListener("focus", function () { show(a); });
+            a.addEventListener("blur", function () { if (!pop.contains(document.activeElement)) hide(150); });
+        });
+        if (fine) {
+            pop.addEventListener("pointerenter", function () { clearTimeout(hideTimer); });
+            pop.addEventListener("pointerleave", function () { hide(220); });
+        }
+        jump.addEventListener("click", function (e) {
+            var li = current && targetOf(current);
+            if (!li) return;
+            e.preventDefault();
+            hide();
+            li.scrollIntoView({ behavior: "smooth", block: "start" });
+            history.pushState(null, "", jump.getAttribute("href"));
+        });
+        document.addEventListener("pointerdown", function (e) {
+            if (isOpen() && !pop.contains(e.target) && !e.target.closest("a[data-footnote-ref]")) hide();
+        });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape" && isOpen()) hide(); });
+        onScrollFrame(function () { if (isOpen() && !fine) hide(); else if (isOpen() && current) show(current); });
+
+        // 供下方 links() 的点击处理调用：触屏上第一次点标号只浮出卡片，返回 true 表示已处理（不跳转）
+        fnPeek = function (a) {
+            if (fine) { hide(); return false; }
+            if (isOpen() && current === a) return false;
+            show(a);
+            return true;
+        };
+    }
+
     this.links = function () {
         var l = content.getElementsByTagName("a");
 
@@ -1843,6 +1969,7 @@ var Glint = function (config) {
         content.addEventListener("click", function (e) {
             var a = e.target.closest("a[data-footnote-ref], a[data-footnote-backref]");
             if (!a) return;
+            if (a.hasAttribute("data-footnote-ref") && fnPeek && fnPeek(a)) { e.preventDefault(); return; }   // 触屏：先就地预览
             var href = a.getAttribute("href");
             if (!href || href.charAt(0) !== "#") return;
             var target = document.getElementById(href.slice(1));
@@ -1877,6 +2004,7 @@ var Glint = function (config) {
     if(!content) body.classList.remove("has-trees");
     if(content){
         this.tree();
+        setupFootnotePeek();
         this.links();
         this.comment_list();
     }
@@ -1884,20 +2012,7 @@ var Glint = function (config) {
     // 首次应用阅读设置（在夜间模式与其它初始化之前执行）
     applyReadingSettings();
 
-    // 如果开启自动夜间模式
-    // =========================================
-    // 主题初始化逻辑：基于 sessionStorage 和默认关灯设定
-    // =========================================
-    var currentTheme = sessionStorage.getItem("theme");
-
-    if (currentTheme === "light") {
-        // 如果当前标签页明确记录了你要开灯，则保持开灯
-        document.body.classList.remove("dark-theme");
-    } else {
-        // 否则（没记录，或是你彻底关闭后重新打开的新标签页），一律强制进入默认的关灯模式
-        document.body.classList.add("dark-theme");
-        sessionStorage.setItem("theme", "dark");
-    }
+    // 日夜模式在 header.ejs 开头首帧前就已敲定（sessionStorage theme），这里不再重复
 
     // 如果开启复制内容提示
     if(config.copyright){
@@ -1910,240 +2025,584 @@ var Glint = function (config) {
     // ! Hexo 特别功能
     //
 
-    // 本地全文搜索（标题 / 标签 / 正文 三路匹配，并显示正文片段）
+    // 站内搜索（glint.css「站内搜索」）：顶栏的搜索框 + 从它下方长出来的毛玻璃面板 .search-panel
+    // - 索引 /search.json（scripts/search-index.js）：文章、独立页面、CARRiER WAVE. 各篇、Gizmo；第一次聚焦（或指针移上）才下载
+    // - 空格分隔多个词，须全部命中；按「标题 > 标签 > 简介 > 正文命中次数」打分排序，正文最多摘两段、所有词都高亮
+    // - ↑↓ 选择（强调框弹簧滑动）、↵ 打开、Esc 关闭；任何页面按 / 或 Ctrl / ⌘ + K 唤起
+    // - 点文章结果时标题文字一路飞到文章页的正文标题处（_partial/title-hop.ejs）
     this.local_search = function () {
         var input = document.getElementById("local-search-input");
-        var result = document.getElementById("local-search-result");
+        var panel = document.getElementById("search-panel");
+        var list = document.getElementById("local-search-result");
+        if (!input || !panel || !list) return;
+        var bar = input.closest(".head-search");
+        var status = panel.querySelector(".search-status");
+        var pill = list.querySelector(".search-pill");
+        var root = document.documentElement;
+        var MAX = 20;
+        var data = null, loading = null, failed = false, composing = false, open = false;
+        var items = [], active = -1, timer = 0, lastQuery = null;
 
-        if (!input || !result) return;
-
-        // ----- 工具函数 -----
-        function escapeHtml(s) {
-            return String(s)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
+        function esc(s) {
+            return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         }
-        function escapeRegExp(s) {
-            return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        function escRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+        function load() {
+            if (data) return Promise.resolve(data);
+            if (loading) return loading;
+            loading = fetch("/search.json", { credentials: "same-origin" }).then(function (r) {
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                return r.json();
+            }).then(function (arr) {
+                data = arr.map(function (x) {
+                    x.g = x.g || [];
+                    x.tl = String(x.t || "").toLowerCase();
+                    x.gl = x.g.map(function (g) { return String(g).toLowerCase(); });
+                    x.sl = String(x.s || "").toLowerCase();
+                    x.cl = String(x.c || "").toLowerCase();
+                    return x;
+                });
+                failed = false;
+                return data;
+            }).catch(function (err) { loading = null; failed = true; throw err; });
+            return loading;
         }
-        // 把 HTML 摘要里的标签去掉、空白压一压，得到纯文本
-        function plainText(html) {
-            return String(html || "")
-                .replace(/<style[\s\S]*?<\/style>/gi, " ")
-                .replace(/<script[\s\S]*?<\/script>/gi, " ")
-                .replace(/<[^>]+>/g, " ")
-                .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&quot;/g, '"')
-                .replace(/&#39;/g, "'")
-                .replace(/\s+/g, " ")
-                .trim();
+
+        function count(hay, t) {
+            var n = 0, i = hay.indexOf(t);
+            while (i > -1 && n < 30) { n++; i = hay.indexOf(t, i + t.length); }
+            return n;
         }
-        // 在 contentLower 里找 keyword，截一段上下文做高亮
-        function buildSnippet(content, keyword, contextLen) {
-            if (!content) return "";
-            var lower = content.toLowerCase();
-            var idx = lower.indexOf(keyword);
-            if (idx === -1) return "";
-
-            var half = Math.max(15, Math.floor((contextLen || 80) / 2));
-            var start = Math.max(0, idx - half);
-            var end = Math.min(content.length, idx + keyword.length + half);
-
-            var snippet = content.slice(start, end);
-            if (start > 0) snippet = "…" + snippet;
-            if (end < content.length) snippet = snippet + "…";
-
-            // 转义后再用占位符替换实现高亮，避免高亮标签被一并转义
-            var safeSnippet = escapeHtml(snippet);
-            var pattern = new RegExp(escapeRegExp(escapeHtml(keyword)), "gi");
-            return safeSnippet.replace(pattern, function (m) {
-                return '<mark class="search-result-mark">' + m + "</mark>";
+        function score(x, terms) {
+            var sc = 0;
+            for (var k = 0; k < terms.length; k++) {
+                var t = terms[k], hit = false, p = x.tl.indexOf(t);
+                if (p > -1) { sc += p === 0 ? 14 : 10; hit = true; }
+                for (var j = 0; j < x.gl.length; j++) {
+                    if (x.gl[j] === t) { sc += 8; hit = true; }
+                    else if (x.gl[j].indexOf(t) > -1) { sc += 5; hit = true; }
+                }
+                if (x.sl.indexOf(t) > -1) { sc += 3; hit = true; }
+                var n = count(x.cl, t);
+                if (n) { sc += 1 + Math.min(n, 10) * 0.5; hit = true; }
+                if (!hit) return -1;
+            }
+            return sc;
+        }
+        function mark(text, re) {
+            return esc(text).replace(re, function (m) { return '<mark>' + m + "</mark>"; });
+        }
+        // 正文摘段：各词第一次出现的位置，彼此相距够远才另起一段，最多两段
+        function snippets(x, terms, re) {
+            var spots = [];
+            terms.forEach(function (t) {
+                var i = x.cl.indexOf(t);
+                if (i > -1) spots.push(i);
             });
+            spots.sort(function (a, b) { return a - b; });
+            var out = [], last = -1e9;
+            for (var i = 0; i < spots.length && out.length < 2; i++) {
+                if (spots[i] - last < 70) continue;
+                last = spots[i];
+                var a = Math.max(0, spots[i] - 28), b = Math.min(x.c.length, spots[i] + 52);
+                var s = x.c.slice(a, b).replace(/\n+/g, " / ");
+                out.push((a > 0 ? "…" : "") + mark(s, re) + (b < x.c.length ? "…" : ""));
+            }
+            return out;
         }
 
-        // 先绑定交互，再按需加载；并发 focus/input 共用同一个 Promise，失败可重试。
-        var datas = null, indexPromise = null, composing = false, dismissed = false;
-        var MAX_RESULTS = 8, debounceTimer = null;
-        function hideResults() {
-            result.style.display = "none";
-            result.setAttribute("inert", "");
-            input.setAttribute("aria-expanded", "false");
-        }
-        function showResults() {
-            if (dismissed || !input.value.trim()) { hideResults(); return; }
-            result.style.display = "block";
-            result.removeAttribute("inert");
-            input.setAttribute("aria-expanded", "true");
-        }
-        function ensureIndex() {
-            if (datas) return Promise.resolve(datas);
-            if (indexPromise) return indexPromise;
-            indexPromise = new Promise(function (resolve, reject) {
-                var xhr = new XMLHttpRequest();
-                xhr.open("GET", "/search.xml", true);
-                xhr.timeout = 15000;
-                xhr.onerror = xhr.ontimeout = xhr.onabort = function () { reject(new Error("search index unavailable")); };
-                xhr.onload = function () {
-                    var xml = xhr.responseXML;
-                    if (xhr.status < 200 || xhr.status >= 400 || !xml || xml.querySelector("parsererror")) {
-                        reject(new Error("invalid search index"));
-                        return;
-                    }
-                    datas = Array.from(xml.querySelectorAll("entry")).map(function (entry) {
-                        var tags = Array.from(entry.querySelectorAll("tags tag")).map(function (t) {
-                            return t.textContent;
-                        }).join(" ");
+        function setStatus(html) { status.innerHTML = html || ""; }
 
-                        var contentNode = entry.querySelector("content");
-                        var contentText = contentNode ? plainText(contentNode.textContent) : "";
-
-                        return {
-                            title: entry.querySelector("title") ? entry.querySelector("title").textContent : "",
-                            url: entry.querySelector("url") ? entry.querySelector("url").textContent : "",
-                            tags: tags,
-                            content: contentText
-                        };
-                    });
-
-                    resolve(datas);
-                };
-                xhr.send();
-            }).catch(function (error) { indexPromise = null; throw error; });
-            return indexPromise;
-        }
-
-        function runSearch() {
-            if (composing || !datas || dismissed) return;
-            var keyword = input.value.trim().toLowerCase();
-            result.innerHTML = "";
-
-            if (keyword.length <= 0) {
-                hideResults();
+        function render() {
+            if (composing) return;
+            var q = input.value.trim();
+            panel.classList.toggle("has-query", !!q);
+            if (!q) { lastQuery = ""; fill([]); setStatus(""); return; }
+            if (!data) {
+                setStatus(failed ? '索引加载失败，<button type="button" class="search-retry">重试</button>' : "正在载入索引…");
+                load().then(render, function () { render(); });
                 return;
             }
-
-            var str = '<ul class="search-result-list">';
-            var hits = 0;
-
-            for (var i = 0; i < datas.length && hits < MAX_RESULTS; i++) {
-                var data = datas[i];
-                var titleLower = data.title.toLowerCase();
-                var tagsLower = data.tags.toLowerCase();
-                var contentLower = data.content.toLowerCase();
-
-                var inTitle = titleLower.indexOf(keyword) > -1;
-                var inTags = tagsLower.indexOf(keyword) > -1;
-                var inContent = contentLower.indexOf(keyword) > -1;
-
-                if (!inTitle && !inTags && !inContent) continue;
-
-                str += '<li class="search-result-item">';
-                str += '<a href="' + escapeHtml(data.url) + '" class="search-result-link">';
-                str += '<span class="search-result-title">' + escapeHtml(data.title) + "</span>";
-
-                if (inTags && !inTitle) {
-                    str += '<span class="search-result-tag-hint"> # 匹配到标签</span>';
-                }
-                if (inContent && !inTitle) {
-                    var snippet = buildSnippet(data.content, keyword, 80);
-                    if (snippet) {
-                        str += '<span class="search-result-snippet">' + snippet + "</span>";
-                    }
-                }
-
-                str += "</a></li>";
-                hits++;
-            }
-
-            if (hits > 0) {
-                result.innerHTML = str + "</ul>";
-                showResults();
-            } else {
-                result.innerHTML =
-                    '<div class="search-no-result">呜... 没有找到与 "' +
-                    escapeHtml(keyword) +
-                    '" 相关的文章</div>';
-                showResults();
-            }
-        }
-
-        function requestSearch() {
-            ensureIndex().then(function () { runSearch(); }, function () {
-                if (dismissed || composing || !input.value.trim()) return;
-                result.innerHTML = '<div role="status">搜索加载失败，<button type="button" data-search-retry>重试</button></div>';
-                showResults();
+            if (q === lastQuery) return;
+            lastQuery = q;
+            var terms = q.toLowerCase().split(/\s+/).filter(Boolean).filter(function (t, i, a) { return a.indexOf(t) === i; });
+            var re = new RegExp(terms.slice().sort(function (a, b) { return b.length - a.length; }).map(function (t) { return escRe(esc(t)); }).join("|"), "gi");
+            var hits = [];
+            data.forEach(function (x) {
+                var sc = score(x, terms);
+                if (sc >= 0) hits.push({ x: x, sc: sc });
             });
+            hits.sort(function (a, b) { return b.sc - a.sc || (b.x.d > a.x.d ? 1 : b.x.d < a.x.d ? -1 : 0); });
+            var total = hits.length;
+            fill(hits.slice(0, MAX).map(function (h) { return { x: h.x, terms: terms, re: re }; }));
+            setStatus(total ? "共 " + total + " 条" + (total > MAX ? "，显示前 " + MAX + " 条" : "") : "没有找到与「" + esc(q) + "」相关的内容");
         }
-        input.addEventListener("focus", function () { dismissed = false; requestSearch(); });
-        input.addEventListener("input", function (e) {
-            dismissed = false;
-            clearTimeout(debounceTimer);
-            if (composing || e.isComposing) return;
-            if (!input.value.trim()) hideResults();
-            debounceTimer = setTimeout(requestSearch, 80);
-        });
-        input.addEventListener("compositionstart", function () { composing = true; clearTimeout(debounceTimer); });
-        input.addEventListener("compositionend", function () { composing = false; dismissed = false; requestSearch(); });
-        result.addEventListener("click", function (e) {
-            if (e.target.closest("[data-search-retry]")) requestSearch();
-        });
-        var searchArea = input.closest(".head-search") || input.parentElement;
-        searchArea.addEventListener("focusout", function (e) {
-            if (!searchArea.contains(e.relatedTarget)) { dismissed = true; hideResults(); }
-        });
-        document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape" && !e.isComposing && searchArea.contains(document.activeElement)) {
-                dismissed = true;
-                clearTimeout(debounceTimer);
-                hideResults();
-                if (window.innerWidth < 600) {
-                    var searchDisclosure = disclosures.find(function (d) { return d.panel === searchArea; });
-                    if (searchDisclosure && searchDisclosure.canDismiss()) searchDisclosure.dismiss();
-                }
-                e.preventDefault();
+
+        var KIND_ICON = { "页面": "fa-file-text-o", "CARRiER WAVE.": "fa-podcast", "Gizmo": "fa-leaf" };   // 写全类名：tools/fa-subset.py 靠 fa-xxx 扫描用到的图标
+        function fill(rows) {
+            var html = rows.map(function (r, i) {
+                var x = r.x, ext = /^https?:\/\//.test(x.u);
+                var thumb = x.i
+                    ? '<span class="sr-thumb" style="background-image:url(\'' + esc(x.i) + '\')"></span>'
+                    : '<span class="sr-thumb is-icon"><i class="fa ' + (KIND_ICON[x.k] || "fa-file-text-o") + '"></i></span>';
+                var snips = snippets(x, r.terms, r.re);
+                if (!snips.length && x.s) snips = [mark(x.s, r.re)];
+                return '<a class="sr-item" role="option" id="sr-' + i + '" aria-selected="false" style="--i:' + i + '" href="' + esc(x.u) + '"' +
+                    (ext ? ' target="_blank" rel="noopener"' : "") + ' data-kind="' + esc(x.k) + '">' + thumb +
+                    '<span class="sr-main"><span class="sr-top"><span class="sr-title">' + mark(x.t, r.re) + "</span>" +
+                    (x.d ? '<time class="sr-date">' + esc(x.d) + "</time>" : "") + "</span>" +
+                    snips.map(function (s) { return '<span class="sr-snip">' + s + "</span>"; }).join("") +
+                    '<span class="sr-meta"><span class="sr-kind">' + esc(x.k) + "</span>" +
+                    x.g.map(function (g) { return '<span class="sr-tag">#' + mark(g, r.re) + "</span>"; }).join("") + "</span></span></a>";
+            }).join("");
+            list.innerHTML = html;
+            list.insertBefore(pill, list.firstChild);
+            items = [].slice.call(list.querySelectorAll(".sr-item"));
+            pill.classList.remove("is-on");
+            active = -1;
+            list.scrollTop = 0;
+            if (items.length) setActive(0, false, true);
+            else input.removeAttribute("aria-activedescendant");
+        }
+
+        // 强调框：一枚 .search-pill 在结果之间弹簧滑动（与顶栏导航的强调框同一套做法）
+        function setActive(i, scroll, instant) {
+            if (!items.length) return;
+            i = (i + items.length) % items.length;
+            if (items[active]) items[active].setAttribute("aria-selected", "false");
+            active = i;
+            var it = items[i];
+            it.setAttribute("aria-selected", "true");
+            input.setAttribute("aria-activedescendant", it.id);
+            if (instant || !pill.classList.contains("is-on")) pill.classList.add("no-glide");
+            pill.style.setProperty("--y", it.offsetTop + "px");
+            pill.style.setProperty("--h", it.offsetHeight + "px");
+            pill.classList.add("is-on");
+            if (pill.classList.contains("no-glide")) { void pill.offsetWidth; pill.classList.remove("no-glide"); }
+            if (scroll) it.scrollIntoView({ block: "nearest" });
+        }
+
+        // 面板从搜索框下方长出来：起点是与搜索框同宽同高的胶囊（贴在右上角），展开成卡片（clip-path，展开弹簧 / 收起平稳）
+        function place() {
+            var r = input.getBoundingClientRect();
+            panel.style.setProperty("--sp-right", Math.max(8, root.clientWidth - r.right) + "px");
+            panel.style.setProperty("--from-w", r.width + "px");
+            panel.style.setProperty("--from-h", r.height + "px");
+        }
+        function setOpen(v) {
+            if (open === v) return;
+            open = v;
+            if (v) {
+                place();
+                panel.removeAttribute("inert");
+                panel.setAttribute("aria-hidden", "false");
+                bringToFront(panel);
+                requestAnimationFrame(function () { panel.classList.add("open"); });
+            } else {
+                panel.classList.remove("open");
+                panel.setAttribute("inert", "");
+                panel.setAttribute("aria-hidden", "true");
             }
-        }, true);
-        hideResults();
+            input.setAttribute("aria-expanded", String(v));
+        }
+        window.addEventListener("resize", function () { if (open) place(); });
+
+        function focusSearch() {
+            // 手机端搜索框平时收起：先展开（搜索按钮的开关逻辑在 header() 里）
+            if (bar && !bar.classList.contains("active") && window.innerWidth < 600) {
+                var btn = document.querySelector(".search-btn");
+                if (btn) btn.click();
+            }
+            input.focus();
+            input.select();
+        }
+
+        input.addEventListener("pointerenter", function () { load().catch(function () {}); }, { once: true });
+        input.addEventListener("focus", function () {
+            load().then(function () { lastQuery = null; render(); }, function () { render(); });
+            setOpen(true);
+            render();
+        });
+        input.addEventListener("input", function (e) {
+            clearTimeout(timer);
+            if (composing || e.isComposing) return;
+            setOpen(true);
+            timer = setTimeout(render, 60);
+        });
+        input.addEventListener("compositionstart", function () { composing = true; clearTimeout(timer); });
+        input.addEventListener("compositionend", function () { composing = false; render(); });
+        input.addEventListener("keydown", function (e) {
+            if (e.isComposing) return;
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                if (!items.length) return;
+                e.preventDefault();
+                setOpen(true);
+                setActive(active + (e.key === "ArrowDown" ? 1 : -1), true);
+            } else if (e.key === "Enter") {
+                if (!items.length) return;
+                e.preventDefault();
+                (items[active] || items[0]).click();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                if (open) { setOpen(false); return; }
+                input.blur();
+                if (window.innerWidth < 600) {
+                    var d = disclosures.find(function (d) { return d.panel === bar; });
+                    if (d && d.canDismiss()) d.dismiss();
+                }
+            }
+        });
+        // 焦点离开搜索框与面板才收起；点面板里的空白处不夺走焦点
+        function inside(el) { return el && (panel.contains(el) || (bar && bar.contains(el))); }
+        [input, panel].forEach(function (el) {
+            el.addEventListener("focusout", function (e) { if (!inside(e.relatedTarget)) setOpen(false); });
+        });
+        panel.addEventListener("mousedown", function (e) { if (!e.target.closest("a, button")) e.preventDefault(); });
+        panel.addEventListener("click", function (e) {
+            if (e.target.closest(".search-retry")) { e.preventDefault(); failed = false; lastQuery = null; input.focus(); render(); return; }
+            var it = e.target.closest(".sr-item");
+            if (!it || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || it.target === "_blank") return;
+            if (it.getAttribute("data-kind") === "文章") {
+                try { sessionStorage.setItem("title-hop", JSON.stringify({ to: new URL(it.href).pathname.replace(/index\.html$/, ""), t: Date.now() })); } catch (err) {}
+                window.glintTitleHopEl = it.querySelector(".sr-title");
+            }
+        });
+        list.addEventListener("pointermove", function (e) {
+            var it = e.target.closest(".sr-item");
+            if (it && items.indexOf(it) !== active) setActive(items.indexOf(it), false);
+        });
+
+        // 任何页面按 / 或 Ctrl / ⌘ + K 唤起（正在输入框 / 文本域里打字时 / 不算）
+        document.addEventListener("keydown", function (e) {
+            var t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+            if ((e.key === "k" || e.key === "K") && (e.ctrlKey || e.metaKey) && !e.altKey) { e.preventDefault(); focusSearch(); }
+            else if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); focusSearch(); }
+        });
     };
 
 // 在文件初始化末尾，执行这个搜索功能
     this.local_search();
 
-// 图片懒加载 + 缩放
-// 1. 把正文图片的真实地址转存到 ks-original，用轻量占位符替换 src，
-//    这样浏览器不会在页面初始就请求视口外的图片。
-// 2. ks.lazy() 基于 IntersectionObserver，图片进入视口时自动回填 src。
-// 3. ks.image() 优先读取 ks-original，因此懒加载与灯箱天然兼容。
+// 正文图片：懒加载由构建期写上的 loading="lazy" 负责（scripts/lazy-images.js），这里只挂灯箱（下方，取代 kico 的 ks.image）
+// 原先在页尾把 src 换成空白 GIF 再按需回填：那时浏览器早已开始下载原图，换完图片还会塌成 1px 再撑开、版面跳动
 var CONTENT_IMG_SEL = ".post-content:not(.is-special) img, .page-content:not(.is-special) img";
-var BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
+// 图片灯箱（glint.css「图片灯箱」）：点正文图片，图片从原位置形变放大到屏幕中央（一镜到底），毛玻璃底衬渐显
+// - 缩放：双指捏合 / 滚轮（以指针处为中心）/ 双击（放大到 2.5 倍或复位）；放大后拖动平移，松手时弹回可视范围
+// - 切换：左右滑动、← → 键、两侧按钮；同一篇里的图片依次切换
+// - 关闭：下拉（底衬随之变淡）/ Esc / 点空白处 / 关闭按钮；原图还在屏上时缩回原位置
+// - 形变都只动 transform / opacity；展开、回弹用 --ease-spring
 (function () {
-    var imgs = document.querySelectorAll(CONTENT_IMG_SEL);
+    var imgs = [].filter.call(document.querySelectorAll(CONTENT_IMG_SEL), function (im) { return !im.closest("a"); });
     if (!imgs.length) return;
+    var root = document.documentElement;
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var SPRING = (getComputedStyle(root).getPropertyValue("--ease-spring") || "").trim();
+    if (!/linear\(|cubic-bezier\(/.test(SPRING)) SPRING = "cubic-bezier(.2, 1.2, .3, 1)";
+    var EXIT = "cubic-bezier(.4, 0, .2, 1)";
 
-    for (var i = 0; i < imgs.length; i++) {
-        var img = imgs[i];
-        var src = img.getAttribute("src");
-        if (!window.IntersectionObserver) {
-            var original = img.getAttribute("ks-original");
-            if (original) img.setAttribute("src", original);
-            continue;
-        }
-        if (!src || src === BLANK) continue;
-        img.setAttribute("ks-original", src);
-        img.setAttribute("src", BLANK);
+    var lb = null, view, back, bar, count, cap, prevBtn, nextBtn;
+    var index = -1, src = null;             // 当前图片序号与它在正文里的那张
+    var W = 0, H = 0;                       // 复位（适配屏幕）时的显示尺寸
+    var X = 0, Y = 0, S = 1;                // 当前位置（左上角，屏幕坐标）与缩放倍数（相对复位尺寸）
+    var anim = null, turn = 0;
+
+    function build() {
+        lb = document.createElement("div");
+        lb.className = "lb";
+        lb.setAttribute("role", "dialog");
+        lb.setAttribute("aria-modal", "true");
+        lb.setAttribute("aria-label", "查看图片");
+        lb.innerHTML = '<div class="lb-back"></div><img class="lb-img" alt="" draggable="false">' +
+            '<div class="lb-bar"><span class="lb-count"></span><span class="lb-cap"></span></div>' +
+            '<button type="button" class="lb-btn lb-prev" aria-label="上一张"><i class="fa fa-angle-left"></i></button>' +
+            '<button type="button" class="lb-btn lb-next" aria-label="下一张"><i class="fa fa-angle-right"></i></button>' +
+            '<button type="button" class="lb-btn lb-close" aria-label="关闭"><i class="fa fa-times"></i></button>';
+        view = lb.querySelector(".lb-img");
+        back = lb.querySelector(".lb-back");
+        bar = lb.querySelector(".lb-bar");
+        count = lb.querySelector(".lb-count");
+        cap = lb.querySelector(".lb-cap");
+        prevBtn = lb.querySelector(".lb-prev");
+        nextBtn = lb.querySelector(".lb-next");
+        prevBtn.addEventListener("click", function () { go(-1); });
+        nextBtn.addEventListener("click", function () { go(1); });
+        lb.querySelector(".lb-close").addEventListener("click", close);
+        bindGestures();
     }
 
-    if (window.IntersectionObserver) ks.lazy(CONTENT_IMG_SEL);
+    function vw() { return root.clientWidth; }
+    function vh() { return window.innerHeight; }
+    function naturalSize(im) {
+        var w = im.naturalWidth || +im.getAttribute("width") || im.width || 1;
+        var h = im.naturalHeight || +im.getAttribute("height") || im.height || 1;
+        return { w: w, h: h };
+    }
+    function fit(im) {
+        var n = naturalSize(im);
+        var maxW = vw() * 0.92, maxH = vh() * 0.84;
+        var k = Math.min(maxW / n.w, maxH / n.h, 2);      // 小图最多放大到两倍，免得糊
+        W = Math.round(n.w * k);
+        H = Math.round(n.h * k);
+        view.style.width = W + "px";
+        view.style.height = H + "px";
+    }
+    function home() { return { x: (vw() - W) / 2, y: (vh() - H) / 2, s: 1 }; }
+    function apply() { view.style.transform = "translate(" + X + "px, " + Y + "px) scale(" + S + ")"; }
+    function stop() { if (anim) { anim.cancel(); anim = null; } }
+    // 从当前状态动画到 (x, y, s)；结束后把终点写回内联样式
+    function animateTo(x, y, s, dur, easing, done) {
+        stop();
+        var from = "translate(" + X + "px, " + Y + "px) scale(" + S + ")";
+        X = x; Y = y; S = s;
+        var to = "translate(" + X + "px, " + Y + "px) scale(" + S + ")";
+        view.style.transform = to;
+        if (reduce || !dur) { if (done) done(); return; }
+        anim = view.animate([{ transform: from }, { transform: to }], { duration: dur, easing: easing });
+        anim.onfinish = function () { anim = null; if (done) done(); };
+    }
+    function rectOf(im) {
+        var r = im.getBoundingClientRect();
+        return r.width && r.bottom > 0 && r.top < vh() ? r : null;
+    }
+    // 缩放后限制在可视范围内：比屏幕小就居中，比屏幕大就不露出空边
+    function clamped(x, y, s) {
+        var w = W * s, h = H * s;
+        x = w <= vw() ? (vw() - w) / 2 : Math.min(0, Math.max(vw() - w, x));
+        y = h <= vh() ? (vh() - h) / 2 : Math.min(0, Math.max(vh() - h, y));
+        return { x: x, y: y };
+    }
+
+    function updateBar() {
+        count.textContent = imgs.length > 1 ? (index + 1) + " / " + imgs.length : "";
+        cap.textContent = src.getAttribute("alt") || "";
+        bar.classList.toggle("is-empty", !count.textContent && !cap.textContent);
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === imgs.length - 1;
+        lb.classList.toggle("is-single", imgs.length < 2);
+    }
+
+    function open(i) {
+        if (!lb) build();
+        index = i;
+        src = imgs[i];
+        view.src = src.currentSrc || src.getAttribute("src");
+        fit(src);
+        updateBar();
+        document.body.appendChild(lb);
+        root.classList.add("lb-open");
+        var h = home();
+        var r = rectOf(src);
+        if (r) { X = r.left; Y = r.top; S = r.width / W; } else { X = h.x; Y = h.y + 30; S = .9; }
+        apply();
+        src.classList.add("lb-source");     // 原图藏起来：看上去就是它飞了出来
+        void lb.offsetWidth;
+        lb.classList.add("open");
+        animateTo(h.x, h.y, 1, 560, SPRING);
+        lb.querySelector(".lb-close").focus({ preventScroll: true });
+        document.addEventListener("keydown", onKey, true);
+        window.addEventListener("resize", onResize);
+    }
+
+    function close() {
+        if (!lb || !lb.classList.contains("open")) return;
+        turn++;
+        view.style.opacity = "";
+        document.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("resize", onResize);
+        lb.classList.remove("open");
+        var r = rectOf(src), me = src;
+        function done() {
+            me.classList.remove("lb-source");
+            if (lb.parentNode) lb.parentNode.removeChild(lb);
+            root.classList.remove("lb-open");
+            view.style.opacity = "";
+            lb.style.removeProperty("--drag");
+        }
+        if (r) animateTo(r.left, r.top, r.width / W, 340, EXIT, done);
+        else {
+            view.style.opacity = "0";
+            animateTo(X, Y + 40, S * .92, 260, EXIT, done);
+        }
+    }
+
+    function go(d) {
+        var j = index + d;
+        if (j < 0 || j >= imgs.length) { bounce(d); return; }
+        var my = ++turn;                    // 切换途中又切换 / 关闭：只认最后一次
+        var out = d > 0 ? -1 : 1;
+        var old = src;
+        old.classList.remove("lb-source");
+        // 旧图朝滑动方向退场，新图从另一侧弹入
+        animateTo(X + out * vw() * 0.35, Y, S, 160, "ease-in", function () {
+            if (my !== turn) return;
+            index = j;
+            src = imgs[j];
+            src.classList.add("lb-source");
+            view.style.opacity = "0";
+            view.src = src.currentSrc || src.getAttribute("src");
+            var ready = view.decode ? view.decode().catch(function () {}) : Promise.resolve();
+            ready.then(function () {
+                if (my !== turn) return;
+                fit(view.naturalWidth ? view : src);
+                updateBar();
+                var h = home();
+                X = h.x - out * vw() * 0.35; Y = h.y; S = 1;
+                apply();
+                view.style.opacity = "";
+                animateTo(h.x, h.y, 1, 520, SPRING);
+            });
+        });
+    }
+    function bounce(d) {
+        var h = { x: X, y: Y, s: S };
+        animateTo(X - d * 40, Y, S, 120, "ease-out", function () { animateTo(h.x, h.y, h.s, 420, SPRING); });
+    }
+    function zoomAt(mx, my, s2, dur) {
+        s2 = Math.max(1, Math.min(5, s2));
+        var x = mx - (mx - X) * s2 / S, y = my - (my - Y) * s2 / S;
+        var c = clamped(x, y, s2);
+        if (dur) animateTo(c.x, c.y, s2, dur, SPRING);
+        else { stop(); X = c.x; Y = c.y; S = s2; apply(); }
+        lb.classList.toggle("is-zoomed", s2 > 1.01);
+    }
+    function onResize() {
+        fit(view.naturalWidth ? view : src);
+        var h = home();
+        stop(); X = h.x; Y = h.y; S = 1; apply();
+        lb.classList.remove("is-zoomed");
+    }
+    function onKey(e) {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+        else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+        else if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+        else if (e.key === "+" || e.key === "=") zoomAt(vw() / 2, vh() / 2, S * 1.5, 360);
+        else if (e.key === "-") zoomAt(vw() / 2, vh() / 2, S / 1.5, 360);
+        else if (e.key === "Tab") {            // 焦点留在灯箱里
+            var btns = [].filter.call(lb.querySelectorAll("button"), function (b) { return !b.disabled && b.offsetParent; });
+            var k = btns.indexOf(document.activeElement);
+            e.preventDefault();
+            btns[(k + (e.shiftKey ? -1 : 1) + btns.length) % btns.length].focus();
+        }
+    }
+
+    function bindGestures() {
+        var pts = {}, mode = "", start = null, moved = false, lastTap = 0, vx = 0, lastT = 0, lastX = 0;
+        function list() { return Object.keys(pts).map(function (k) { return pts[k]; }); }
+        function mid(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) || 1 }; }
+
+        lb.addEventListener("pointerdown", function (e) {
+            if (e.target.closest(".lb-btn")) return;
+            if (e.button !== 0 && e.pointerType === "mouse") return;
+            lb.setPointerCapture(e.pointerId);
+            pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+            stop();
+            var p = list();
+            moved = false;
+            if (p.length === 2) {
+                mode = "pinch";
+                var m = mid(p[0], p[1]);
+                start = { m: m, X: X, Y: Y, S: S };
+            } else if (p.length === 1) {
+                mode = "";
+                start = { x: e.clientX, y: e.clientY, X: X, Y: Y, S: S };
+                vx = 0; lastT = e.timeStamp; lastX = e.clientX;
+            }
+        });
+        lb.addEventListener("pointermove", function (e) {
+            if (!pts[e.pointerId]) return;
+            pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+            var p = list();
+            if (mode === "pinch" && p.length === 2) {
+                var m = mid(p[0], p[1]);
+                var s2 = Math.max(.8, Math.min(6, start.S * m.d / start.m.d));
+                var ux = (start.m.x - start.X) / start.S, uy = (start.m.y - start.Y) / start.S;
+                X = m.x - ux * s2; Y = m.y - uy * s2; S = s2;
+                apply();
+                moved = true;
+                return;
+            }
+            if (p.length !== 1 || !start) return;
+            var dx = e.clientX - start.x, dy = e.clientY - start.y;
+            if (!mode) {
+                if (Math.hypot(dx, dy) < 6) return;
+                mode = start.S > 1.01 ? "pan" : (Math.abs(dx) > Math.abs(dy) ? "swipe" : "pull");
+            }
+            moved = true;
+            var dt = Math.max(1, e.timeStamp - lastT);
+            vx = (e.clientX - lastX) / dt; lastT = e.timeStamp; lastX = e.clientX;
+            if (mode === "pan") { X = start.X + dx; Y = start.Y + dy; apply(); }
+            else if (mode === "swipe") {
+                var edge = (index === 0 && dx > 0) || (index === imgs.length - 1 && dx < 0);
+                X = start.X + (edge ? dx * .3 : dx); apply();
+            } else if (mode === "pull") {
+                var k = Math.min(1, Math.abs(dy) / 360);
+                Y = start.Y + dy; X = start.X + dx * .4; S = 1 - k * .18;
+                X += W * (1 - S) / 2; Y += H * (1 - S) / 2;
+                apply();
+                lb.style.setProperty("--drag", String(1 - k * .85));
+            }
+        });
+        function up(e) {
+            if (!pts[e.pointerId]) return;
+            delete pts[e.pointerId];
+            var p = list();
+            if (mode === "pinch") {
+                if (p.length === 1) {               // 还剩一根手指：接着平移
+                    mode = "pan";
+                    start = { x: p[0].x, y: p[0].y, X: X, Y: Y, S: S };
+                    return;
+                }
+                if (S < 1.01) { var h = home(); animateTo(h.x, h.y, 1, 420, SPRING); lb.classList.remove("is-zoomed"); }
+                else { var c = clamped(X, Y, S); animateTo(c.x, c.y, S, 420, SPRING); lb.classList.add("is-zoomed"); }
+                mode = "";
+                return;
+            }
+            if (p.length) return;
+            var dx = e.clientX - (start ? start.x : e.clientX), dy = e.clientY - (start ? start.y : e.clientY);
+            if (mode === "pan") { var c2 = clamped(X, Y, S); animateTo(c2.x, c2.y, S, 420, SPRING); }
+            else if (mode === "swipe") {
+                if ((dx < -60 || vx < -.5) && index < imgs.length - 1) go(1);
+                else if ((dx > 60 || vx > .5) && index > 0) go(-1);
+                else { var h2 = home(); animateTo(h2.x, h2.y, 1, 420, SPRING); }
+            } else if (mode === "pull") {
+                if (Math.abs(dy) > 110) close();
+                else { lb.style.removeProperty("--drag"); var h3 = home(); animateTo(h3.x, h3.y, 1, 420, SPRING); }
+            } else if (!moved) {
+                // 轻点：双击 / 双点切换缩放；点在图片外的空白处关闭
+                var now = e.timeStamp;
+                if (now - lastTap < 300) {
+                    lastTap = 0;
+                    if (S > 1.05) { var h4 = home(); animateTo(h4.x, h4.y, 1, 420, SPRING); lb.classList.remove("is-zoomed"); }
+                    else zoomAt(e.clientX, e.clientY, 2.5, 420);
+                    return;
+                }
+                lastTap = now;
+                var onImg = e.clientX >= X && e.clientX <= X + W * S && e.clientY >= Y && e.clientY <= Y + H * S;
+                if (!onImg && S <= 1.01) setTimeout(function () { if (lastTap === now) close(); }, 260);
+            }
+            mode = "";
+        }
+        lb.addEventListener("pointerup", up);
+        lb.addEventListener("pointercancel", up);
+        lb.addEventListener("wheel", function (e) {
+            e.preventDefault();
+            zoomAt(e.clientX, e.clientY, S * Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0018)), 0);
+        }, { passive: false });
+    }
+
+    imgs.forEach(function (im, i) {
+        im.classList.add("lb-zoomable");
+        im.setAttribute("tabindex", "0");
+        im.setAttribute("role", "button");
+        if (!im.getAttribute("aria-label")) im.setAttribute("aria-label", (im.getAttribute("alt") || "图片") + "（点击放大）");
+        im.addEventListener("click", function () { if (im.complete && im.naturalWidth) open(i); });
+        im.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(i); } });
+    });
 })();
 
-ks.image(CONTENT_IMG_SEL);
 
 // 引用块（Quote Box）折叠/展开交互
 // 由 scripts/quote-box.js 在渲染期把 <blockquote> 改写为 .quote-box 结构，

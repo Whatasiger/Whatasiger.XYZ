@@ -1,29 +1,81 @@
-<main>
-    <div class="wrap min">
-        <section class="home-title">
-            <%
-                let title;
+<%
+// 归档 / 标签 / 按年月的归档页：紧凑的时间线（glint.css「归档时间线」）
+// 顶部一张毛玻璃卡片：标题、篇数 / 字数 / 年份跨度、标签切换；下面按年份各一张卡片，每篇一行（日期 · 小封面 · 标题与简介 · 标签与字数）
+// 每页显示全部（_config.yml 的 archive_generator / tag_generator per_page: 0）；点标题时标题一镜到底飞到文章页（_partial/title-hop.ejs）
+var heading, kicker;
+if (is_tag()) { heading = page.tag; kicker = "TAG"; }
+else if (is_archive() && page.year) { heading = page.year + " 年" + (page.month ? " " + page.month + " 月" : ""); kicker = "ARCHIVE"; }
+else { heading = "归档"; kicker = "TIME MACHINE"; }
 
-                if(is_category()){
-                    title = page.category;
-                }
-                else if(is_archive()){
-                    title = page.year ? (
-                        page.year + " 年" + (page.month ? " " + page.month + " 月" : "")
-                    ) : "归档";
-                }
-                else if(is_tag()){
-                    title = page.tag;
-                }
-            %>
-            <h1>“<%= title %>”</h1>
+function fmtWords(n) {
+    n = n || 0;
+    return n >= 10000 ? (Math.round(n / 1000) / 10) + " 万字" : n + " 字";
+}
+var list = page.posts.toArray ? page.posts.toArray() : page.posts.data || [];
+var totalWords = 0;
+list.forEach(function (p) { totalWords += p.length || 0; });
+var yearsSpan = list.length ? (date(list[list.length - 1].date, "YYYY") + (date(list[0].date, "YYYY") !== date(list[list.length - 1].date, "YYYY") ? " — " + date(list[0].date, "YYYY") : "")) : "";
+var groups = [];
+list.forEach(function (p) {
+    var y = date(p.date, "YYYY");
+    if (!groups.length || groups[groups.length - 1].year !== y) groups.push({ year: y, posts: [] });
+    groups[groups.length - 1].posts.push(p);
+});
+var row = 0;
+%>
+<main class="archive-main">
+    <div class="wrap min">
+        <section class="archive-hero">
+            <p class="archive-kicker"><%= kicker %></p>
+            <h1 class="archive-heading"><% if (is_tag()) { %><span class="archive-hash">#</span><% } %><%= heading %></h1>
+            <p class="archive-stats">
+                <span><b><%= list.length %></b> 篇</span><i aria-hidden="true"></i>
+                <span>约 <b><%= totalWords >= 10000 ? Math.round(totalWords / 1000) / 10 : totalWords %></b> <%= totalWords >= 10000 ? '万字' : '字' %></span>
+                <% if (yearsSpan) { %><i aria-hidden="true"></i><span><%= yearsSpan %></span><% } %>
+            </p>
+            <nav class="archive-tags" aria-label="按标签筛选">
+                <a class="archive-chip<% if (!is_tag()) { %> is-current<% } %>" href="<%- url_for('/archives/') %>">全部<small><%= site.posts.length %></small></a>
+                <% site.tags.sort('name').each(function (t) { %>
+                <a class="archive-chip<% if (is_tag() && page.tag === t.name) { %> is-current<% } %>" href="<%- url_for(t.path) %>">#<%= t.name %><small><%= t.length %></small></a>
+                <% }) %>
+            </nav>
         </section>
-        <%- partial("_partial/archive-list") %>
-        <section class="page-navigator">
-            <%- paginator({
-                prev_text: "«",
-                next_text: "»"
-            }) %>
+
+        <% groups.forEach(function (g, gi) { %>
+        <section class="archive-year" style="--gi: <%= gi %>">
+            <h2 class="archive-year-title"><span><%= g.year %></span><small><%= g.posts.length %> 篇</small></h2>
+            <ol class="archive-list">
+                <% g.posts.forEach(function (p) {
+                    var cover = p.cover || theme.background;
+                    var cc = cover ? card_cover(cover) : null; %>
+                <li style="--i: <%= Math.min(row++, 12) %>">
+                    <a class="archive-row" href="<%- url_for(p.path) %>">
+                        <time class="archive-date" datetime="<%= date_xml(p.date) %>"><%= date(p.date, "MM-DD") %></time>
+                        <span class="archive-dot" aria-hidden="true"></span>
+                        <% if (cc) { %><span class="archive-thumb" style="background-image: url('<%- cc.thumb %>')" aria-hidden="true"></span><% } %>
+                        <span class="archive-body">
+                            <span class="archive-title"><%= String(p.title || '未命名').trim() %></span>
+                            <% if (p.description) { %><span class="archive-desc"><%= p.description %></span><% } %>
+                        </span>
+                        <span class="archive-meta">
+                            <% (p.tags ? p.tags.toArray() : []).forEach(function (t) { %><span class="archive-tag">#<%= t.name %></span><% }) %>
+                            <span class="archive-words"><%= fmtWords(p.length) %></span>
+                        </span>
+                    </a>
+                </li>
+                <% }) %>
+            </ol>
         </section>
+        <% }) %>
+        <% if (!groups.length) { %><p class="archive-empty">这里还没有文章。</p><% } %>
     </div>
 </main>
+<script>
+    // 点进文章：标题文字一镜到底飞到正文标题处（_partial/title-hop.ejs）
+    document.querySelector(".archive-main").addEventListener("click", function (e) {
+        var row = e.target.closest(".archive-row");
+        if (!row || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        try { sessionStorage.setItem("title-hop", JSON.stringify({ to: new URL(row.href).pathname.replace(/index\.html$/, ""), t: Date.now() })); } catch (err) {}
+        window.glintTitleHopEl = row.querySelector(".archive-title");
+    });
+</script>

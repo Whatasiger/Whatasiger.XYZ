@@ -18,7 +18,7 @@ sitemap: false
 
 > [!NOTE]
 >
-> **该篇文章由 Claude Opus 5.5 撰写。未进行修改。**
+> **该文章由 Claude Opus 5.5 撰写。未进行修改。**
 
 ---
 

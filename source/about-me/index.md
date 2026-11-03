@@ -9,8 +9,6 @@ comments: true
 | 学校                 | 时间              |
 | -------------------- | ----------------- |
 | 广州市第二中学       | 2024-08 ~ 至今    |
-| 广东番禺中学附属学校 | 2021-09 ~ 2024-06 |
-| 市桥中心小学         | 2015-09 ~ 2021-07 |
 
 ## 🥰 **爱好**
 
@@ -87,16 +85,16 @@ comments: true
 
 ## 🖥️ **设备信息**
 
-| 硬件  | 设备                                                                        |
-| ----- |---------------------------------------------------------------------------|
+| 硬件  | 设备                                                         |
+| ----- | ------------------------------------------------------------ |
 | PC    | ROG Zephyrus M16 2022（i7-12700H + RTX 3060 Laptop，add Acer SSD N3500 1TB) |
-| 鼠标  | Logitech G304                                                             |
-| 手机  | HONOR Magic 7 Pro 256G                                                    |
-| 平板  | HUAWEI MatePad Pro 13.2 2023（with M-Pencil 3rd gen）                       |
-| 耳机1 | HUAWEI FreeBuds Pro 5                                                     |
-| 耳机2 | Beats EP                                                                  |
-| 手表  | HONOR Watch 4                                                             |
-| 笔    | Pilot Precise V5 RT                                                       |
+| 鼠标  | Logitech G304                                                |
+| 手机  | HONOR Magic 7 Pro 256G                                       |
+| 平板  | HUAWEI MatePad Pro 13.2 2023（with M-Pencil 3rd gen）        |
+| 耳机1 | HUAWEI FreeBuds Pro 5                                        |
+| 耳机2 | Beats EP                                                     |
+| 手表  | OPPO Watch X3                                                |
+| 笔    | Pilot Precise V5 RT                                          |
 
 
 

@@ -16,19 +16,24 @@
             </div>
         </a>
     <% } %>
+    <% var cardIndex = 0; %>
     <% page.posts.each((post, i) => { %>
-        <% if (post.title !== '关于网站') { %>
         <%# 整张卡片就是链接（中键 / 新标签页、首页的预取规则都认它）；一镜到底见 head.ejs %>
         <a class="post-item card-style" href="<%- url_for(post.path) %>">
             <%# 投影、高光与细边、摘要信息各是一层独立元素：一镜到底时各自成为过渡层，跟着卡片放大、途中渐隐（见 glint.css） %>
             <span class="post-card-shadow" aria-hidden="true"></span>
-            <%# 封面原图与模糊层：两层真实元素，图片写在各自的内联 background-image 上（不经 CSS 变量，样式重算时不会被当成换了图而重绘） %>
-            <% var coverUrl = post.cover || theme.background; %>
+            <%# 封面原图与模糊层：两层真实元素，图片写在各自的内联 background-image 上（不经 CSS 变量，样式重算时不会被当成换了图而重绘）
+               卡片用缩小的两档封面（card_cover，tools/card-covers.py 生成），按设备像素比挑；原图地址记在 data-cover，留给悬停时预烤文章页背景
+               前两张直接写内联样式；其余先放在 data-bg-style，快滚到时才写上（下方脚本），首页不必一次下载全部封面 %>
+            <% var coverUrl = post.cover || theme.background;
+               var cc = card_cover(coverUrl);
+               var bgStyle = cc.x1 === cc.x2 ? "background-image: url('" + cc.x1 + "');" : "background-image: url('" + cc.x1 + "'); background-image: " + cc.set + ";";
+               var bgAttr = cardIndex++ < 2 ? 'style' : 'data-bg-style'; %>
             <div class="post-card-bg">
                 <div class="post-card-zoom">
-                    <div class="post-card-img" style="background-image: url('<%- coverUrl %>');"></div>
-                    <div class="post-card-img post-card-soft" style="background-image: url('<%- coverUrl %>');"></div>
-                    <div class="post-card-img post-card-blur" style="background-image: url('<%- coverUrl %>');"></div>
+                    <div class="post-card-img" <%- bgAttr %>="<%- bgStyle %>" data-cover="<%- coverUrl %>"></div>
+                    <div class="post-card-img post-card-soft" <%- bgAttr %>="<%- bgStyle %>"></div>
+                    <div class="post-card-img post-card-blur" <%- bgAttr %>="<%- bgStyle %>"></div>
                 </div>
             </div>
 
@@ -55,6 +60,29 @@
                 </div>
             </div>
         </a>
-        <% } %>
     <% }) %>
 </section>
+<%# 封面延后加载：data-bg-style 里的卡片在视口上下约 1.5 屏内就写上内联样式（首屏附近的这里同步写，首帧即有图），其余等滚近 %>
+<script>
+    (function () {
+        var els = [].slice.call(document.querySelectorAll(".home-posts [data-bg-style]"));
+        if (!els.length) return;
+        function show(el) {
+            var v = el.getAttribute("data-bg-style");
+            if (v === null) return;     // 模糊层已由 glint.js 烤好换上
+            el.setAttribute("style", v);
+            el.removeAttribute("data-bg-style");
+        }
+        var near = innerHeight * 2.5, io = window.IntersectionObserver && new IntersectionObserver(function (entries) {
+            entries.forEach(function (en) {
+                if (!en.isIntersecting) return;
+                io.unobserve(en.target);
+                show(en.target);
+            });
+        }, { rootMargin: "150% 0px" });
+        els.forEach(function (el) {
+            if (!io || el.getBoundingClientRect().top < near) show(el);
+            else io.observe(el);
+        });
+    })();
+</script>

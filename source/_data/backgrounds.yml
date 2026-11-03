@@ -3,24 +3,37 @@
 # 凡是用主页背景的页面（首页、归档、独立页面、无封面的文章）都换成所选的那张；有封面的文章照旧用封面
 # 极缩略图放 source/images/webp/thumb/ 同名文件（160px 宽），加图后跑 py -3.9 tools/bg-thumbs.py 生成
 # 平时只加载极缩略图（打开切换浮层 / 导航卡片时才加载），选中后才加载原图
+# artist / link：画师与作品出处（可省略），选中时浮层底部显示署名；另有一张「每日轮换」磁贴，按日期在这几张之间轮换
 - id: sunset          # 唯一标识，存进 localStorage，定下后不要改
   name: Afterglow
   src: /images/webp/44ccd674949c189c.webp
 - id: blue-night
   name: 蓝夜
   src: /images/webp/124089112_p0.webp
+  artist: 画师JW
+  link: https://www.pixiv.net/artworks/124089112
 - id: ice-bloom
   name: 冰花
   src: /images/webp/118435175_p0.webp
+  artist: コーラ
+  link: https://www.pixiv.net/artworks/118435175
 - id: summer-cloud
   name: 夏云
   src: /images/webp/144486189_p0.webp
+  artist: 画师JW
+  link: https://www.pixiv.net/artworks/144486189
 - id: dusk-field
   name: 晚霞
   src: /images/webp/21315033_p0.webp
+  artist: 磯部トースト
+  link: https://www.pixiv.net/artworks/21315033
 - id: checker-hall
   name: 回廊
   src: /images/webp/6095368_p0.webp
+  artist: 磯部トースト
+  link: https://www.pixiv.net/artworks/6095368
 - id: twilight-rail
   name: 暮色
   src: /images/webp/81829877_p0.webp
+  artist: 画师JW
+  link: https://www.pixiv.net/artworks/81829877

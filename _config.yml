@@ -17,8 +17,8 @@ url: https://whatasiger.xyz
 permalink: posts/:abbrlink/
 permalink_defaults:
 pretty_urls:
-  trailing_index: true # Set to false to remove trailing 'index.html' from permalinks
-  trailing_html: true # Set to false to remove trailing '.html' from permalinks
+  trailing_index: false # 规范地址 / 站点地图写成 /about-me/ 而不是 /about-me/index.html
+  trailing_html: false
 
 # Short numeric permalink support (requires: hexo-abbrlink2)
 abbrlink:
@@ -68,6 +68,15 @@ index_generator:
   path: ''
   per_page: 10
   order_by: -date
+
+# 归档 / 标签页是一整页的时间线（themes/glint/layout/archive.ejs），不分页
+archive_generator:
+  per_page: 0
+  yearly: true
+  monthly: true
+  daily: false
+tag_generator:
+  per_page: 0
 
 # Category & Tag
 default_category: uncategorized

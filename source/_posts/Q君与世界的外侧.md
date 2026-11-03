@@ -1,5 +1,5 @@
 ﻿---
-title: 『Q君与世界的外侧』 
+title: 『Q君与世界的外侧』
 abbrlink: 5
 alias: /5/
 date: 2025-12-12

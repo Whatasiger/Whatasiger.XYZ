@@ -6,7 +6,7 @@
         <% var motto = "二人には夢があった 今は凍りついた花。"; %>
         <% var mottoLink = "https://music.163.com/#/song?id=3330074495"; // 点击座右铭打开的歌曲 %>
         <section class="home-title home-hero">
-            <a href="/about-me" class="home-profile-link">
+            <a href="<%- url_for('/about-me/') %>" class="home-profile-link">
                 <span class="home-avatar-ring"><img src="<%= theme.author_avatar %>" alt="Author Avatar" class="home-avatar"></span>
                 <h1 class="home-name"><%= config.title %></h1>
             </a>
@@ -63,7 +63,7 @@
     <span class="gizmo-leaf-tag">Gizmo</span>
 </a>
 <script src="<%- asset_url('static/gizmo-leaf.js') %>"></script>
-<%# 右上角第二枚竖排胶囊（音乐胶囊下方）：上背景切换、下沉浸；顶栏导航收起时隐藏，入口改在导航卡片里（header.ejs） %>
+<%# 右上角的竖排胶囊：上背景切换、下沉浸；顶栏导航收起时隐藏，入口改在导航卡片里（header.ejs） %>
 <div class="bg-dock" role="group" aria-label="首页背景与沉浸">
     <% if ((site.data.backgrounds || []).length) { %>
     <button type="button" class="bg-switch" aria-label="切换首页背景" aria-controls="bg-picker" aria-expanded="false"></button>
@@ -76,16 +76,8 @@
 <div class="bg-picker corner-morph" id="bg-picker" inert aria-hidden="true">
     <div class="corner-morph-inner">
         <div class="bg-tiles" role="radiogroup" aria-label="首页背景"><%- partial("_partial/bg-tiles") %></div>
+        <%# 画师署名：选中的那张有 artist 时显示（glint.js setupBgSwitch 写入），始终占一行，浮层高度不跳 %>
+        <p class="bg-credit" aria-live="polite"></p>
     </div>
 </div>
 <% } %>
-<%# 首页轻音乐：右上角最上方的竖排胶囊（上播放 / 暂停、下「…」选曲），背景按钮在它下方，选曲浮层同背景浮层；顶栏导航收起时入口在导航卡片里（header.ejs）；逻辑见 glint.js setupHomeMusic %>
-<div class="music-dock" role="group" aria-label="首页音乐">
-    <button type="button" class="music-play" aria-label="播放音乐" aria-pressed="false"></button>
-    <button type="button" class="music-more" aria-label="选择音乐" aria-controls="music-picker" aria-expanded="false"></button>
-</div>
-<div class="music-picker corner-morph" id="music-picker" inert aria-hidden="true">
-    <div class="corner-morph-inner">
-        <div class="music-list" role="radiogroup" aria-label="首页音乐"><%- partial("_partial/music-tracks") %></div>
-    </div>
-</div>

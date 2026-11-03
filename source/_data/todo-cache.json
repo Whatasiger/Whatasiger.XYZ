@@ -2,6 +2,16 @@
   "bangumi": {
     "items": [
       {
+        "id": 495291,
+        "name": "再见菈菈",
+        "type": 2,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/18/af/495291_9WuBW.jpg",
+        "epStatus": 3,
+        "eps": 12,
+        "updatedAt": "2026-11-03T23:20:08+08:00",
+        "url": "https://bgm.tv/subject/495291"
+      },
+      {
         "id": 502499,
         "name": "GROTESQQQUE -グロテスク-",
         "type": 2,
@@ -10,16 +20,6 @@
         "eps": 3,
         "updatedAt": "2026-10-31T17:52:08+08:00",
         "url": "https://bgm.tv/subject/502499"
-      },
-      {
-        "id": 495291,
-        "name": "再见菈菈",
-        "type": 2,
-        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/18/af/495291_9WuBW.jpg",
-        "epStatus": 2,
-        "eps": 12,
-        "updatedAt": "2026-10-31T16:36:43+08:00",
-        "url": "https://bgm.tv/subject/495291"
       },
       {
         "id": 7978,
@@ -112,7 +112,7 @@
         "url": "https://bgm.tv/subject/845"
       }
     ],
-    "fetchedAt": "2026-11-01T04:05:10.310Z"
+    "fetchedAt": "2026-11-03T15:46:08.222Z"
   },
   "netease": {
     "songs": [
@@ -120,73 +120,73 @@
         "id": 2111740365,
         "name": "itsuka",
         "artists": "ひとひら",
-        "cover": "https://p2.music.126.net/19xlS-oxqi3yG7890PEehA==/109951173986849987.jpg?param=80y80",
+        "cover": "https://p1.music.126.net/19xlS-oxqi3yG7890PEehA==/109951173986849987.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=2111740365"
       },
       {
         "id": 26405133,
         "name": "Girl meets NUMBER GIRL",
         "artists": "きのこ帝国",
-        "cover": "https://p2.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
+        "cover": "https://p1.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=26405133"
+      },
+      {
+        "id": 3363527827,
+        "name": "芽吹くとき",
+        "artists": "yonige",
+        "cover": "https://p1.music.126.net/mkcHO_3dQ9jgyoK6fpFCmw==/109951172946101598.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=3363527827"
       },
       {
         "id": 2722426126,
         "name": "おとぎ",
         "artists": "RAY",
-        "cover": "https://p2.music.126.net/Xe4VfKSkHYkIO1dQNXp-rQ==/109951171402189439.jpg?param=80y80",
+        "cover": "https://p1.music.126.net/Xe4VfKSkHYkIO1dQNXp-rQ==/109951171402189439.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=2722426126"
       },
       {
         "id": 26405131,
         "name": "スクールフィクション",
         "artists": "きのこ帝国",
-        "cover": "https://p2.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
+        "cover": "https://p1.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=26405131"
-      },
-      {
-        "id": 3445011911,
-        "name": "チェイス",
-        "artists": "ひとひら",
-        "cover": "https://p2.music.126.net/eSdq3aeLpbCjnwMzjiX8xA==/109951174070142556.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=3445011911"
-      },
-      {
-        "id": 3382353203,
-        "name": "遭難信号",
-        "artists": "海風邪",
-        "cover": "https://p2.music.126.net/XXBk5WhoB9E2FbcqkWytQw==/109951173225388935.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=3382353203"
-      },
-      {
-        "id": 3363527827,
-        "name": "芽吹くとき",
-        "artists": "yonige",
-        "cover": "https://p2.music.126.net/mkcHO_3dQ9jgyoK6fpFCmw==/109951172946101598.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=3363527827"
       },
       {
         "id": 28095028,
         "name": "FLOWER GIRL",
         "artists": "きのこ帝国",
-        "cover": "https://p2.music.126.net/o7w7szxFLTeSnDJJa9hoKw==/109951163560123952.jpg?param=80y80",
+        "cover": "https://p1.music.126.net/o7w7szxFLTeSnDJJa9hoKw==/109951163560123952.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=28095028"
       },
       {
-        "id": 2755669136,
-        "name": "円",
-        "artists": "ひとひら",
-        "cover": "https://p2.music.126.net/DHTQoT7PIvWPE0cxjYfv-A==/109951172272826626.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2755669136"
+        "id": 1387098940,
+        "name": "ノーチラス",
+        "artists": "ヨルシカ",
+        "cover": "https://p1.music.126.net/oH-hPC-coG6spFpbaA4xjw==/109951164327687331.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=1387098940"
+      },
+      {
+        "id": 3382353203,
+        "name": "遭難信号",
+        "artists": "海風邪",
+        "cover": "https://p1.music.126.net/XXBk5WhoB9E2FbcqkWytQw==/109951173225388935.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=3382353203"
+      },
+      {
+        "id": 28095029,
+        "name": "海と花束",
+        "artists": "きのこ帝国",
+        "cover": "https://p1.music.126.net/o7w7szxFLTeSnDJJa9hoKw==/109951163560123952.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=28095029"
       },
       {
         "id": 2744488734,
         "name": "天体",
         "artists": "RAY",
-        "cover": "https://p2.music.126.net/LcsEn0Yz6g_7Go401fzPIA==/109951171991978996.jpg?param=80y80",
+        "cover": "https://p1.music.126.net/LcsEn0Yz6g_7Go401fzPIA==/109951171991978996.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=2744488734"
       }
     ],
-    "fetchedAt": "2026-11-01T04:05:10.844Z"
+    "fetchedAt": "2026-11-03T15:46:08.622Z"
   }
 }
