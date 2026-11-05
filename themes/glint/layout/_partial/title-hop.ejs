@@ -25,6 +25,13 @@
             root.classList.add('title-leaving');
             return true;
         };
+        // 通用接入：带 data-title-hop 的链接（文末「继续阅读」等），标题元素写 data-hop-title
+        document.addEventListener('click', function (e) {
+            var a = e.target.closest && e.target.closest('a[data-title-hop]');
+            if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            try { sessionStorage.setItem('title-hop', JSON.stringify({ to: norm(a.href), t: Date.now() })); } catch (err) {}
+            window.glintTitleHopEl = a.querySelector('[data-hop-title]') || a;
+        });
         // 从往返缓存回来：撤掉离场时挂的名字
         window.addEventListener('pageshow', function () {
             root.classList.remove('title-leaving');

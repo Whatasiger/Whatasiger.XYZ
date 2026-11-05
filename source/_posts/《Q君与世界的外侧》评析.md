@@ -7,6 +7,7 @@ tag: [评析]
 hideIndex: true
 description: 顾名思义，是对『Q君与世界的外侧』的鉴赏评析，由 Claude Fable 5 撰写。
 cover: /images/webp/0c3f4b2439c160b9.webp
+related: [5]  # 文末「相关阅读」里互相挂钩（原文 ↔ 评析）
 ---
 
 > [!NOTE]

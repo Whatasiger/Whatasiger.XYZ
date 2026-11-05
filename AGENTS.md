@@ -36,7 +36,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 
 ## 主题与样式要点
 - 主题色：全站强调色取自 glint.css 第 0 节的色阶 `--tc-ice / pale / light / glow / soft / main / dim / deep / ink / warm / warm-deep`（按明度排列，各处按用途取不同级；`--blue`、`--hd-*`、`--footer-*`、`--hero-*` 都引用它）。默认「天青」即原先的蓝，数值原样；其余主题由 `html[data-accent]` 设 `--tc-h`，整组用 OKLCH 同明度同彩度只换色相。半透明一律写 `color-mix(in srgb, var(--tc-x) N%, transparent)`，**新增样式不要再写死蓝色 hex / rgba**。设置保存在 `whatasiger_reader_settings.accent`，`header.ejs` 开头首帧前挂属性；新增主题色要同时改第 0 节与 `header.ejs` 的 `accents` 列表。CARRiER WAVE. 页面不加载 glint.css，不受主题色影响
-- 日夜模式：`body.dark-theme` 为夜间；默认即夜间，仅当 sessionStorage `theme=light` 时为白天（逻辑在 `layout/_partial/header.ejs` 开头）
+- 日夜模式：`body.dark-theme` 为夜间。`header.ejs` 开头首帧前判断：本次浏览中点过日月按钮（sessionStorage `theme-pick`）就照它，否则按设置里的「日夜」（`whatasiger_reader_settings.themeMode`：`dark` 夜间，默认 / `light` 白天 / `auto` 跟随系统）；结果写回 sessionStorage `theme`（一叶等独立页面读它），并改 `<meta name="theme-color">`（夜 `#0e0e10` / 日 `#e9eff7`）。glint.js 的 `setDark()` 负责切换（圆形扩散），`night()` 是日月按钮（写 `theme-pick`），改模式时清掉 `theme-pick`；跟随系统时监听系统外观变化
 - 只改白天模式时，选择器统一用 `body:not(.dark-theme) …`，集中写在 glint.css 第 8 节；夜间同理用 `.dark-theme …`
 - 背景图：`body:before` 伪元素，由 `--page-bg-image` / `--bg-opacity` / `--bg-blur` 控制；有 cover 的文章会把背景换成封面；阅读页加 `.bg-faded` 淡化——阅读页首帧就挂 `.bg-faded`、模糊度直接取最终值（`header.ejs`），**不要再改回进页后靠过渡变淡**：载入时主线程忙，过渡时间线照走，看起来就是亮背景硬切成灰
 - 阅读页等字体：`head.ejs` 在字体样式表后给 html 挂 `page-loading`，`main` / 迷你目录 `visibility: hidden`、其中入场动画暂停在起点，思源黑体就绪（`document.fonts.ready`）后撤掉、动画从头播；超 300ms 才浮出 `body.post-page:after` 转圈，最多等 1.2s；选系统字体不等；等待期间脚本读正文文字**不要用 `innerText`**（visibility: hidden 的文字会被跳过，取到空串，目录曾因此只剩竖线），用 `textContent`；卡片一镜到底时 `post-vt.ejs` 在 pagereveal 调 `pageReveal()` 立即撤掉。样式在 glint.css「阅读页等字体」
@@ -63,7 +63,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 沉浸模式（设置开关，`whatasiger_reader_settings.immersive`，默认关）：开启后 body 挂 `.immersive`，glint.js `setupImmersive()` 在下滑时给 html 挂 `.header-hidden`（顶栏与桌面横排导航一起收起，目录卡片 / 迷你目录上移到 1em），上滑须在 450ms 内滚过 ≥500px 才唤出（`REVEAL_WINDOW / REVEAL_DISTANCE`），离页顶 64px 内或有浮层 / 搜索时始终显示
 - 带 backdrop-filter 的浮层不能放进 `<header>`（header 自身有 backdrop-filter，嵌套会让毛玻璃失效），所以设置面板放在 header 之外；手机端导航图标在主题 `_config.yml` 的 `menu_icons`
 - 拖动选择（`header.ejs` 的 `window.glintDragPick`）：顶栏导航（桌面横排时）、设置面板的二选一按钮与分页，按住在选项上拖动，强调框跟着指针走，松手选中最近的一项（导航即前往）；点一下照旧。新增「一排选项 + 一枚强调框」的控件也照此接入，横向拖动的控件记得 `touch-action: pan-y`
-- 设置面板（`header.ejs`，样式在 glint.css「设置面板」，桌面端宽 390px）分「外观」「阅读」两页（`.settings-tabs` + 两个 `.settings-pane` 叠在同一格，面板高度取较高的一页，切换不跳；阅读页默认「阅读」，其余页「外观」，sessionStorage `glint-settings-tab` 记住）：开关是一排 `.settings-chip`（复选框藏在胶囊里），滑动条两两并排成 `.settings-tile`，「恢复默认」是标题栏右侧的圆钮。新增设置项照这几种控件放进对应的页，别再加长列表（原先全部纵排时面板高 841px，现在约 366px）
+- 设置面板（`header.ejs`，样式在 glint.css「设置面板」，桌面端宽 390px；「外观」页有界面 / 日夜（三选一 `.settings-segment.is-three`）/ 字体，「背景模糊」只作用于阅读页，在任何页面拖都只改设置、不改当前页背景）分「外观」「阅读」两页（`.settings-tabs` + 两个 `.settings-pane` 叠在同一格，面板高度取较高的一页，切换不跳；阅读页默认「阅读」，其余页「外观」，sessionStorage `glint-settings-tab` 记住）：开关是一排 `.settings-chip`（复选框藏在胶囊里），滑动条两两并排成 `.settings-tile`，「恢复默认」是标题栏右侧的圆钮。新增设置项照这几种控件放进对应的页，别再加长列表（原先全部纵排时面板高 841px，现在约 366px）
 - 设置面板的滑动条都是无极的「液态胶囊」：glint.js `makeSlider()`（配置在 `GS_SLIDERS`）把原生 range（`step="any"`）透明地叠在自绘的 `<glint-slider>` 上（部件是 `gs-*` 自定义元素，避开 `.settings-row span` 等规则），按 `--p` 逐帧画、位置用硬弹簧跟随；`updateSliderFill()` 只是转给它。字重拖动时无极、按最近一档生效，松手 / 键盘改完吸附到档位（`snap`）；其余各项存连续值。样式在 glint.css「设置面板 · 无极滑动条」
 - kico.css 会给 checkbox 加 `::before/::after` 方框对勾、给 range 加 `overflow:hidden` 和 `min-height`；设置面板的开关与滑动条已针对性覆盖，新增表单控件时注意；两个浮层同时打开时由 glint.js 的 `bringToFront` 挂 `.on-top` 决定上下
 - Gizmo 入口：桌面端（`html:not(.nav-collapsed)`）是首页右侧水面上的叶片 `.gizmo-leaf`（`index.ejs` + `static/gizmo-leaf.js`，图形是 `_partial/gizmo-leaf-svg.ejs`，与 Gizmo 页标题处的 `.gizmo-emblem` 共用）；顶栏导航收起时叶片隐藏，入口是导航卡片里与「归档」并排的方磁贴 `.head-menu-gizmo`（桌面横排导航里 display:none，收起判断与强调框的当前项都要排除它）。叶片随风漂动、留尾流，靠 `window.waterRipple` 的 `drop / stroke` 激发水波、`setProbe / sample` 取叶片处水面（PBO + fence 异步读回，不阻塞 GPU）被水波推动；推力系数在 `gizmo-leaf.js` 的 CFG，注释里有实测位移。首页 → Gizmo 叶片一镜到底：`head.ejs` 的 `leaveToGizmo` 在 pageswap 给叶身挂 `gizmo-leaf` 并写 sessionStorage `gizmo-leaf-hop`，`_partial/gizmo-vt.ejs` 据此接过渡，内容在 `gizmo-from-leaf` 期间隐藏、落定后浮现（常驻的 `gizmo-leaf-in` 关掉内容的入场动画）
@@ -98,6 +98,13 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - TODO 周榜的「更新于」由 todo-sidebar.js 换成今天 / 昨天 / x 天前（构建时抓取的数据，看得出新旧）
 - 正文图片灯箱（glint.js 末尾，样式「图片灯箱」，取代 kico 的 `ks.image`）：图片从原位置形变放大（WAAPI，只动 transform），捏合 / 滚轮 / 双击缩放、拖动平移、左右滑动或 ← → 切换、下拉 / Esc / 点空白关闭（原图在屏上时缩回原位）；链接里的图片不接管
 - CI（`.github/workflows/site.yml`）：push / PR / 每天北京时间 06:30 构建并跑 `tools/check-site.js`（站内链接、页面体积、图片格式、一叶关卡）；部署默认关闭，须配 `DEPLOY_TOKEN` secret，并手动运行时勾选或设变量 `AUTO_DEPLOY=true`（定时构建才会部署）；部署是把 public/ 提交到 Whatasiger.github.io（不强推）
+- 文末「继续阅读」（post.ejs，glint.css「文末继续阅读」）：较早 / 较新一篇两张毛玻璃卡片（Hexo 的 `next` 是较早、`prev` 是较新）+ 相关阅读（先取 front matter `related: [abbrlink…]`，再按相同标签补足到 3 篇）；卡片带 `data-title-hop`（标题元素 `data-hop-title`），由 title-hop.ejs 的通用点击处理接上标题一镜到底；悬停即预渲染。配色 `--near-*`
+- 续读的延伸（glint.js 末尾）：首页卡片 / 归档行 / 文末卡片上读到一半的文章挂「读到 x%」胶囊（读续读记录）；目录卡片标题栏显示「本章约剩 x 分钟」（每分钟约 550 字）；读过的章节在目录里打勾——每篇读到过的最远一块记在 localStorage `whatasiger_read_max`，只沿着连续滚动经过的范围推进、停稳 2 秒才记（拖滚动条、刷新时恢复滚动位置这种一下跳过去的不算；点「继续阅读」那一次跳转算）
+- CARRiER WAVE. 的读者记录：阅读页读到文末（`.cw-end` 进入视口）记入 localStorage `whatasiger_cw_read`，目录页给这些篇目挂 `is-read`（cw.css「已读」）；打开目录页时把已接收的篇目记入 `whatasiger_cw_seen`，首页 CW 卡片（`data-cw-tracks`，来自 `cw_published()`）有没见过的篇目时挂 `has-new` 亮「新信号」（第一次来、没打开过目录页的读者不提示）。CW 另有订阅源 `/carrier_wave/atom.xml`（scripts/carrier-wave.js 生成，篇目无日期，按正文文件修改时间排）
+- 更新日志折叠与更新提示（glint.js 末尾，glint.css 同名一节）：「关于网站」页的版本标题可折叠，只展开最新一版（挂「最新」），从目录点到收起的版本会自动展开，`#changelog-latest` 滚到最新一版。footer.ejs 在 glint.js **之前**写 `window.GLINT_RELEASE`（从「关于网站」原文取最后一条 `#### **版本名**（日期）`）；老读者（localStorage `whatasiger_seen_release` 与之不同）在非阅读页底部浮出一次「更新到了「版本名」」，第一次来的只记下。**同一版本名下追加内容不会触发提示，发新版（改版本名或日期）才会**
+- 写作统计页 `/stats/`（`source/stats/index.md`，layout `stats`，glint.css「写作统计」）：构建时统计——四个大数字、逐年字数柱、按标签横条、写作日历（年 × 月热力格，五级）、最长的几篇；图都是单一色相（`--arc-accent`），悬停有提示、附表格视图。`stats` 与 `gizmo` 一样不算阅读页（`layout.ejs` / `header.ejs` / `head.ejs` 三处的判断都排除了它）。CW 字数来自 `cw_stats()`。入口在归档页标签条末尾与页尾「标签云」卡片的计数
+- 字数显示：满一万写「x.x 万字」，不足一万取整到百（post.ejs、文末卡片、归档时间线口径一致，数据是 hexo-symbols-count-time 写入的 `page.length`）
+- 站点图标：`static/img/icon.png`（512）、`apple-touch-icon.png`（180）、`icon-192.png`，manifest 在 `source/site.webmanifest`
 - 打印样式在 glint.css「打印样式」：只印标题、正文、标签与脚注，白底黑字；新增浮层 / 常驻控件时把它加进打印隐藏列表
 - 无头浏览器截图时页面常卡在 loading（外部脚本），DOMContentLoaded 绑定的交互不会生效
 

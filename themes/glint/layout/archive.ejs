@@ -38,6 +38,7 @@ var row = 0;
                 <% site.tags.sort('name').each(function (t) { %>
                 <a class="archive-chip<% if (is_tag() && page.tag === t.name) { %> is-current<% } %>" href="<%- url_for(t.path) %>">#<%= t.name %><small><%= t.length %></small></a>
                 <% }) %>
+                <a class="archive-chip is-stats" href="<%- url_for('/stats/') %>"><i class="fa fa-bar-chart" aria-hidden="true"></i>写作统计</a>
             </nav>
         </section>
 

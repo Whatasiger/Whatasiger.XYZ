@@ -53,6 +53,7 @@ var Glint = function (config) {
         bgOpacity: 55,         // 背景可见度默认 55%（设置滑块按一半数值显示）
         bgBlur: 8,             // 背景模糊度（0~20px），文章页默认8px
         accent: "blue",        // 主题色：blue（天青）/ lavender / sakura / mikan / wakakusa / mint，见 glint.css 第 0 节
+        themeMode: "dark",     // 日夜：dark 夜间（默认）/ light 白天 / auto 跟随系统；日月按钮只是本次浏览中临时切换
         bodyFont: "sans",      // 阅读页正文字体：sans（随「字体」）/ serif（思源宋体，选中才加载）
         lineHeight: 1.8,       // 正文行距（1.5 ~ 2.4）
         paraSpacing: 1,        // 段距（0 ~ 2em）
@@ -583,6 +584,28 @@ var Glint = function (config) {
         var resetBtn = document.getElementById("setting-reset-btn");
         var accentInput = document.getElementById("setting-accent");
         var accentName = document.getElementById("setting-accent-name");
+        var themeModeInput = document.getElementById("setting-theme-mode");
+        function setThemeModeSegment(value) {
+            if (!themeModeInput) return;
+            themeModeInput.setAttribute("data-value", value);
+            [].forEach.call(themeModeInput.querySelectorAll("button"), function (b) {
+                b.setAttribute("aria-checked", String(b.getAttribute("data-value") === value));
+            });
+        }
+        setThemeModeSegment(currentSettings.themeMode || "dark");
+        if (themeModeInput) {
+            themeModeInput.addEventListener("click", function (e) {
+                var opt = e.target.closest("button[data-value]");
+                if (!opt) return;
+                var value = opt.getAttribute("data-value");
+                if (value === (currentSettings.themeMode || "dark")) return;
+                setThemeModeSegment(value);
+                currentSettings.themeMode = value;
+                persistSettings();
+                try { sessionStorage.removeItem("theme-pick"); } catch (err) {}   // 改了模式就不再沿用本次浏览中的临时切换
+                setDark(modeIsDark());
+            });
+        }
         var bodyFontInput = document.getElementById("setting-body-font");
         var lineInput = document.getElementById("setting-line-height");
         var paraInput = document.getElementById("setting-para-spacing");
@@ -640,10 +663,10 @@ var Glint = function (config) {
             ? currentSettings.bgOpacity
             : defaultSettings.bgOpacity) / 2);
         var isPostPage = body.classList.contains("post-page");
-        var initBlur = isPostPage
-            ? (typeof currentSettings.bgBlur === "number" ? currentSettings.bgBlur : defaultSettings.bgBlur)
-            : 0;
-        if (bgBlurInput) bgBlurInput.value = initBlur;
+        // 「背景模糊」只作用于阅读页（首页等背景始终清晰）：滑动条在哪页都显示并调整阅读页的值，只有在阅读页才实时预览
+        var savedBlur = typeof currentSettings.bgBlur === "number" ? currentSettings.bgBlur : defaultSettings.bgBlur;
+        var initBlur = isPostPage ? savedBlur : 0;
+        if (bgBlurInput) bgBlurInput.value = savedBlur;
         // header.ejs 开头已按同样的规则设好（从文章回首页时还在从文章页的模糊度往 0 过渡）：已设过就不再覆盖，
         // 否则这里若赶在它放开过渡之前执行，模糊会瞬间清零，不走动画
         if (!body.style.getPropertyValue("--bg-blur")) body.style.setProperty("--bg-blur", initBlur + "px");
@@ -692,7 +715,7 @@ var Glint = function (config) {
             window.glintDragPick(box, {
                 items: function () { return btns; },
                 move: function (x, b) {
-                    var r = box.getBoundingClientRect(), w = (r.width - pad * 2) / 2;
+                    var r = box.getBoundingClientRect(), w = (r.width - pad * 2) / btns.length;
                     box.style.setProperty("--drag-x", Math.max(0, Math.min(r.width - pad * 2 - w, x - r.left - pad - w / 2)) + "px");
                     btns.forEach(function (o) { o.classList.toggle("is-drag-target", o === b); });
                 },
@@ -866,15 +889,15 @@ var Glint = function (config) {
                 var v = Math.round(parseFloat(this.value) * 10) / 10;
                 if (isNaN(v) || v < 0) v = 0;
                 if (v > 20) v = 20;
-                bgBake.unbake(); // 拖动中用 CSS 模糊实时预览
-                body.style.setProperty("--bg-blur", v + "px");
+                currentSettings.bgBlur = v;
+                persistSettings();
                 if (isPostPage) {
-                    currentSettings.bgBlur = v;
-                    persistSettings();
+                    bgBake.unbake(); // 拖动中用 CSS 模糊实时预览
+                    body.style.setProperty("--bg-blur", v + "px");
                 }
                 updateSliderFill(this);
             });
-            bgBlurInput.addEventListener("change", function () { bgBake.schedule(); }); // 松手后重新烘焙
+            bgBlurInput.addEventListener("change", function () { if (isPostPage) bgBake.schedule(); }); // 松手后重新烘焙
         }
 
         if (resetBtn) {
@@ -888,15 +911,20 @@ var Glint = function (config) {
                 currentSettings.bgOpacity = defaultSettings.bgOpacity;
                 currentSettings.bgBlur = defaultSettings.bgBlur;
                 currentSettings.accent = defaultSettings.accent;
-                ["bodyFont", "lineHeight", "paraSpacing", "readWidth", "indent"].forEach(function (k) { currentSettings[k] = defaultSettings[k]; });
+                ["themeMode", "bodyFont", "lineHeight", "paraSpacing", "readWidth", "indent"].forEach(function (k) { currentSettings[k] = defaultSettings[k]; });
+                setThemeModeSegment(currentSettings.themeMode);
+                try { sessionStorage.removeItem("theme-pick"); } catch (err) {}
+                setDark(modeIsDark());
 
                 persistSettings();
                 applyReadingSettings();
 
                 var resetBlur = isPostPage ? defaultSettings.bgBlur : 0;
-                bgBake.unbake();
-                body.style.setProperty("--bg-blur", resetBlur + "px");
-                bgBake.schedule(900); // 等模糊过渡走完
+                if (isPostPage) {
+                    bgBake.unbake();
+                    body.style.setProperty("--bg-blur", resetBlur + "px");
+                    bgBake.schedule(900); // 等模糊过渡走完
+                }
 
                 if (immersiveInput) immersiveInput.checked = !!currentSettings.immersive;
                 if (hideTodoInput) hideTodoInput.checked = !!currentSettings.hideTodo;
@@ -911,7 +939,7 @@ var Glint = function (config) {
                 if (indentInput) indentInput.checked = !!currentSettings.indent;
                 setBodyFontSegment(currentSettings.bodyFont);
                 if (bgInput) bgInput.value = currentSettings.bgOpacity / 2;
-                if (bgBlurInput) bgBlurInput.value = resetBlur;
+                if (bgBlurInput) bgBlurInput.value = defaultSettings.bgBlur;
                 updateAllSliderFills();
             });
         }
@@ -1456,17 +1484,17 @@ var Glint = function (config) {
     // 关灯切换 (使用 sessionStorage 记忆单次会话)
     // 日夜切换：支持视图过渡时，新的配色从日月按钮处以圆形向外扩散铺满整屏（clip-path 动画挂在 ::view-transition-new(root) 上，
     // 缓动先快后缓）；不支持或要求减少动效时直接切换。记忆仍在 sessionStorage（header.ejs 首帧前读取）
-    this.night = function () {
+    // 切到日 / 夜：支持视图过渡时，新配色从日月按钮处以圆形扩散铺满整屏（clip-path 挂在 ::view-transition-new(root) 上）；
+    // 不支持或要求减少动效时直接切换。结果写回 sessionStorage theme（一叶等页面读它），手机地址栏颜色跟着换
+    function setDark(dark) {
+        if (body.classList.contains("dark-theme") === dark) return;
         var btn = ks.select(".light-btn");
         var root = document.documentElement;
         function flip() {
-            if (body.classList.contains("dark-theme")) {
-                body.classList.remove("dark-theme");
-                sessionStorage.setItem("theme", "light");
-            } else {
-                body.classList.add("dark-theme");
-                sessionStorage.setItem("theme", "dark");
-            }
+            body.classList.toggle("dark-theme", dark);
+            try { sessionStorage.setItem("theme", dark ? "dark" : "light"); } catch (e) {}
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", dark ? "#0e0e10" : "#e9eff7");   // 与 header.ejs 首帧一致
             updateAllSliderFills();
         }
         // 日月图标转入：先摘掉再强制回流，连点时动画也能重新开始
@@ -1477,7 +1505,7 @@ var Glint = function (config) {
             btn.classList.add("is-flipping");
             btn.addEventListener("animationend", function () { btn.classList.remove("is-flipping"); }, { once: true });
         }
-        if (!document.startViewTransition || !btn || root.classList.contains("theme-flipping") ||
+        if (!document.startViewTransition || !btn || !btn.offsetWidth || root.classList.contains("theme-flipping") ||
             window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
             flip();
             spin();
@@ -1493,6 +1521,26 @@ var Glint = function (config) {
                 { duration: 720, easing: "cubic-bezier(.22, 1, .36, 1)", pseudoElement: "::view-transition-new(root)" });
         }, function () {});
         vt.finished.finally(function () { root.classList.remove("theme-flipping"); });
+    }
+    // 设置里的「日夜」模式（夜间 / 白天 / 跟随系统）此刻应是哪一边
+    function modeIsDark() {
+        var mode = currentSettings.themeMode || "dark";
+        return mode === "auto" ? !window.matchMedia("(prefers-color-scheme: light)").matches : mode !== "light";
+    }
+    // 跟随系统时：系统换了外观、且本次浏览中没手动点过日月按钮，就跟着切
+    try {
+        window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", function () {
+            var pick = null;
+            try { pick = sessionStorage.getItem("theme-pick"); } catch (e) {}
+            if (!pick && currentSettings.themeMode === "auto") setDark(modeIsDark());
+        });
+    } catch (e) {}
+
+    // 日月按钮：本次浏览中临时切换（sessionStorage theme-pick），不改设置里的模式
+    this.night = function () {
+        var dark = !body.classList.contains("dark-theme");
+        try { sessionStorage.setItem("theme-pick", dark ? "dark" : "light"); } catch (e) {}
+        setDark(dark);
     };
 
     // 目录树
@@ -2792,3 +2840,250 @@ var CONTENT_IMG_SEL = ".post-content:not(.is-special) img, .page-content:not(.is
 if(window.console && window.console.log){
     console.log("%c Glint %c based on Hingle · https://paugram.com ","color: #fff; margin: 1em 0; padding: 5px 0; background: #6f9fc7;","margin: 1em 0; padding: 5px 0; background: #efefef;");
 }}
+
+// 续读的延伸（glint.css「续读位置」末尾）：
+// 1. 列表上的「读到 x%」：首页卡片、归档时间线、文末「继续阅读」与相关阅读里，读到一半的文章挂一枚进度胶囊（读的是上面续读脚本的记录）
+// 2. 目录里标出读过的章节：另记每篇读到过的最远一块（localStorage whatasiger_read_max，读完记为全篇），整章都读过的那一项亮一枚小勾
+// 3. 目录卡片标题栏显示「本章约剩 x 分钟」：按当前章节剩下的字数、每分钟约 550 字（与文章页「预计阅读」一致）估算
+// 目录由 Glint 构造时生成（页脚的内联脚本），所以等 DOMContentLoaded 再动手
+;(function () {    // 行首分号：上一段以 }} 结尾，不加会被接成一次函数调用
+    var PROG_KEY = "whatasiger_read_progress", MAX_KEY = "whatasiger_read_max", MAX_POSTS = 120, CPM = 550;
+    function load(k) { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } }
+    function norm(u) { try { return new URL(u, location.href).pathname.replace(/index\.html$/, ""); } catch (e) { return ""; } }
+
+    function badges() {
+        var prog = load(PROG_KEY);
+        if (!Object.keys(prog).length) return;
+        var spots = [
+            ["a.post-item.card-style:not(.cw-card)", ".post-card-meta"],
+            [".archive-row", ".archive-meta"],
+            [".post-near-card", ".post-near-meta"],
+            [".post-related-item", ".post-related-meta"]
+        ];
+        spots.forEach(function (sp) {
+            [].forEach.call(document.querySelectorAll(sp[0]), function (a) {
+                var rec = prog[norm(a.href)], box = a.querySelector(sp[1]);
+                var old = box && box.querySelector(".read-badge");
+                if (old) old.remove();
+                if (!rec || !(rec.p > 0) || !box) return;
+                var pct = Math.max(1, Math.min(99, Math.round(rec.p)));
+                var b = document.createElement("span");
+                b.className = "read-badge";
+                b.style.setProperty("--rp", pct + "%");
+                b.textContent = "读到 " + pct + "%";
+                b.title = "上次读到这里，打开后可继续阅读";
+                if (sp[0] === ".archive-row") box.insertBefore(b, box.firstChild); else box.appendChild(b);
+            });
+        });
+    }
+
+    function chapters() {
+        var article = document.querySelector(".post-content:not(.is-special)");
+        var toc = document.querySelector(".article-list");
+        if (!article || !toc) return;
+        var path = location.pathname;
+        var blocks = [].filter.call(article.children, function (el) {
+            return el.tagName !== "SCRIPT" && el.tagName !== "STYLE" && !el.classList.contains("footnotes");
+        });
+        if (!blocks.length) return;
+        // 各块的字数（去掉空白）与目录项对应的块序号
+        var lens = blocks.map(function (el) { return el.textContent.replace(/\s+/g, "").length; });
+        var links = [].slice.call(toc.querySelectorAll(".article-list-body a[href^='#']"));
+        var heads = links.map(function (a) {
+            var id = a.getAttribute("href").slice(1);
+            try { id = decodeURIComponent(id); } catch (e) {}
+            var h = document.getElementById(id), at = -1;
+            for (var i = 0; h && i < blocks.length; i++) if (blocks[i] === h || blocks[i].contains(h)) { at = i; break; }
+            return { a: a, at: at };
+        }).filter(function (x) { return x.at >= 0; });
+        if (!heads.length) return;
+
+        var all = load(MAX_KEY);
+        var max = all[path] ? all[path].m : -1;
+        function mark() {
+            heads.forEach(function (h, k) {
+                var end = k + 1 < heads.length ? heads[k + 1].at : blocks.length;
+                h.a.classList.toggle("is-read", max >= end);
+            });
+        }
+        mark();
+
+        var remain = document.createElement("span");
+        remain.className = "toc-remain";
+        var head = toc.querySelector(".article-list-head");
+        var title = head && head.querySelector(".title");
+        if (title) title.insertAdjacentElement("afterend", remain);
+
+        var LINE = 0.3, ticking = false, saveTimer = 0;
+        function currentBlock() {
+            var line = window.innerHeight * LINE, lo = 0, hi = blocks.length - 1;
+            while (lo < hi) {
+                var mid = (lo + hi + 1) >> 1;
+                if (blocks[mid].getBoundingClientRect().top <= line) lo = mid; else hi = mid - 1;
+            }
+            var r = blocks[lo].getBoundingClientRect();
+            return { i: lo, f: r.height > 0 ? Math.max(0, Math.min(1, (line - r.top) / r.height)) : 0, top: blocks[0].getBoundingClientRect().top > line };
+        }
+        function update() {
+            ticking = false;
+            var c = currentBlock();
+            // 本章剩余：当前块往后到下一个标题之前
+            var k = -1;
+            for (var j = 0; j < heads.length; j++) if (heads[j].at <= c.i) k = j;
+            if (c.top || k < 0) { remain.textContent = ""; }
+            else {
+                var end = k + 1 < heads.length ? heads[k + 1].at : blocks.length, rest = lens[c.i] * (1 - c.f);
+                for (var b = c.i + 1; b < end; b++) rest += lens[b];
+                var min = Math.ceil(rest / CPM);
+                remain.textContent = rest < 30 ? "本章将尽" : "本章约剩 " + min + " 分钟";
+            }
+            // 读到过的最远处：逐帧跟着滚动连续经过的范围往前推（平滑滚动每帧只走几段，一路接得上；拖滚动条、刷新时恢复的滚动位置
+            // 一下跳过去，接不上就不算），位置停稳 2 秒才记下；读到正文末尾记为全篇
+            var a = article.getBoundingClientRect();
+            var reached = a.bottom <= window.innerHeight * 0.9 ? blocks.length : c.i;
+            // 点了底部的「继续阅读」：那一次跳转是读者自己要接着读，算数
+            if (reached > cand && (reached - Math.max(cand, 0) <= 30 || Date.now() < jumpOk)) cand = reached;
+            clearTimeout(stableTimer);
+            if (cand > max) stableTimer = setTimeout(function () { advance(cand); }, 2000);
+        }
+        var stableTimer = 0, cand = max, jumpOk = 0;
+        document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest(".resume-go")) jumpOk = Date.now() + 1500; }, true);
+        function advance(reached) {
+            if (reached <= max) return;
+            {
+                max = reached;
+                mark();
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(function () {
+                    var cur = load(MAX_KEY);
+                    cur[path] = { m: max, t: Date.now() };
+                    var keys = Object.keys(cur);
+                    if (keys.length > MAX_POSTS) {
+                        keys.sort(function (x, y) { return cur[x].t - cur[y].t; });
+                        for (var q = 0; q < keys.length - MAX_POSTS; q++) delete cur[keys[q]];
+                    }
+                    try { localStorage.setItem(MAX_KEY, JSON.stringify(cur)); } catch (e) {}
+                }, 800);
+            }
+        }
+        function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+        // 等过渡落定、正文整篇排好（content-visibility 撤掉）后再开始量，免得按估计高度算错
+        (window.vtSettled || Promise.resolve()).then(function () {
+            setTimeout(function () {
+                window.addEventListener("scroll", onScroll, { passive: true });
+                window.addEventListener("resize", onScroll);
+                update();
+            }, 400);
+        });
+    }
+
+    function run() { badges(); chapters(); }
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+    else run();
+    window.addEventListener("pageshow", function (e) { if (e.persisted) badges(); });   // 从文章返回（往返缓存）时补上刚产生的进度
+})();
+
+// 更新日志（glint.css「更新日志折叠与更新提示」）：
+// 1. 「关于网站」页里，各版本标题（#### **版本名**（日期））可点击折叠；只展开最新的一版，旧版本收起（行高 0fr ↔ 1fr 过渡）
+//    从目录点到收起的版本时自动展开；带 #changelog-latest 打开时滚到最新一版
+// 2. 发了新版本后，老读者再来时底部浮出一次「Whatasiger 更新到了「版本名」」（footer.ejs 的 GLINT_RELEASE；第一次来的读者只记下、不提示；
+//    看过「关于网站」或点了关闭就不再出现）。只在非阅读页出现，不打扰读文章；记录在 localStorage whatasiger_seen_release
+;(function () {
+    var REL_KEY = "whatasiger_seen_release";
+    var rel = window.GLINT_RELEASE;
+    var relKey = rel ? rel.name + "@" + rel.date : "";
+    var content = document.querySelector(".page-content:not(.is-special)");
+    var onAbout = rel && location.pathname.replace(/index\.html$/, "") === rel.url;
+
+    function remember() { try { if (relKey) localStorage.setItem(REL_KEY, relKey); } catch (e) {} }
+
+    if (content && onAbout) {
+        var heads = [].filter.call(content.querySelectorAll("h4"), function (h) {
+            return /（\d{4}-\d{2}-\d{2}）\s*$/.test(h.textContent);
+        });
+        if (heads.length > 1) {
+            var latest = heads[heads.length - 1];
+            heads.forEach(function (h) {
+                // 把标题之后、下一条分隔线 / 版本标题之前的内容收进折叠盒
+                var box = document.createElement("div"), inner = document.createElement("div");
+                box.className = "cl-body";
+                inner.className = "cl-inner";
+                box.appendChild(inner);
+                var n = h.nextSibling;
+                while (n && !(n.nodeType === 1 && (n.tagName === "HR" || heads.indexOf(n) !== -1))) {
+                    var next = n.nextSibling;
+                    inner.appendChild(n);
+                    n = next;
+                }
+                h.parentNode.insertBefore(box, n);
+                h.classList.add("cl-head");
+                h.setAttribute("role", "button");
+                h.setAttribute("tabindex", "0");
+                var open = h === latest;
+                h.setAttribute("aria-expanded", String(open));
+                box.classList.toggle("is-open", open);
+                if (h === latest) h.classList.add("is-latest");
+                function toggle(v) {
+                    var o = typeof v === "boolean" ? v : h.getAttribute("aria-expanded") !== "true";
+                    h.setAttribute("aria-expanded", String(o));
+                    box.classList.toggle("is-open", o);
+                }
+                h._clToggle = toggle;
+                h.addEventListener("click", function (e) {
+                    if (e.target.closest("a.headerlink")) return;    // 点锚点照常
+                    toggle();
+                });
+                h.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+                });
+            });
+            // 从目录 / 锚点跳到收起的版本：先展开
+            function openFor(id) {
+                var t = id && document.getElementById(id);
+                if (t && t._clToggle) t._clToggle(true);
+            }
+            document.addEventListener("click", function (e) {
+                var a = e.target.closest && e.target.closest(".article-list-body a[href^='#']");
+                if (!a) return;
+                var id = a.getAttribute("href").slice(1);
+                try { id = decodeURIComponent(id); } catch (err) {}
+                openFor(id);
+            }, true);
+            var hash = "";
+            try { hash = decodeURIComponent(location.hash.slice(1)); } catch (e) {}
+            if (hash === "changelog-latest") {
+                (window.vtSettled || Promise.resolve()).then(function () {
+                    setTimeout(function () { latest.scrollIntoView({ behavior: "smooth", block: "start" }); }, 300);
+                });
+            } else openFor(hash);
+        }
+    }
+
+    // 更新提示
+    if (!relKey) return;
+    if (onAbout) { remember(); return; }
+    var seen = null;
+    try { seen = localStorage.getItem(REL_KEY); } catch (e) {}
+    if (!seen) { remember(); return; }              // 第一次来：只记下
+    if (seen === relKey || document.body.classList.contains("post-page")) return;
+    var bar = document.createElement("div");
+    bar.className = "release-bar";
+    bar.setAttribute("role", "status");
+    bar.innerHTML = '<span class="release-spark" aria-hidden="true"></span><span class="release-text">Whatasiger 更新到了「<b></b>」</span>' +
+        '<a class="release-go" href="' + rel.url + '#changelog-latest">看看有什么新东西<i class="fa fa-angle-right" aria-hidden="true"></i></a>' +
+        '<button type="button" class="release-close" aria-label="不再提示"></button>';
+    bar.querySelector("b").textContent = rel.name;
+    function hide() {
+        remember();
+        bar.classList.remove("is-shown");
+        setTimeout(function () { bar.remove(); }, 400);
+    }
+    bar.querySelector(".release-close").addEventListener("click", hide);
+    bar.querySelector(".release-go").addEventListener("click", remember);
+    function show() {
+        document.body.appendChild(bar);
+        requestAnimationFrame(function () { requestAnimationFrame(function () { bar.classList.add("is-shown"); }); });
+    }
+    if (document.prerendering) document.addEventListener("prerenderingchange", function () { setTimeout(show, 1600); }, { once: true });
+    else setTimeout(show, 1600);
+})();

@@ -50,7 +50,7 @@ var tracks = page.tracks || [];
                 var gapB = gapA + 2 + ((i * 13) % 5);
                 var tag = t.published ? 'a' : 'span';
             %>
-                <li class="<%= cls.join(' ') %>" style="--tint:<%= t.tint %>;--gap-a:<%= gapA %>%;--gap-b:<%= gapB %>%">
+                <li class="<%= cls.join(' ') %>"<% if (t.published) { %> data-slug="<%= t.slug %>"<% } %> style="--tint:<%= t.tint %>;--gap-a:<%= gapA %>%;--gap-b:<%= gapB %>%">
                     <<%= tag %> class="cw-track-link"
                         <% if (t.published) { %>href="<%- url_for(t.url) %>"<% } else { %>aria-disabled="true"<% } %>
                         data-cw-track
@@ -79,6 +79,22 @@ var tracks = page.tracks || [];
             <p class="cw-sign"><%= config.author %></p>
         </footer>
     </main>
+    <%# 读过的篇目与见过的篇目（都存在读者浏览器里）：
+   whatasiger_cw_read —— 读到文末的篇目，目录页给它们挂 is-read；whatasiger_cw_seen —— 打开目录页时见过的已接收篇目，
+   首页 CW 卡片据此判断有没有新篇目（「新信号」，见 _partial/archive-list.ejs） %>
+    <script>
+        (function () {
+            var read = [], items = [].slice.call(document.querySelectorAll(".cw-track[data-slug]"));
+            try { read = JSON.parse(localStorage.getItem("whatasiger_cw_read")) || []; } catch (e) {}
+            items.forEach(function (li) {
+                if (read.indexOf(li.getAttribute("data-slug")) === -1) return;
+                li.classList.add("is-read");
+                var meta = li.querySelector(".cw-meta");
+                if (meta) meta.setAttribute("title", "读过");
+            });
+            try { localStorage.setItem("whatasiger_cw_seen", JSON.stringify(items.map(function (li) { return li.getAttribute("data-slug"); }))); } catch (e) {}
+        })();
+    </script>
 </body>
 </html>
 

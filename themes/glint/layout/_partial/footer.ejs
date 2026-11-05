@@ -15,7 +15,7 @@
                 <div class="footer-card">
                     <h3 class="footer-card-title title-tags">标签云<span class="footer-card-sub">Tags</span></h3>
                     <div class="footer-tags"><%- tagcloud({ min_font: 13, max_font: 17, unit: 'px' }) %></div>
-                    <p class="footer-card-note">共 <%= site.posts.length %> 篇文章 · <%= site.tags.length %> 个标签</p>
+                    <p class="footer-card-note"><a href="<%- url_for('/stats/') %>" title="写作统计">共 <%= site.posts.length %> 篇文章 · <%= site.tags.length %> 个标签<i class="fa fa-angle-right" aria-hidden="true"></i></a></p>
                 </div>
             </div>
         </section>
@@ -29,6 +29,19 @@
 <%# 目录开关 .toggle-list 由 glint.js 插入此处（CSS 已隐藏） %>
 <div class="buttons"></div>
 
+<%
+    // 最新的一条更新日志（「关于网站」最底部的「#### **版本名**（日期）」）：glint.js（载入时即读取，须在它之前）据此给老读者一次性的「有更新」提示
+    var release = null;
+    site.pages.each(function (pg) {
+        if (release || !/^about-website\//.test(pg.path)) return;
+        var all = String(pg.raw || "").match(/####\s*\*\*([^*]+)\*\*\s*（(\d{4}-\d{2}-\d{2})）/g);
+        if (all) {
+            var m = all[all.length - 1].match(/\*\*([^*]+)\*\*\s*（(\d{4}-\d{2}-\d{2})）/);
+            release = { name: m[1].trim(), date: m[2], url: url_for("/about-website/") };
+        }
+    });
+%>
+<script>window.GLINT_RELEASE = <%- JSON.stringify(release) %>;</script>
 <script src="<%- asset_url('static/kico.js') %>"></script>
 <script src="<%- asset_url('static/glint.js') %>"></script>
 

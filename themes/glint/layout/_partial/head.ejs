@@ -68,8 +68,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title><%= title %></title>
 
-    <%- favicon_tag("static/img/icon.png") %>
-    <link rel="icon" href="/static/img/icon.png" sizes="192x192"/>
+    <%# 站点图标：浏览器标签页、手机「添加到主屏」（apple-touch-icon 180px）与 manifest（source/site.webmanifest） %>
+    <link rel="icon" href="<%- url_for('/static/img/icon.png') %>" sizes="512x512" type="image/png">
+    <link rel="apple-touch-icon" href="<%- url_for('/static/img/apple-touch-icon.png') %>">
+    <link rel="manifest" href="<%- url_for('/site.webmanifest') %>">
     <link rel="canonical" href="<%= pageUrl %>">
 
     <!-- 基本 SEO -->
@@ -109,6 +111,8 @@
     %><link rel="alternate" type="<%= fmime %>" title="<%= config.title %>" href="<%- url_for('/' + fpath) %>"><%
         });
     } %>
+
+    <link rel="alternate" type="application/atom+xml" title="CARRiER WAVE." href="<%- url_for('/carrier_wave/atom.xml') %>">
 
     <!-- Sitemap（hexo-generator-sitemap 启用后可用） -->
     <% if (config.sitemap && config.sitemap.path) { %>
@@ -186,7 +190,7 @@
     <link rel="stylesheet"
           href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap"
           media="print" onload="this.media='all'; this.onload=null;" id="font-css">
-    <% if ((is_post() || is_page()) && page.layout !== 'gizmo') { %>
+    <% if ((is_post() || is_page()) && page.layout !== 'gizmo' && page.layout !== 'stats') { %>
     <%# 阅读页：正文等思源黑体就绪再显示，免得先用微软雅黑排一遍、再整页跳成思源黑体
        等待期间 main 隐藏（背景与顶栏照常），入场动画暂停在起点，就绪后从头播；超过 300ms 才浮出加载指示
        最多等 1.2s（首次访问网络慢时），之后照常显示、字体到了再换；选了系统字体就不等
@@ -195,7 +199,7 @@
     <script>
         try {
             if ((JSON.parse(localStorage.getItem('whatasiger_reader_settings')) || {}).bodyFont === 'serif') {
-                document.write('<link rel="stylesheet" id="font-serif-css" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'; this.onload=null;">');
+                document.write('<link rel="stylesheet" id="font-serif-css" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap" media="print" onload="this.media=\'all\'; this.onload=null;">');
             }
         } catch (err) {}
     </script>

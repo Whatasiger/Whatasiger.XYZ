@@ -1,7 +1,7 @@
 <script>
     (function() {
         // 核心修复：把普通的博客文章 (is_post) 和独立页面 (is_page) 都视为"阅读界面"
-        var isArticle = <%= ((is_post() || is_page()) && page.layout !== 'gizmo') ? 'true' : 'false' %>; // Gizmo 陈列页不算阅读界面（与 layout.ejs 一致）
+        var isArticle = <%= ((is_post() || is_page()) && page.layout !== 'gizmo' && page.layout !== 'stats') ? 'true' : 'false' %>; // Gizmo 陈列页不算阅读界面（与 layout.ejs 一致）
         var isFromArticle = sessionStorage.getItem("is_from_article") === "true";
         var theme = sessionStorage.getItem("theme");
 
@@ -89,13 +89,21 @@
         document.body.style.setProperty("--bg-opacity", String(targetBgOpacity));
         document.body.style.setProperty("--bg-blur", initialBgBlur + "px");
 
-        // 2. 瞬间敲定日夜模式
-        if (theme === "light") {
-            document.body.classList.remove("dark-theme");
-        } else {
-            document.body.classList.add("dark-theme");
-            sessionStorage.setItem("theme", "dark");
-        }
+        // 2. 瞬间敲定日夜模式：本次浏览中点过日月按钮（sessionStorage theme-pick）就照它；否则按设置里的「日夜」
+        //    （whatasiger_reader_settings.themeMode：dark 夜间，默认 / light 白天 / auto 跟随系统）。
+        //    结果仍写回 sessionStorage theme，一叶等独立页面照旧读它；手机地址栏颜色（theme-color）跟着换
+        try {
+            var themeMode = (savedSettings && savedSettings.themeMode) || "dark";
+            var themePick = sessionStorage.getItem("theme-pick");
+            var isDark = themePick ? themePick !== "light"
+                : themeMode === "auto" ? !window.matchMedia("(prefers-color-scheme: light)").matches
+                : themeMode !== "light";
+            theme = isDark ? "dark" : "light";
+        } catch (e) {}
+        document.body.classList.toggle("dark-theme", theme !== "light");
+        try { sessionStorage.setItem("theme", theme === "light" ? "light" : "dark"); } catch (e) {}
+        var themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) themeMeta.setAttribute("content", theme === "light" ? "#e9eff7" : "#0e0e10");
 
         // 3. 敲定刚进网页瞬间的背景状态
         if (isArticle) {
@@ -198,6 +206,16 @@
                             <button type="button" role="radio" data-value="origin" aria-checked="false">Origin</button>
                         </div>
                     </div>
+                    <%# 日夜：夜间（默认）/ 白天 / 跟随系统；顶栏的日月按钮只在本次浏览中临时切换（header.ejs 开头首帧前判断） %>
+                    <div class="settings-row">
+                        <i class="fa fa-adjust"></i>
+                        <span>日夜</span>
+                        <div class="settings-segment is-three" id="setting-theme-mode" data-value="dark" role="radiogroup" aria-label="日夜">
+                            <button type="button" role="radio" data-value="dark" aria-checked="true">夜间</button>
+                            <button type="button" role="radio" data-value="light" aria-checked="false">白天</button>
+                            <button type="button" role="radio" data-value="auto" aria-checked="false" title="跟随系统">自动</button>
+                        </div>
+                    </div>
                     <div class="settings-row">
                         <i class="fa fa-font"></i>
                         <span>字体</span>
@@ -218,7 +236,7 @@
                         <input type="range" id="setting-bg-opacity" min="0" max="50" step="any">
                     </label>
                     <label class="settings-tile">
-                        <span class="settings-tile-label"><i class="fa fa-tint"></i>背景模糊</span>
+                        <span class="settings-tile-label"><i class="fa fa-tint"></i>背景模糊<small>阅读页</small></span>
                         <input type="range" id="setting-bg-blur" min="0" max="20" step="any">
                     </label>
                 </div>

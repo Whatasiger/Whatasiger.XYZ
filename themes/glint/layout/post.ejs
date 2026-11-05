@@ -11,18 +11,16 @@
                 <time class="date"><%= date(page.date, "YYYY.MM.DD") %></time>
 
                 <%
-                var countStr = String(symbolsCount(page));
-                if (countStr.toLowerCase().indexOf('k') !== -1) {
-                    // 提取数字部分并乘以 1000，Math.round 用来消除浮点误差
-                    countStr = Math.round(parseFloat(countStr) * 1000);
-                }
+                // 字数：page.length 由 hexo-symbols-count-time 写入（去掉空白的字符数）；满一万写「x.x 万字」，不足一万取整到百
+                var words = page.length || 0;
+                var wordsLabel = words >= 10000 ? (Math.round(words / 1000) / 10) + " 万字" : (words >= 1000 ? Math.round(words / 100) * 100 : words) + " 字";
 
                 // 使用总分钟展示阅读时长，避免插件在 >=60 分钟时返回 "h:mm" 格式。
                 var awl = (config.symbols_count_time && config.symbols_count_time.awl) || 4;
                 var wpm = (config.symbols_count_time && config.symbols_count_time.wpm) || 275;
-                var readMinutes = Math.max(1, Math.round((page.length || 0) / (awl * wpm)));
+                var readMinutes = Math.max(1, Math.round(words / (awl * wpm)));
                 %>
-                <span class="word-count">约 <%= countStr %> 字</span>
+                <span class="word-count">约 <%= wordsLabel %></span>
                 <span class="read-time">预计阅读 <%= readMinutes %> 分钟</span>
                 <span id="busuanzi_container_page_pv" class="view" style="display:none;">
                     <span id="busuanzi_value_page_pv"></span> 次阅读
@@ -44,6 +42,64 @@
             </section>
         <% } %>
         </div>
+    <%
+        // 文末「继续阅读」：较早 / 较新的一篇（Hexo 的 next 是较早、prev 是较新），以及相关阅读
+        // 相关阅读：先是 front matter 的 related（abbrlink 列表，如原文与评析互相挂钩），再按相同标签补足，最多 3 篇，不与前后两篇重复
+        function nearInfo(p) {
+            var cover = p.cover || theme.background;
+            var n = p.length || 0;
+            return {
+                url: url_for(p.path),
+                title: String(p.title || "未命名").trim(),
+                date: date(p.date, "YYYY-MM-DD"),
+                words: n >= 10000 ? (Math.round(n / 1000) / 10) + " 万字" : (n >= 1000 ? Math.round(n / 100) * 100 : n) + " 字",
+                thumb: cover ? card_cover(cover).thumb : ""
+            };
+        }
+        var older = page.next, newer = page.prev;
+        var taken = [page._id, older && older._id, newer && newer._id];
+        var related = [];
+        var relIds = [].concat(page.related || []).map(String);
+        site.posts.each(function (p) {
+            if (relIds.indexOf(String(p.abbrlink)) !== -1 && taken.indexOf(p._id) === -1) { related.push({ p: p, why: "延伸阅读" }); taken.push(p._id); }
+        });
+        var myTags = page.tags ? page.tags.map(function (t) { return t.name; }) : [];
+        if (related.length < 3 && myTags.length) {
+            site.posts.sort("-date").each(function (p) {
+                if (related.length >= 3 || taken.indexOf(p._id) !== -1) return;
+                var shared = (p.tags ? p.tags.map(function (t) { return t.name; }) : []).filter(function (t) { return myTags.indexOf(t) !== -1; });
+                if (shared.length) { related.push({ p: p, why: "#" + shared[0] }); taken.push(p._id); }
+            });
+        }
+    %>
+    <% if (older || newer) { %>
+    <%# 卡片点进去时标题一镜到底飞到正文标题处（data-title-hop，见 _partial/title-hop.ejs）；悬停即预渲染，点下立刻切换 %>
+    <nav class="post-near" aria-label="继续阅读">
+        <% [[older, "is-older", "更早一篇"], [newer, "is-newer", "更新一篇"]].forEach(function (n) { if (!n[0]) return; var it = nearInfo(n[0]); %>
+        <a class="post-near-card <%= n[1] %>" href="<%- it.url %>" data-title-hop>
+            <% if (it.thumb) { %><span class="post-near-bg" style="background-image: url('<%- it.thumb %>')" aria-hidden="true"></span><% } %>
+            <span class="post-near-label"><% if (n[1] === "is-older") { %><i class="fa fa-angle-left" aria-hidden="true"></i><% } %><%= n[2] %><% if (n[1] === "is-newer") { %><i class="fa fa-angle-right" aria-hidden="true"></i><% } %></span>
+            <span class="post-near-title" data-hop-title><%= it.title %></span>
+            <span class="post-near-meta"><%= it.date %> · 约 <%= it.words %></span>
+        </a>
+        <% }) %>
+    </nav>
+    <% } %>
+    <% if (related.length) { %>
+    <section class="post-related" aria-label="相关阅读">
+        <h3 class="post-related-title"><i class="fa fa-bookmark" aria-hidden="true"></i>相关阅读</h3>
+        <% related.forEach(function (r, i) { var it = nearInfo(r.p); %>
+        <a class="post-related-item" href="<%- it.url %>" data-title-hop style="--i: <%= i %>">
+            <% if (it.thumb) { %><span class="post-related-thumb" style="background-image: url('<%- it.thumb %>')" aria-hidden="true"></span><% } %>
+            <span class="post-related-body">
+                <span class="post-related-name" data-hop-title><%= it.title %></span>
+                <span class="post-related-meta"><span class="post-related-why"><%= r.why %></span><%= it.date %> · 约 <%= it.words %></span>
+            </span>
+        </a>
+        <% }) %>
+    </section>
+    <% } %>
+    <script type="speculationrules">{"prerender": [{"source": "document", "where": {"selector_matches": ".post-near a, .post-related a"}, "eagerness": "moderate"}]}</script>
     <%- partial('_partial/comments') %>
     </div>
 </main>

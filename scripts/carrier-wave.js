@@ -33,6 +33,39 @@ function formatWords(n) {
   return n ? n.toLocaleString('en-US') + ' 字' : '';
 }
 
+// 已接收（会生成阅读页）的篇目 slug：与下方生成器同一判断（正文文件存在、front matter 没写 draft）
+// 首页 CW 卡片用它判断有没有读者还没见过的新篇目（archive-list.ejs 的「新信号」）
+function publishedSlugs(album) {
+  const dir = path.join(hexo.source_dir, '_carrier_wave');
+  return (album && Array.isArray(album.tracks) ? album.tracks : []).filter((raw) => {
+    const file = path.join(dir, raw.slug + '.md');
+    if (!fs.existsSync(file)) return false;
+    const src = fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
+    const fm = /^(-{3,}|;{3,})\r?\n/.test(src) ? parseFrontMatter(src) : {};
+    return !fm.draft;
+  }).map((raw) => raw.slug);
+}
+hexo.extend.helper.register('cw_published', function () {
+  return publishedSlugs(this.site.data && this.site.data.carrier_wave);
+});
+// 写作统计页（layout stats）用：篇目总数、已接收篇数、已接收篇目的字数（按正文 Markdown 估算，与阅读页的字数口径相近）
+hexo.extend.helper.register('cw_stats', function () {
+  const album = this.site.data && this.site.data.carrier_wave;
+  const slugs = publishedSlugs(album);
+  const dir = path.join(hexo.source_dir, '_carrier_wave');
+  let words = 0;
+  slugs.forEach((slug) => {
+    const src = fs.readFileSync(path.join(dir, slug + '.md'), 'utf8').replace(/^﻿/, '');
+    const fm = /^(-{3,}|;{3,})\r?\n/.test(src) ? parseFrontMatter(src) : { _content: src };
+    words += countWords(fm._content || '');
+  });
+  return { total: album && Array.isArray(album.tracks) ? album.tracks.length : 0, published: slugs.length, words };
+});
+
+function xmlEscape(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 hexo.extend.generator.register('carrier_wave', async function (locals) {
   const album = locals.data && locals.data.carrier_wave;
   if (!album || !Array.isArray(album.tracks)) return [];
@@ -71,6 +104,7 @@ hexo.extend.generator.register('carrier_wave', async function (locals) {
     track.words = countWords(track.content);
     track.wordsLabel = formatWords(track.words);
     track.description = fm.description || '';
+    track.updated = fs.statSync(file).mtime;
     track.published = true;
     track.url = '/' + BASE + '/' + track.slug + '/';
     return track;
@@ -124,6 +158,33 @@ hexo.extend.generator.register('carrier_wave', async function (locals) {
       }
     });
   });
+
+  // 订阅源 /carrier_wave/atom.xml：已接收的篇目（篇目没有日期，按正文文件的修改时间排）
+  const site = (hexo.config.url || '').replace(/\/+$/, '');
+  const feedItems = published.slice().sort((a, b) => b.updated - a.updated);
+  const feedUpdated = (feedItems[0] ? feedItems[0].updated : new Date()).toISOString();
+  const lines = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<feed xmlns="http://www.w3.org/2005/Atom">',
+    '  <title>' + xmlEscape(meta.title + ' ' + meta.subtitle + ' · ' + hexo.config.title) + '</title>',
+    '  <subtitle>' + xmlEscape(meta.epigraph) + '</subtitle>',
+    '  <link href="' + site + '/' + BASE + '/atom.xml" rel="self"/>',
+    '  <link href="' + site + '/' + BASE + '/"/>',
+    '  <id>' + site + '/' + BASE + '/</id>',
+    '  <updated>' + feedUpdated + '</updated>',
+    '  <author><name>' + xmlEscape(hexo.config.author) + '</name></author>'
+  ];
+  feedItems.forEach((t) => {
+    lines.push('  <entry>',
+      '    <title>' + xmlEscape(t.no + ' ' + t.title + (t.part ? ' ' + t.part : '')) + '</title>',
+      '    <link href="' + site + t.url + '"/>',
+      '    <id>' + site + t.url + '</id>',
+      '    <updated>' + t.updated.toISOString() + '</updated>');
+    if (t.description) lines.push('    <summary>' + xmlEscape(t.description) + '</summary>');
+    lines.push('    <content type="html">' + xmlEscape(t.content) + '</content>', '  </entry>');
+  });
+  lines.push('</feed>', '');
+  routes.push({ path: BASE + '/atom.xml', data: lines.join('\n') });
 
   return routes;
 });

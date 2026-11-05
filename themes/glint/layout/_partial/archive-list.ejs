@@ -3,7 +3,9 @@
         var cwWave = 'M0 50';
         for (var cx = 0; cx < 1600; cx += 40) cwWave += ' Q' + (cx + 10) + ' 38 ' + (cx + 20) + ' 50 T' + (cx + 40) + ' 50';
     %>
-        <a class="post-item card-style cw-card" href="<%- url_for('/carrier_wave/') %>">
+        <%# 「新信号」：有读者上次打开目录页之后才接收的篇目时，卡片右上角亮一枚小点（只在读者打开过目录页之后才比较，见下方脚本） %>
+        <a class="post-item card-style cw-card" href="<%- url_for('/carrier_wave/') %>" data-cw-tracks="<%= cw_published().join(',') %>">
+            <span class="cw-card-new" aria-hidden="true">新信号</span>
             <div class="cw-card-wave-box" aria-hidden="true">
                 <svg class="cw-card-wave" viewBox="0 0 1600 100" preserveAspectRatio="none">
                     <path class="cw-card-strand is-ghost" d="<%= cwWave %>"/>
@@ -84,5 +86,18 @@
             if (!io || el.getBoundingClientRect().top < near) show(el);
             else io.observe(el);
         });
+    })();
+</script>
+<script>
+    (function () {
+        var card = document.querySelector(".cw-card[data-cw-tracks]");
+        if (!card) return;
+        var seen = null;
+        try { seen = JSON.parse(localStorage.getItem("whatasiger_cw_seen")); } catch (e) {}
+        if (!Array.isArray(seen)) return;
+        var fresh = card.getAttribute("data-cw-tracks").split(",").filter(function (s) { return s && seen.indexOf(s) === -1; });
+        if (!fresh.length) return;
+        card.classList.add("has-new");
+        card.setAttribute("aria-label", "CARRiER WAVE.（有 " + fresh.length + " 篇新接收的信号）");
     })();
 </script>

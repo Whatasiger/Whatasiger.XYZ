@@ -7,7 +7,10 @@
     <meta name="theme-color" content="#16181D">
     <link rel="canonical" href="<%= full_url_for(page.path) %>">
     <% if (page.track && page.track.hidden) { %><meta name="robots" content="noindex, nofollow"><% } %>
-    <link rel="icon" href="<%- url_for('/static/img/icon.png') %>" sizes="192x192">
+    <link rel="icon" href="<%- url_for('/static/img/icon.png') %>" sizes="512x512" type="image/png">
+    <link rel="apple-touch-icon" href="<%- url_for('/static/img/apple-touch-icon.png') %>">
+    <%# CARRiER WAVE. 自己的订阅源（scripts/carrier-wave.js 生成） %>
+    <link rel="alternate" type="application/atom+xml" title="CARRiER WAVE." href="<%- url_for('/carrier_wave/atom.xml') %>">
 
     <meta property="og:site_name" content="<%= config.title %>">
     <meta property="og:type" content="<%= cwType %>">

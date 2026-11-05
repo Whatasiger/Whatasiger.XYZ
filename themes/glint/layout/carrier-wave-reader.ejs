@@ -63,6 +63,29 @@ var fullTitle = t.title + (t.part ? ' ' + t.part : '');
             <% } else { %><span class="cw-pager-link is-empty"></span><% } %>
         </nav>
     </main>
+    <%# 读过的篇目与见过的篇目（都存在读者浏览器里）：
+   whatasiger_cw_read —— 读到文末的篇目，目录页给它们挂 is-read；whatasiger_cw_seen —— 打开目录页时见过的已接收篇目，
+   首页 CW 卡片据此判断有没有新篇目（「新信号」，见 _partial/archive-list.ejs） %>
+    <script>
+        (function () {
+            var slug = <%- JSON.stringify(t.slug) %>, end = document.querySelector(".cw-end");
+            if (!end || <%- t.hidden ? 'true' : 'false' %>) return;
+            function done() {
+                try {
+                    var read = JSON.parse(localStorage.getItem("whatasiger_cw_read")) || [];
+                    if (read.indexOf(slug) === -1) { read.push(slug); localStorage.setItem("whatasiger_cw_read", JSON.stringify(read)); }
+                } catch (e) {}
+            }
+            if (!window.IntersectionObserver) return;
+            // 读到文末（结尾的小波浪进入视口）才算读过；预渲染中不算
+            var io = new IntersectionObserver(function (en) {
+                if (!en.some(function (x) { return x.isIntersecting; }) || document.prerendering) return;
+                io.disconnect();
+                done();
+            });
+            setTimeout(function () { io.observe(end); }, 1200);
+        })();
+    </script>
 </body>
 </html>
 

@@ -6,9 +6,9 @@
         "name": "再见菈菈",
         "type": 2,
         "cover": "https://lain.bgm.tv/r/200/pic/cover/l/18/af/495291_9WuBW.jpg",
-        "epStatus": 3,
+        "epStatus": 4,
         "eps": 12,
-        "updatedAt": "2026-11-03T23:20:08+08:00",
+        "updatedAt": "2026-11-04T23:39:20+08:00",
         "url": "https://bgm.tv/subject/495291"
       },
       {
@@ -112,7 +112,7 @@
         "url": "https://bgm.tv/subject/845"
       }
     ],
-    "fetchedAt": "2026-11-03T15:46:08.222Z"
+    "fetchedAt": "2026-11-05T15:58:17.835Z"
   },
   "netease": {
     "songs": [
@@ -122,6 +122,13 @@
         "artists": "ひとひら",
         "cover": "https://p1.music.126.net/19xlS-oxqi3yG7890PEehA==/109951173986849987.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=2111740365"
+      },
+      {
+        "id": 2722426126,
+        "name": "おとぎ",
+        "artists": "RAY",
+        "cover": "https://p1.music.126.net/Xe4VfKSkHYkIO1dQNXp-rQ==/109951171402189439.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2722426126"
       },
       {
         "id": 26405133,
@@ -138,13 +145,6 @@
         "url": "https://music.163.com/#/song?id=3363527827"
       },
       {
-        "id": 2722426126,
-        "name": "おとぎ",
-        "artists": "RAY",
-        "cover": "https://p1.music.126.net/Xe4VfKSkHYkIO1dQNXp-rQ==/109951171402189439.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2722426126"
-      },
-      {
         "id": 26405131,
         "name": "スクールフィクション",
         "artists": "きのこ帝国",
@@ -152,18 +152,18 @@
         "url": "https://music.163.com/#/song?id=26405131"
       },
       {
-        "id": 28095028,
-        "name": "FLOWER GIRL",
-        "artists": "きのこ帝国",
-        "cover": "https://p1.music.126.net/o7w7szxFLTeSnDJJa9hoKw==/109951163560123952.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=28095028"
+        "id": 2712589107,
+        "name": "春の嵐",
+        "artists": "羊文学",
+        "cover": "https://p1.music.126.net/jd5vRmlAEaJ40ao4HK2Wag==/109951171268447043.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2712589107"
       },
       {
-        "id": 1387098940,
-        "name": "ノーチラス",
+        "id": 487527984,
+        "name": "雲と幽霊",
         "artists": "ヨルシカ",
-        "cover": "https://p1.music.126.net/oH-hPC-coG6spFpbaA4xjw==/109951164327687331.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=1387098940"
+        "cover": "https://p1.music.126.net/rD6Ul3DVakQkD8_VeL-aRw==/19162288649094546.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=487527984"
       },
       {
         "id": 3382353203,
@@ -180,13 +180,13 @@
         "url": "https://music.163.com/#/song?id=28095029"
       },
       {
-        "id": 2744488734,
-        "name": "天体",
-        "artists": "RAY",
-        "cover": "https://p1.music.126.net/LcsEn0Yz6g_7Go401fzPIA==/109951171991978996.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2744488734"
+        "id": 28095028,
+        "name": "FLOWER GIRL",
+        "artists": "きのこ帝国",
+        "cover": "https://p1.music.126.net/o7w7szxFLTeSnDJJa9hoKw==/109951163560123952.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=28095028"
       }
     ],
-    "fetchedAt": "2026-11-03T15:46:08.622Z"
+    "fetchedAt": "2026-11-05T15:58:18.498Z"
   }
 }

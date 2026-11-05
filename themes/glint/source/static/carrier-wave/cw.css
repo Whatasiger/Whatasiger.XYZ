@@ -419,6 +419,18 @@ main { position: relative; z-index: 1; }
     transition: opacity .5s var(--ease-out), transform .85s var(--spring), color .5s var(--ease-out);
 }
 .cw-meta .cw-dot { margin: 0 .9em 0 .68em; }
+/* 读过的篇目（目录页内联脚本挂 is-read，记录在 localStorage whatasiger_cw_read）：序号淡下去，字数后面缀一枚小小的「已读」 */
+.cw-track.is-read .cw-no { opacity: .45; }
+.cw-track.is-read .cw-meta::after {
+    content: "已读";
+    margin-left: .9em;
+    padding: .1em .55em .1em .75em;
+    border-radius: 999px;
+    letter-spacing: .3em;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--tint) 70%, var(--ink));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 40%, transparent);
+}
 
 .cw-track:hover::before,
 .cw-track:focus-within::before { transform: scaleX(1); }

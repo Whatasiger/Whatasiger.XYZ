@@ -1,0 +1,166 @@
+<%
+// 写作统计页（source/stats/index.md，layout: stats；glint.css「写作统计」）：全部在构建时算好
+// 顶部四个大数字，下面是逐年字数（柱）、按标签（横条）、写作日历（年 × 月的热力格）与最长的几篇
+// 图都是单一色相（站点强调色，由浅到深表示多少）；每张图悬停有提示，另附表格视图（<details>）
+var posts = site.posts.sort("date").toArray();
+function fmt(n) { return n >= 10000 ? (Math.round(n / 1000) / 10) + " 万" : String(n); }
+var totalWords = 0;
+posts.forEach(function (p) { totalWords += p.length || 0; });
+var cw = typeof cw_stats === "function" ? cw_stats() : { total: 0, published: 0, words: 0 };
+var first = posts.length ? posts[0].date : null;
+var days = first ? Math.max(1, Math.round((Date.now() - first.valueOf()) / 864e5)) : 0;
+
+var years = {}, months = {}, tags = {};
+posts.forEach(function (p) {
+    var y = date(p.date, "YYYY"), m = date(p.date, "YYYY-MM"), w = p.length || 0;
+    years[y] = years[y] || { words: 0, count: 0 }; years[y].words += w; years[y].count++;
+    months[m] = months[m] || { words: 0, count: 0, titles: [] }; months[m].words += w; months[m].count++; months[m].titles.push(String(p.title || "").trim());
+    (p.tags ? p.tags.toArray() : []).forEach(function (t) {
+        tags[t.name] = tags[t.name] || { words: 0, count: 0, path: t.path }; tags[t.name].words += w; tags[t.name].count++;
+    });
+});
+var yearList = Object.keys(years).sort();
+if (yearList.length) {   // 中间没写的年份也补上，柱子按时间连续排
+    var y0 = +yearList[0], y1 = Math.max(+yearList[yearList.length - 1], +date(new Date(), "YYYY"));
+    yearList = [];
+    for (var yy = y0; yy <= y1; yy++) { yearList.push(String(yy)); years[yy] = years[yy] || { words: 0, count: 0 }; }
+}
+var maxYear = Math.max.apply(null, yearList.map(function (y) { return years[y].words; }).concat(1));
+var tagList = Object.keys(tags).sort(function (a, b) { return tags[b].words - tags[a].words; });
+var maxTag = Math.max.apply(null, tagList.map(function (t) { return tags[t].words; }).concat(1));
+var maxMonth = Math.max.apply(null, Object.keys(months).map(function (m) { return months[m].words; }).concat(1));
+var longest = posts.slice().sort(function (a, b) { return (b.length || 0) - (a.length || 0); }).slice(0, 5);
+// 热力格颜色分五级（0 为没写）：按该月字数占最多那个月的比例
+function level(w) { return !w ? 0 : Math.min(4, Math.max(1, Math.ceil(w / maxMonth * 4))); }
+%>
+<main class="archive-main stats-main">
+    <div class="wrap min">
+        <section class="archive-hero stats-hero">
+            <p class="archive-kicker">STATISTICS</p>
+            <h1 class="archive-heading">写作统计</h1>
+            <p class="archive-stats"><span>自 <b><%= first ? date(first, "YYYY 年 M 月") : "—" %></b> 起</span><i aria-hidden="true"></i><span>数据随每次构建更新</span></p>
+            <div class="stats-tiles">
+                <div class="stats-tile"><b data-count="<%= posts.length %>"><%= posts.length %></b><span>篇文章</span></div>
+                <div class="stats-tile"><b data-count="<%= totalWords %>" data-wan><%= fmt(totalWords) %></b><span>字</span></div>
+                <div class="stats-tile"><b data-count="<%= cw.published %>"><%= cw.published %></b><span>篇 CARRiER WAVE.<small>共 <%= cw.total %> 篇 · <%= fmt(cw.words) %>字</small></span></div>
+                <div class="stats-tile"><b data-count="<%= days %>"><%= days %></b><span>天</span></div>
+            </div>
+        </section>
+
+        <section class="archive-year stats-card" style="--gi: 0">
+            <h2 class="archive-year-title"><span>逐年字数</span></h2>
+            <div class="stats-bars" role="img" aria-label="各年份字数柱状图（下方有表格）">
+                <% yearList.forEach(function (y, i) { var d = years[y]; %>
+                <div class="stats-bar" style="--v: <%= (d.words / maxYear).toFixed(4) %>; --i: <%= i %>" data-tip="<%= y %> 年：<%= d.count %> 篇，约 <%= fmt(d.words) %>字" tabindex="0">
+                    <span class="stats-bar-val"><%= d.words ? fmt(d.words) : "" %></span>
+                    <span class="stats-bar-fill"></span>
+                    <span class="stats-bar-key"><%= y %></span>
+                </div>
+                <% }) %>
+            </div>
+            <details class="stats-table"><summary>表格</summary>
+                <table><thead><tr><th>年份</th><th>篇数</th><th>字数</th></tr></thead><tbody>
+                <% yearList.forEach(function (y) { %><tr><td><%= y %></td><td><%= years[y].count %></td><td><%= years[y].words %></td></tr><% }) %>
+                </tbody></table>
+            </details>
+        </section>
+
+        <section class="archive-year stats-card" style="--gi: 1">
+            <h2 class="archive-year-title"><span>按标签</span></h2>
+            <div class="stats-rows">
+                <% tagList.forEach(function (t, i) { var d = tags[t]; %>
+                <a class="stats-row" href="<%- url_for(d.path) %>" style="--v: <%= (d.words / maxTag).toFixed(4) %>; --i: <%= i %>" data-tip="#<%= t %>：<%= d.count %> 篇，约 <%= fmt(d.words) %>字">
+                    <span class="stats-row-key">#<%= t %></span>
+                    <span class="stats-row-track"><span class="stats-row-fill"></span></span>
+                    <span class="stats-row-val"><%= fmt(d.words) %>字 · <%= d.count %> 篇</span>
+                </a>
+                <% }) %>
+            </div>
+            <p class="stats-note">一篇文章可有多个标签，各标签的字数会重复计入</p>
+        </section>
+
+        <section class="archive-year stats-card" style="--gi: 2">
+            <h2 class="archive-year-title"><span>写作日历</span><small>颜色越深，那个月写得越多</small></h2>
+            <div class="stats-cal" role="img" aria-label="写作日历：按年和月的热力格（下方有表格）">
+                <span class="stats-cal-corner"></span>
+                <% for (var mm = 1; mm <= 12; mm++) { %><span class="stats-cal-mon"><%= mm %></span><% } %>
+                <% yearList.slice().reverse().forEach(function (y, yi) { %>
+                <span class="stats-cal-year"><%= y %></span>
+                <% for (var m2 = 1; m2 <= 12; m2++) { var key = y + "-" + (m2 < 10 ? "0" : "") + m2, d = months[key]; %>
+                <span class="stats-cal-cell lv-<%= d ? level(d.words) : 0 %>" style="--i: <%= yi * 12 + m2 %>"<% if (d) { %> tabindex="0" data-tip="<%= y %> 年 <%= m2 %> 月：<%= d.count %> 篇，约 <%= fmt(d.words) %>字｜<%= d.titles.join("、") %>"<% } %>></span>
+                <% } %>
+                <% }) %>
+            </div>
+            <div class="stats-legend" aria-hidden="true"><span>少</span><i class="lv-1"></i><i class="lv-2"></i><i class="lv-3"></i><i class="lv-4"></i><span>多</span></div>
+            <details class="stats-table"><summary>表格</summary>
+                <table><thead><tr><th>月份</th><th>篇数</th><th>字数</th><th>文章</th></tr></thead><tbody>
+                <% Object.keys(months).sort().reverse().forEach(function (m) { %><tr><td><%= m %></td><td><%= months[m].count %></td><td><%= months[m].words %></td><td><%= months[m].titles.join("、") %></td></tr><% }) %>
+                </tbody></table>
+            </details>
+        </section>
+
+        <section class="archive-year stats-card" style="--gi: 3">
+            <h2 class="archive-year-title"><span>最长的几篇</span></h2>
+            <ol class="archive-list">
+                <% longest.forEach(function (p, i) { var cover = p.cover || theme.background; %>
+                <li style="--i: <%= i %>">
+                    <a class="archive-row" href="<%- url_for(p.path) %>" data-title-hop>
+                        <span class="archive-date stats-rank"><%= i + 1 %></span>
+                        <span class="archive-dot" aria-hidden="true"></span>
+                        <% if (cover) { %><span class="archive-thumb" style="background-image: url('<%- card_cover(cover).thumb %>')" aria-hidden="true"></span><% } %>
+                        <span class="archive-body">
+                            <span class="archive-title" data-hop-title><%= String(p.title || "未命名").trim() %></span>
+                            <span class="archive-desc"><%= date(p.date, "YYYY-MM-DD") %></span>
+                        </span>
+                        <span class="archive-meta"><span class="archive-words"><%= fmt(p.length || 0) %>字</span></span>
+                    </a>
+                </li>
+                <% }) %>
+            </ol>
+        </section>
+    </div>
+</main>
+<div class="stats-tip" role="tooltip" aria-hidden="true"></div>
+<script>
+    (function () {
+        // 悬停 / 聚焦提示：跟着指针（键盘聚焦时贴在元素上方）
+        var tip = document.querySelector(".stats-tip");
+        function show(el, x, y) {
+            tip.textContent = el.getAttribute("data-tip");
+            tip.classList.add("is-on");
+            var w = tip.offsetWidth, h = tip.offsetHeight;
+            tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, x - w / 2)) + "px";
+            tip.style.top = Math.max(8, y - h - 14) + "px";
+        }
+        function hide() { tip.classList.remove("is-on"); }
+        document.querySelector(".stats-main").addEventListener("pointermove", function (e) {
+            var el = e.target.closest("[data-tip]");
+            if (el) show(el, e.clientX, e.clientY); else hide();
+        });
+        document.querySelector(".stats-main").addEventListener("pointerleave", hide);
+        document.querySelector(".stats-main").addEventListener("focusin", function (e) {
+            var el = e.target.closest("[data-tip]");
+            if (!el) return;
+            var r = el.getBoundingClientRect();
+            show(el, r.left + r.width / 2, r.top);
+        });
+        document.querySelector(".stats-main").addEventListener("focusout", hide);
+        window.addEventListener("scroll", hide, { passive: true });
+
+        // 大数字从 0 数上去（先快后缓），减少动效时直接显示
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        [].forEach.call(document.querySelectorAll(".stats-tile b[data-count]"), function (b, k) {
+            var to = +b.getAttribute("data-count"), wan = b.hasAttribute("data-wan"), t0 = 0, D = 1200;
+            function txt(v) { return wan && v >= 10000 ? (Math.round(v / 1000) / 10) + " 万" : String(Math.round(v)); }
+            b.textContent = txt(0);
+            setTimeout(function () {
+                requestAnimationFrame(function step(now) {
+                    if (!t0) t0 = now;
+                    var p = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - p, 4);
+                    b.textContent = txt(to * e);
+                    if (p < 1) requestAnimationFrame(step);
+                });
+            }, 250 + k * 90);
+        });
+    })();
+</script>

@@ -6,6 +6,7 @@ date: 2025-12-12
 tag: 小说
 description: Q君的存在从宇宙的尺度上说是一个极小概率事件，但他本人对此并不感到幸运。
 cover: /images/webp/0c3f4b2439c160b9.webp
+related: [12]  # 文末「相关阅读」里互相挂钩（原文 ↔ 评析）
 ---
 
 > [!WARNING]
