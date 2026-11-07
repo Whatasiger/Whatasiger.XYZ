@@ -22,6 +22,7 @@ const hexo = new Hexo(base, {
 hexo.init()
   .then(() => {
     delete hexo.extend.generator.store.carrier_wave;
+    delete hexo.extend.generator.store.search_json;    // Glint 的站内搜索索引：Origin 用 search.xml，不需要它
     return hexo.call('generate', {});
   })
   .then(() => hexo.exit())

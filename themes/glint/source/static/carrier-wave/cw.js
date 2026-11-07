@@ -449,8 +449,11 @@
     var last = 0;
     var clock = 0;
     var running = false;
+    var rafId = 0;
 
     function loop(now) {
+        rafId = 0;
+        if (!running) return;
         var dt = last ? Math.min((now - last) / 1000, 1 / 20) : 1 / 60;
         last = now;
         if (!reduceMotion) clock += dt;
@@ -458,15 +461,20 @@
             if (carriers[i].before) carriers[i].before();
             carriers[i].frame(clock, dt);
         }
-        if (running) requestAnimationFrame(loop);
+        if (running && !rafId) rafId = requestAnimationFrame(loop);
     }
+    // 始终至多一个排队的帧：页面在后台时排队的回调被冻结，若 stop() 不取消它，切回前台 start() 再排一个，
+    // 两条循环会同时跑下去，每切一次后台就多一条
     function start() {
         if (running) return;
         running = true;
         last = 0;
-        requestAnimationFrame(loop);
+        if (!rafId) rafId = requestAnimationFrame(loop);
     }
-    function stop() { running = false; }
+    function stop() {
+        running = false;
+        if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    }
 
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) stop(); else start();

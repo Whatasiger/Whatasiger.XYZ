@@ -42,8 +42,9 @@ for (const file of walk(root, false, [])) {
   try {
     result = esbuild.transformSync(code, { loader, minify: true, legalComments: 'none', charset: 'utf8' });
   } catch (e) {
-    console.warn('跳过（压缩失败）：' + path.relative(root, file) + '\n' + e.message);
-    continue;
+    // 压缩失败让构建失败：否则有语法错误的文件会照常部署，CI 也照样通过
+    console.error('压缩失败：' + path.relative(root, file) + '\n' + e.message);
+    process.exit(1);
   }
   // @charset 必须是样式表的第一句，署名注释放在它后面
   const head = leadingComment(code);

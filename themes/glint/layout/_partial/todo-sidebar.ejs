@@ -10,7 +10,8 @@
 %>
 <%# 抽屉与标签同处一个容器、只由容器位移，两者天然贴合 %>
 <div class="todo-drawer">
-<aside class="todo-sidebar" id="todo-sidebar" aria-label="TO DO" data-bgm-user="<%= todoCfg.bangumi_user || '' %>">
+<%# 收起时 inert（todo-sidebar.js 展开时撤掉）；封面写 data-src，第一次展开才加载 %>
+<aside class="todo-sidebar" id="todo-sidebar" aria-label="TO DO" inert data-bgm-user="<%= todoCfg.bangumi_user || '' %>">
     <div class="todo-head">
         <h2>TO DO</h2>
         <button class="todo-close" type="button" aria-label="收起"><i class="fa fa-angle-left" aria-hidden="true"></i></button>
@@ -28,7 +29,7 @@
                     <% group.items.forEach(function (item, i) { %>
                     <li style="--i: <%= i %>">
                         <a href="<%= item.url %>" target="_blank" rel="noopener">
-                            <img src="<%= item.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+                            <img data-src="<%= item.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">
                             <span class="todo-text">
                                 <span class="todo-title"><%= item.name %></span>
                                 <% if (item.type === 2) { %>
@@ -57,7 +58,7 @@
                 <li style="--i: <%= i %>">
                     <a href="<%= song.url %>" target="_blank" rel="noopener">
                         <span class="todo-rank"><%= i + 1 %></span>
-                        <img src="<%= song.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+                        <img data-src="<%= song.cover %>" alt="" loading="lazy" referrerpolicy="no-referrer">
                         <span class="todo-text">
                             <span class="todo-title"><%= song.name %></span>
                             <span class="todo-meta"><%= song.artists %></span>

@@ -16,8 +16,21 @@
     var pendingRender = null;
     var animTimer = null;
 
+    // 封面图要等第一次展开才加载：抽屉靠 transform 移出屏幕，loading="lazy" 仍会把它们算作视口附近而提前下载
+    var opened = false;
+    function revealImages() {
+        [].forEach.call(sidebar.querySelectorAll("img[data-src]"), function (img) {
+            img.src = img.getAttribute("data-src");
+            img.removeAttribute("data-src");
+        });
+    }
+
     function setOpen(open) {
         if (open === drawer.classList.contains("active")) return;
+        if (open && !opened) { opened = true; revealImages(); }
+        // 收起时整张卡片 inert：屏外的链接不再能被 Tab 聚焦；焦点在卡片里就先还给标签
+        if (!open && sidebar.contains(document.activeElement)) toggle.focus({ preventScroll: true });
+        sidebar.inert = !open;
         drawer.classList.toggle("active", open);
         toggle.setAttribute("aria-expanded", open ? "true" : "false");
         try { sessionStorage.setItem(STATE_KEY, open ? "1" : "0"); } catch (e) {}
@@ -146,7 +159,8 @@
         a.rel = "noopener";
 
         var img = el("img");
-        img.src = images.small || images.grid || "";
+        var src = images.small || images.grid || "";
+        if (opened) img.src = src; else img.setAttribute("data-src", src);
         img.alt = "";
         img.loading = "lazy";
         img.referrerPolicy = "no-referrer";
@@ -185,7 +199,7 @@
     }
 
     function loadBangumi() {
-        if (bgmLoaded || !bgmUser || !window.fetch) return;
+        if (bgmLoaded || !bgmUser || !window.fetch || document.body.classList.contains("hide-todo")) return;   // 设置里关掉了 TO DO 就不去请求
         bgmLoaded = true;
         var base = "https://api.bgm.tv/v0/users/" + encodeURIComponent(bgmUser) + "/collections?type=3&limit=30&subject_type=";
         Promise.all(BGM_TYPES.map(function (t) {

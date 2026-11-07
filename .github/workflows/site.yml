@@ -37,7 +37,8 @@ jobs:
     timeout-minutes: 30
     env:
       TZ: Asia/Shanghai
-      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+      # 只把「有没有配 token」暴露给整个 job（供部署步骤的 if 判断）；token 本身只在部署那一步注入，安装依赖 / 构建 / 检查都读不到
+      HAS_DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -64,9 +65,11 @@ jobs:
 
       - name: 部署到 Whatasiger.github.io
         if: >-
-          env.DEPLOY_TOKEN != '' && github.ref == 'refs/heads/main' &&
+          env.HAS_DEPLOY_TOKEN == 'true' && github.ref == 'refs/heads/main' &&
           ((github.event_name == 'workflow_dispatch' && inputs.deploy) ||
            (github.event_name == 'schedule' && vars.AUTO_DEPLOY == 'true'))
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
           git clone --depth 1 "https://x-access-token:${DEPLOY_TOKEN}@github.com/Whatasiger/Whatasiger.github.io.git" deploy
           rsync -a --delete --exclude .git public/ deploy/

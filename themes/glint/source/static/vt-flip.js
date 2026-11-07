@@ -209,7 +209,14 @@ window.vtFlip = (function () {
         })(spec.el && document.querySelector(spec.el));
         var r0 = measure && measure();
         if (!r0) return null;
-        if (visual) r0 = { left: g.Z.x, top: g.Z.y, width: g.Z.w, height: g.Z.h }; // 起跑时就对不上（如已吸顶）也照样校正
+        // 函数终点：以带名元素此刻的盒子为基准，第一帧检查时就会按差值校正到函数给的矩形（如已吸顶、振幅缩小）
+        // 基准必须与 measure() 同一坐标系（布局视口，getBoundingClientRect）。不能拿 g.Z：它是浏览器给的组矩形，
+        // 坐标原点是 snapshot containing block——手机 Chrome 顶部地址栏露出时，它比布局视口高出地址栏那一截，
+        // 拿两者相减会把终点整体上移约 56px（载波落到大标题上；电脑上没有可伸缩的地址栏，模拟手机尺寸也复现不了）
+        if (visual) {
+            var boxEl = spec.box && document.querySelector(spec.box);
+            r0 = boxEl ? boxEl.getBoundingClientRect() : { left: g.Z.x, top: g.Z.y, width: g.Z.w, height: g.Z.h };
+        }
         // 逐帧检查：元素动了就把终点平移 / 改尺寸，按原规则重建动画并接上当前进度
         return function () {
             var r = measure();

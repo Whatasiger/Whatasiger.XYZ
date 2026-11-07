@@ -2169,7 +2169,10 @@ var Glint = function (config) {
             if (!q) { lastQuery = ""; fill([]); setStatus(""); return; }
             if (!data) {
                 setStatus(failed ? '索引加载失败，<button type="button" class="search-retry">重试</button>' : "正在载入索引…");
-                load().then(render, function () { render(); });
+                // 失败只显示一次失败提示：若再调 render() 会立刻重新 load()，断网时成了不停发请求的死循环；之后只由「重试」按钮重新加载
+                load().then(render, function () {
+                    if (!data && input.value.trim()) setStatus('索引加载失败，<button type="button" class="search-retry">重试</button>');
+                });
                 return;
             }
             if (q === lastQuery) return;
@@ -2852,8 +2855,7 @@ if(window.console && window.console.log){
     function norm(u) { try { return new URL(u, location.href).pathname.replace(/index\.html$/, ""); } catch (e) { return ""; } }
 
     function badges() {
-        var prog = load(PROG_KEY);
-        if (!Object.keys(prog).length) return;
+        var prog = load(PROG_KEY);      // 记录为空也要走一遍：读完最后一篇后退回来（往返缓存），旧徽章得删掉
         var spots = [
             ["a.post-item.card-style:not(.cw-card)", ".post-card-meta"],
             [".archive-row", ".archive-meta"],
