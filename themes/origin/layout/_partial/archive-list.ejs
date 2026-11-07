@@ -1,5 +1,5 @@
 <section class="home-posts">
-    <% if (is_home() && page.current === 1) {
+    <% if (is_home() && page.current === 1 && !cw_hidden()) {   /* carrier_wave.yml 的 hidden 为 true 时不显示 */
         var cwWave = 'M0 50';
         for (var cx = 0; cx < 1600; cx += 40) cwWave += ' Q' + (cx + 10) + ' 38 ' + (cx + 20) + ' 50 T' + (cx + 40) + ' 50';
     %>

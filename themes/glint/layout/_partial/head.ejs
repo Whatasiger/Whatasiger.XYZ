@@ -246,7 +246,7 @@
     <!-- 卡片标题用内联的子集字体，不再外链 Cormorant Garamond -->
     <%- partial('_partial/cw-title-font') %>
     <!-- 预渲染目录页：指针停在卡片上（或按下）时就在后台把它完整加载好，点击即刻切换、过渡立即开始，不必等网络与字体 -->
-    <script type="speculationrules">{"prerender": [{"urls": ["<%- url_for('/carrier_wave/') %>"], "eagerness": "moderate"}]}</script>
+    <% if (!cw_hidden()) { %><script type="speculationrules">{"prerender": [{"urls": ["<%- url_for('/carrier_wave/') %>"], "eagerness": "moderate"}]}</script><% } %>
     <!-- 文章卡片同样预渲染（指针停留 / 按下即开始）：点击后过渡立即开始，不必等文章页下载、解析、出首帧
          预渲染会执行文章页脚本，所以不蒜子等页面真正打开才加载计数（footer.ejs），评论等过渡结束（post-vt.ejs 的 vtSettled） -->
     <script type="speculationrules">{"prerender": [{"source": "document", "where": {"selector_matches": "a.post-item.card-style:not(.cw-card)"}, "eagerness": "moderate"}]}</script>

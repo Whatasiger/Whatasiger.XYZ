@@ -65,7 +65,7 @@ hexo.extend.generator.register('search_json', async function (locals) {
 
   // CARRiER WAVE.：目录里已接收的篇目（隐藏篇目是彩蛋，不进搜索）
   const album = locals.data && locals.data.carrier_wave;
-  if (album && Array.isArray(album.tracks)) {
+  if (album && !album.hidden && Array.isArray(album.tracks)) {   // hidden：入口暂时隐藏时也不进搜索
     const dir = path.join(hexo.source_dir, '_carrier_wave');
     for (const raw of album.tracks) {
       const file = path.join(dir, raw.slug + '.md');

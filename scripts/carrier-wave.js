@@ -48,6 +48,11 @@ function publishedSlugs(album) {
 hexo.extend.helper.register('cw_published', function () {
   return publishedSlugs(this.site.data && this.site.data.carrier_wave);
 });
+// 是否暂时隐藏入口（carrier_wave.yml 的 hidden）：首页卡片与站内搜索据此跳过
+hexo.extend.helper.register('cw_hidden', function () {
+  const album = this.site.data && this.site.data.carrier_wave;
+  return !!(album && album.hidden);
+});
 // 写作统计页（layout stats）用：篇目总数、已接收篇数、已接收篇目的字数（按正文 Markdown 估算，与阅读页的字数口径相近）
 hexo.extend.helper.register('cw_stats', function () {
   const album = this.site.data && this.site.data.carrier_wave;

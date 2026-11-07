@@ -21,6 +21,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 ## 结构要点
 - 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）
 - 【特殊】短篇辑 CARRiER WAVE.：正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/` 单独生成
+  - 暂时隐藏：`carrier_wave.yml` 顶部 `hidden: true` 时首页（Glint 与 Origin）不显示 CW 卡片、首页不预渲染目录页、`search.json` 不收录各篇（helper `cw_hidden()`）；页面本身照常生成。删掉该行或改 false 即恢复
 - 主题：`themes/glint`（Glint，自定义 EJS；Origin 见上），样式在 `themes/glint/source/static/glint.css`（按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，注释风格为中文行尾注释）
 - 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、`asset_url` 静态资源版本号
 - 地址一律带结尾斜杠：`_config.yml` 的 `pretty_urls` 两项为 false（规范地址 / 站点地图是 `/about-me/` 而非 `/about-me/index.html`），菜单与站内链接写 `/about-me/`（不带斜杠时 GitHub Pages 会先 301 一次）
