@@ -51,7 +51,8 @@ var Glint = function (config) {
         letterSpacing: 3,      // 字间距（-2 ~ 8，单位 0.01em，滑动条无级）
         fontSize: 100,         // 字号百分比（90 ~ 130，滑动条无级）
         bgOpacity: 55,         // 背景可见度默认 55%（设置滑块按一半数值显示）
-        bgBlur: 8,             // 背景模糊度（0~20px），文章页默认8px
+        bgBlur: 8,             // 阅读页（及 CW 预告页）的背景模糊度（0~20px），默认 8px
+        homeBlur: 0,           // 首页（及归档等其余页面）的背景模糊度（0~20px），默认清晰
         accent: "blue",        // 主题色：blue（天青）/ lavender / sakura / mikan / wakakusa / mint，见 glint.css 第 0 节
         themeMode: "dark",     // 日夜：dark 夜间（默认）/ light 白天 / auto 跟随系统；日月按钮只是本次浏览中临时切换
         bodyFont: "sans",      // 阅读页正文字体：sans（随「字体」）/ serif（思源宋体，选中才加载）
@@ -445,6 +446,7 @@ var Glint = function (config) {
         "setting-font-size": { format: function (v) { return Math.round(v) + "%"; } },
         "setting-bg-opacity": { format: function (v) { return Math.round(v * 2) + "%"; } },
         "setting-bg-blur": { format: function (v) { return v.toFixed(1) + "px"; } },
+        "setting-home-blur": { format: function (v) { return v.toFixed(1) + "px"; } },
         "setting-line-height": { format: function (v) { return v.toFixed(2); } },
         "setting-para-spacing": { format: function (v) { return v.toFixed(1) + "em"; } },
         "setting-read-width": { format: function (v) { return Math.round(v) + "em"; } }
@@ -581,6 +583,7 @@ var Glint = function (config) {
         var sizeInput = document.getElementById("setting-font-size");
         var bgInput = document.getElementById("setting-bg-opacity");
         var bgBlurInput = document.getElementById("setting-bg-blur");
+        var homeBlurInput = document.getElementById("setting-home-blur");
         var resetBtn = document.getElementById("setting-reset-btn");
         var accentInput = document.getElementById("setting-accent");
         var accentName = document.getElementById("setting-accent-name");
@@ -663,10 +666,14 @@ var Glint = function (config) {
             ? currentSettings.bgOpacity
             : defaultSettings.bgOpacity) / 2);
         var isPostPage = body.classList.contains("post-page");
-        // 「背景模糊」只作用于阅读页（首页等背景始终清晰）：滑动条在哪页都显示并调整阅读页的值，只有在阅读页才实时预览
+        // 「背景模糊」分两项：阅读页（bgBlur，CW 预告页也用它）与首页（homeBlur，首页、归档等其余页面）。
+        // 两个滑动条在哪页都显示、都能调；只有调的正是当前页用的那一项时才实时预览
+        var isBlurPage = isPostPage || body.classList.contains("soon-page");
         var savedBlur = typeof currentSettings.bgBlur === "number" ? currentSettings.bgBlur : defaultSettings.bgBlur;
-        var initBlur = isPostPage ? savedBlur : 0;
+        var savedHomeBlur = typeof currentSettings.homeBlur === "number" ? currentSettings.homeBlur : defaultSettings.homeBlur;
+        var initBlur = isBlurPage ? savedBlur : savedHomeBlur;
         if (bgBlurInput) bgBlurInput.value = savedBlur;
+        if (homeBlurInput) homeBlurInput.value = savedHomeBlur;
         // header.ejs 开头已按同样的规则设好（从文章回首页时还在从文章页的模糊度往 0 过渡）：已设过就不再覆盖，
         // 否则这里若赶在它放开过渡之前执行，模糊会瞬间清零，不走动画
         if (!body.style.getPropertyValue("--bg-blur")) body.style.setProperty("--bg-blur", initBlur + "px");
@@ -884,21 +891,26 @@ var Glint = function (config) {
             });
         }
 
-        if (bgBlurInput) {
-            bgBlurInput.addEventListener("input", function () {
+        // live：这一项是否作用于当前页（是才实时预览、松手重烤）
+        function bindBlur(input, key, live) {
+            if (!input) return;
+            input.addEventListener("input", function () {
                 var v = Math.round(parseFloat(this.value) * 10) / 10;
                 if (isNaN(v) || v < 0) v = 0;
                 if (v > 20) v = 20;
-                currentSettings.bgBlur = v;
+                currentSettings[key] = v;
                 persistSettings();
-                if (isPostPage) {
+                if (live) {
                     bgBake.unbake(); // 拖动中用 CSS 模糊实时预览
                     body.style.setProperty("--bg-blur", v + "px");
+                    try { sessionStorage.setItem("glint-bg-blur", String(v)); } catch (err) {}   // 下一页从这个模糊度过渡（header.ejs）
                 }
                 updateSliderFill(this);
             });
-            bgBlurInput.addEventListener("change", function () { if (isPostPage) bgBake.schedule(); }); // 松手后重新烘焙
+            input.addEventListener("change", function () { if (live) bgBake.schedule(); }); // 松手后重新烘焙
         }
+        bindBlur(bgBlurInput, "bgBlur", isBlurPage);
+        bindBlur(homeBlurInput, "homeBlur", !isBlurPage);
 
         if (resetBtn) {
             resetBtn.addEventListener("click", function () {
@@ -910,6 +922,7 @@ var Glint = function (config) {
                 currentSettings.fontSize = defaultSettings.fontSize;
                 currentSettings.bgOpacity = defaultSettings.bgOpacity;
                 currentSettings.bgBlur = defaultSettings.bgBlur;
+                currentSettings.homeBlur = defaultSettings.homeBlur;
                 currentSettings.accent = defaultSettings.accent;
                 ["themeMode", "bodyFont", "lineHeight", "paraSpacing", "readWidth", "indent"].forEach(function (k) { currentSettings[k] = defaultSettings[k]; });
                 setThemeModeSegment(currentSettings.themeMode);
@@ -919,10 +932,11 @@ var Glint = function (config) {
                 persistSettings();
                 applyReadingSettings();
 
-                var resetBlur = isPostPage ? defaultSettings.bgBlur : 0;
-                if (isPostPage) {
+                var resetBlur = isBlurPage ? defaultSettings.bgBlur : defaultSettings.homeBlur;
+                if (parseFloat(body.style.getPropertyValue("--bg-blur")) !== resetBlur) {
                     bgBake.unbake();
                     body.style.setProperty("--bg-blur", resetBlur + "px");
+                    try { sessionStorage.setItem("glint-bg-blur", String(resetBlur)); } catch (err) {}
                     bgBake.schedule(900); // 等模糊过渡走完
                 }
 
@@ -940,6 +954,7 @@ var Glint = function (config) {
                 setBodyFontSegment(currentSettings.bodyFont);
                 if (bgInput) bgInput.value = currentSettings.bgOpacity / 2;
                 if (bgBlurInput) bgBlurInput.value = defaultSettings.bgBlur;
+                if (homeBlurInput) homeBlurInput.value = defaultSettings.homeBlur;
                 updateAllSliderFills();
             });
         }

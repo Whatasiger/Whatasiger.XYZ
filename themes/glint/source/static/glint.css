@@ -1877,6 +1877,42 @@ html:is(.cw-leaving, .cw-back) .cw-card-wave-box { view-transition-name: cw-hero
 html:is(.cw-leaving, .cw-back) .post-item.card-style .cw-card-title { view-transition-name: cw-hero-title; }
 html:is(.cw-leaving, .cw-back) .cw-card-sub { view-transition-name: cw-hero-sub; }
 
+/* CW 暂时隐藏（carrier_wave.yml 的 hide_entry）时的预告卡片（archive-list.ejs 的 .cw-card.is-soon）：
+   沿用 CW 卡片的夜空、载波与悬停 / 按下动效，副题换成手写的 Coming soon（字体 CW Soon，见 _partial/soon-font.ejs），左上角贴一截胶带 */
+.post-item.cw-card.is-soon .cw-card-body { gap: 0; }
+.post-item.cw-card .cw-soon-hand {
+    margin: .05em 0 0 3.4em;
+    padding: 0 .3em;
+    font-family: "CW Soon", cursive;
+    font-size: 3em;
+    line-height: 1.15;
+    text-indent: 0;
+    color: #E9DFC9;
+    rotate: -7deg;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .4);
+    transition: transform 1.2s var(--ease-spring);
+}
+.post-item.cw-card.is-soon:hover .cw-soon-hand { transform: translate(8px, 3px); }
+.post-item.cw-card.is-soon.is-pressed .cw-soon-hand { transform: none; transition-duration: .45s; }
+.cw-soon-tape {
+    position: absolute;
+    top: -10px;
+    left: 36px;
+    z-index: 3;
+    width: 96px;
+    height: 24px;
+    rotate: -8deg;
+    background: color-mix(in srgb, var(--tc-soft) 55%, transparent);
+    /* 胶带两头撕出的锯齿 */
+    -webkit-mask: conic-gradient(from -45deg at left, #0000 25%, #000 0) left / 51% 6px repeat-y, conic-gradient(from 135deg at right, #0000 25%, #000 0) right / 51% 6px repeat-y;
+    mask: conic-gradient(from -45deg at left, #0000 25%, #000 0) left / 51% 6px repeat-y, conic-gradient(from 135deg at right, #0000 25%, #000 0) right / 51% 6px repeat-y;
+    pointer-events: none;
+}
+@media (max-width: 768px) {
+    .post-item.cw-card .cw-soon-hand { font-size: 2.4em; margin-left: 2.2em; }
+    .cw-soon-tape { width: 76px; height: 20px; left: 26px; }
+}
+
 /* 反向：从 /carrier_wave/ 回到首页，整屏收回成卡片（cw-back 只在这次过渡期间挂在 html 上） */
 /* 文章卡片的逐张浮出由过渡代替，不再重播 */
 html.cw-came-back .home-posts .post-item,
@@ -3500,6 +3536,7 @@ html.vt-from-hop::view-transition-new(root) { animation: hop-root-in .6s cubic-b
 
 /* 滑动条两两并排的小方块：上面一行小标签，下面是液态胶囊 */
 .settings-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4em; }
+.settings-tile.is-wide { grid-column: 1 / -1; }   /* 背景可见度占一整行，下面两项背景模糊（首页 / 阅读页）并排 */
 .settings-tile {
     display: flex;
     flex-direction: column;
@@ -3521,7 +3558,7 @@ html.vt-from-hop::view-transition-new(root) { animation: hop-root-in .6s cubic-b
     white-space: nowrap;
 }
 .settings-tile-label .fa { width: 1em; text-align: center; color: var(--blue); }
-.settings-tile-label small { margin-left: auto; font-size: .62rem; letter-spacing: 0; opacity: .6; }   /* 「背景模糊」只作用于阅读页 */
+.settings-tile-label small { margin-left: auto; font-size: .62rem; letter-spacing: 0; opacity: .6; }   /* 「背景模糊」注明作用于首页还是阅读页 */
 label.settings-tile glint-slider { flex: none; }   /* 纵排时不能 flex: 1（基准 0 会把高度压没） */
 .dark-theme .settings-tile { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04); }
 .dark-theme .settings-tile-label .fa { color: var(--tc-soft); }
@@ -5687,6 +5724,341 @@ html.gizmo-from-leaf .gizmo-head > :not(.gizmo-emblem), html.gizmo-from-leaf .gi
 .gizmo-empty p { margin: 0; letter-spacing: .1em; opacity: .6; }
 
 /* =========================================
+   CW 预告页（layout/soon.ejs，/carrier_wave/soon/）：CW 暂时隐藏时首页预告卡片点进来的一张拼贴
+   - 画板 .soon-board 定宽高比、是尺寸容器，碎片的尺寸 / 字号都按画板宽度（cqi）走，缩放时整张拼贴等比；窄屏另排一套位置
+   - 碎片：夜空载波底片（与首页 CW 卡片同款）、手写 Coming soon 的撕边横格纸条、篇目色调的色卡、搜台刻度条（指针来回找台）、邮票与邮戳
+   - 倾斜用独立的 rotate，入场（落下）只动 translate / scale / opacity；胶带取主题色
+   - 白天的投影在第 8 节
+   ========================================= */
+.soon-page footer .sub-footer:before { display: none; } /* 与 Gizmo 页一样，底栏只留版权信息 */
+.soon-wrap { padding-top: 1.2em; padding-bottom: 3.5em; }
+.soon-board {
+    --soon-ink: #2B2836;
+    --soon-paper: #EFE8DA;
+    --soon-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .2 0 0 0 .12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    position: relative;
+    aspect-ratio: 16 / 11;
+    margin: 0 auto;
+    container-type: inline-size;
+    user-select: none;
+}
+.soon-scrap {
+    position: absolute;
+    rotate: var(--r, 0deg);
+    animation: soon-drop .9s var(--ease-spring) var(--d, 0s) backwards;
+}
+@keyframes soon-drop {
+    from { opacity: 0; translate: 0 -3cqi; scale: 1.06; }
+    50% { opacity: 1; }
+}
+
+/* 胶带：两头撕出锯齿的半透明纸胶带 */
+.soon-tape {
+    position: absolute;
+    z-index: 2;
+    width: 13cqi;
+    height: 3.2cqi;
+    background: color-mix(in srgb, var(--tc-soft) 52%, transparent);
+    -webkit-mask: conic-gradient(from -45deg at left, #0000 25%, #000 0) left / 51% .7cqi repeat-y, conic-gradient(from 135deg at right, #0000 25%, #000 0) right / 51% .7cqi repeat-y;
+    mask: conic-gradient(from -45deg at left, #0000 25%, #000 0) left / 51% .7cqi repeat-y, conic-gradient(from 135deg at right, #0000 25%, #000 0) right / 51% .7cqi repeat-y;
+    pointer-events: none;
+}
+.soon-tape.is-a { top: -1.5cqi; left: 7%; rotate: -9deg; }
+.soon-tape.is-b { bottom: -1.3cqi; right: 9%; rotate: 7deg; background: color-mix(in srgb, #E9DFC9 55%, transparent); }
+.soon-tape.is-c { top: -1.6cqi; left: 50%; translate: -50% 0; rotate: -3deg; width: 11cqi; }
+
+/* 夜空载波底片 */
+.soon-sheet {
+    --r: -2.4deg;
+    --d: .05s;
+    z-index: 2;
+    left: 5%;
+    top: 12%;
+    width: 70%;
+    height: 58%;
+    border-radius: 5px;
+    background:
+        radial-gradient(60% 90% at 12% 0%, rgba(174, 191, 214, .16), transparent 70%),
+        radial-gradient(50% 80% at 92% 100%, rgba(185, 164, 201, .14), transparent 70%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 4px),
+        #14161B;
+    box-shadow: 0 1.6cqi 4cqi rgba(0, 0, 0, .45), 0 .3cqi .8cqi rgba(0, 0, 0, .3), inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.soon-sheet-wave {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 60%;
+    height: 24%;
+    translate: 0 -50%;
+    overflow: hidden;
+    pointer-events: none;
+}
+.soon-sheet-wave svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 200%;
+    max-width: none;
+    height: 100%;
+    overflow: visible;
+    animation: cw-card-drift 18s linear infinite;
+}
+.soon-sheet-wave path {
+    fill: none;
+    stroke: rgba(228, 228, 224, .42);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+.soon-sheet-wave path.is-ghost {
+    stroke: rgba(174, 191, 214, .18);
+    transform: translateY(6px) scaleY(.7);
+    transform-origin: center;
+}
+.soon-page .soon-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 24%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    text-align: center;
+    font-family: "CW Title", "Cormorant Garamond", serif; /* 内联的标题子集字体，见 _partial/cw-title-font.ejs */
+    font-weight: 300;
+    font-size: 7.4cqi;
+    line-height: 1;
+    letter-spacing: .06em;
+    color: #EDEDE9;
+}
+.soon-page .soon-title::before, .soon-page .soon-title::after { display: none; }
+/* 四角的裁切线 */
+.soon-crop {
+    --m: rgba(228, 228, 224, .26);
+    --l: 1.8cqi;
+    position: absolute;
+    inset: 4%;
+    pointer-events: none;
+    background:
+        linear-gradient(var(--m) 0 0) left top / var(--l) 1px no-repeat,
+        linear-gradient(var(--m) 0 0) left top / 1px var(--l) no-repeat,
+        linear-gradient(var(--m) 0 0) right top / var(--l) 1px no-repeat,
+        linear-gradient(var(--m) 0 0) right top / 1px var(--l) no-repeat,
+        linear-gradient(var(--m) 0 0) left bottom / var(--l) 1px no-repeat,
+        linear-gradient(var(--m) 0 0) left bottom / 1px var(--l) no-repeat,
+        linear-gradient(var(--m) 0 0) right bottom / var(--l) 1px no-repeat,
+        linear-gradient(var(--m) 0 0) right bottom / 1px var(--l) no-repeat;
+}
+
+/* 手写 Coming soon 的撕边横格纸条；投影画在外层（内层 clip-path 撕边会把投影一起裁掉） */
+.soon-note {
+    --r: 4.5deg;
+    --d: .35s;
+    z-index: 4;
+    right: 5%;
+    bottom: 7%;
+    width: 46%;
+    height: 30%;
+    filter: drop-shadow(0 1cqi 1.4cqi rgba(0, 0, 0, .38));
+}
+.soon-paper {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background:
+        linear-gradient(to right, transparent 9%, rgba(226, 98, 107, .38) 9% calc(9% + 1px), transparent 0),
+        repeating-linear-gradient(to bottom, transparent 0 3.3cqi, rgba(70, 90, 120, .17) 3.3cqi calc(3.3cqi + 1px)),
+        var(--soon-grain),
+        var(--soon-paper);
+    clip-path: polygon(0 2%, 22% 0, 48% 1.5%, 75% 0, 100% 1%, 99.2% 22%, 100% 41%, 98.8% 60%, 100% 79%, 99% 100%, 92% 97.5%, 85% 100%, 77% 97%, 70% 99.5%, 62% 96.8%, 54% 99.6%, 46% 97.2%, 38% 100%, 30% 97.6%, 22% 99.4%, 14% 96.9%, 7% 99.2%, 0 97%, .8% 70%, 0 45%, .8% 20%);
+}
+.soon-page .soon-hand {
+    margin: 0;
+    padding: 0 .35em;
+    text-indent: 0;
+    font-family: "CW Soon", cursive;
+    font-size: 11cqi;
+    line-height: 1.3;
+    color: var(--soon-ink);
+    rotate: -4deg;
+    /* 落笔：从左往右写出来 */
+    clip-path: inset(-30% 100% -30% -30%);
+    animation: soon-write 1.9s cubic-bezier(.45, .05, .35, 1) 1.15s forwards;
+}
+@keyframes soon-write { to { clip-path: inset(-30% -30% -30% -30%); } }
+
+/* 色卡：每格一篇的色调 */
+.soon-chips {
+    --r: 7deg;
+    --d: .2s;
+    z-index: 1;
+    top: 3%;
+    right: 6%;
+    width: 18%;
+    height: 50%;
+    display: flex;
+    flex-direction: column;
+    gap: .45cqi;
+    padding: 1.1cqi 1.1cqi 4.4cqi;
+    border-radius: 3px;
+    background: var(--soon-grain), #F3EFE7;
+    box-shadow: 0 .8cqi 2.4cqi rgba(0, 0, 0, .32);
+}
+.soon-chips i { flex: 1; border-radius: 1px; background: var(--c); }
+
+/* 搜台刻度条：指针来回找台 */
+.soon-dial {
+    --r: 1.8deg;
+    --d: .5s;
+    z-index: 3;
+    left: 19%;
+    bottom: 9%;
+    width: 29%;
+    height: 9.5%;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--soon-grain), #E9E2D3;
+    box-shadow: 0 .7cqi 1.8cqi rgba(0, 0, 0, .32);
+    container-type: size;           /* 刻度、数字与指针按刻度条自身尺寸（cqw / cqh）走 */
+}
+.soon-dial::before {                /* 小刻度 */
+    content: "";
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    top: 0;
+    height: 24%;
+    background: repeating-linear-gradient(to right, rgba(40, 36, 48, .4) 0 1px, transparent 1px 5%);
+}
+.soon-dial-scale {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 5% 12%;
+    font: 500 22cqh/1 ui-monospace, "SFMono-Regular", Consolas, monospace;
+    color: rgba(40, 36, 48, .72);
+}
+.soon-dial-scale span { position: relative; width: 0; display: flex; justify-content: center; white-space: nowrap; }
+.soon-dial-scale span::before {     /* 大刻度，对准数字 */
+    content: "";
+    position: absolute;
+    bottom: 150%;
+    left: 0;
+    width: 1px;
+    height: 34cqh;
+    background: rgba(40, 36, 48, .62);
+}
+.soon-needle {
+    position: absolute;
+    left: 0;
+    top: 6%;
+    bottom: 6%;
+    width: 2px;
+    border-radius: 1px;
+    background: #E2626B;
+    box-shadow: 0 0 6px rgba(226, 98, 107, .55);
+    translate: 18cqw 0;
+    animation: soon-seek 11s ease-in-out 1.4s infinite;
+}
+@keyframes soon-seek {
+    0%, 100% { translate: 18cqw 0; }
+    22% { translate: 63cqw 0; }
+    28% { translate: 59cqw 0; }
+    46% { translate: 72cqw 0; }
+    52% { translate: 70.5cqw 0; }
+    70% { translate: 38cqw 0; }
+    80% { translate: 42cqw 0; }
+}
+
+/* 邮票：齿孔边（mask 在四边咬出半圆）+ 一小片夜空、载波与一枚红点 */
+.soon-stamp {
+    --r: -8deg;
+    --d: .6s;
+    z-index: 3;
+    left: 3%;
+    bottom: 5%;
+    width: 14%;
+    aspect-ratio: 4 / 5;
+    filter: drop-shadow(0 .6cqi 1cqi rgba(0, 0, 0, .32));
+}
+.soon-stamp-face {
+    position: absolute;
+    inset: 0;
+    padding: .8cqi;
+    background: #F3EFE7;
+    -webkit-mask: radial-gradient(circle, #0000 .45cqi, #000 calc(.45cqi + .5px)) -.7cqi -.7cqi / 1.4cqi 1.4cqi, linear-gradient(#000 0 0) content-box;
+    mask: radial-gradient(circle, #0000 .45cqi, #000 calc(.45cqi + .5px)) -.7cqi -.7cqi / 1.4cqi 1.4cqi, linear-gradient(#000 0 0) content-box;
+}
+.soon-stamp-face::before {
+    content: "";
+    position: absolute;
+    inset: 1.3cqi;
+    background: radial-gradient(70% 60% at 30% 20%, rgba(185, 164, 201, .3), transparent 70%), #14161B;
+}
+.soon-stamp-face::after {
+    content: "";
+    position: absolute;
+    top: 2.6cqi;
+    right: 2.6cqi;
+    width: 1.2cqi;
+    height: 1.2cqi;
+    border-radius: 50%;
+    background: #E2626B;
+}
+.soon-stamp-face svg {
+    position: absolute;
+    left: 1.3cqi;
+    bottom: 3cqi;
+    width: calc(100% - 2.6cqi);
+    height: 32%;
+    overflow: visible;
+}
+.soon-stamp-face path { fill: none; stroke: rgba(228, 228, 224, .6); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+/* 邮戳：盖在邮票一角，波纹线延伸出去 */
+.soon-postmark {
+    position: absolute;
+    z-index: 5;
+    left: 11%;
+    bottom: 15%;
+    width: 18%;
+    rotate: -14deg;
+    fill: none;
+    stroke: rgba(52, 48, 62, .5);
+    stroke-width: 1.6;
+    pointer-events: none;
+    animation: soon-thunk .45s cubic-bezier(.2, 1.4, .4, 1) 1.5s backwards;
+}
+@keyframes soon-thunk { from { opacity: 0; scale: 1.25; } }
+
+/* 窄屏：竖排一套位置 */
+@media (max-width: 599px) {
+    .soon-wrap { padding-top: .6em; }
+    .soon-board { aspect-ratio: 3 / 4.4; }
+    .soon-chips { top: 2%; right: 6%; width: 26%; height: 24%; gap: .8cqi; padding: 1.8cqi 1.8cqi 6cqi; }
+    .soon-sheet { left: 3%; top: 17%; width: 94%; height: 33%; }
+    .soon-page .soon-title { font-size: 10.5cqi; top: 26%; }
+    .soon-tape { width: 20cqi; height: 5cqi; }
+    .soon-tape.is-c { width: 18cqi; }
+    .soon-note { right: 3%; top: 53%; bottom: auto; width: 82%; height: 19%; }
+    .soon-page .soon-hand { font-size: 18cqi; }
+    .soon-dial { left: auto; right: 5%; bottom: 7%; width: 58%; height: 7.5%; }
+    .soon-stamp { left: 6%; bottom: 5%; width: 25%; }
+    .soon-stamp-face { padding: 1.4cqi; -webkit-mask-size: 2.4cqi 2.4cqi, auto; mask-size: 2.4cqi 2.4cqi, auto; -webkit-mask-position: -1.2cqi -1.2cqi, 0 0; mask-position: -1.2cqi -1.2cqi, 0 0; }
+    .soon-stamp-face::before { inset: 2.3cqi; }
+    .soon-stamp-face svg { left: 2.3cqi; bottom: 5cqi; width: calc(100% - 4.6cqi); }
+    .soon-stamp-face::after { top: 4.5cqi; right: 4.5cqi; width: 2cqi; height: 2cqi; }
+    .soon-postmark { left: 22%; bottom: 13%; width: 32%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .soon-scrap, .soon-postmark, .soon-needle, .soon-sheet-wave svg { animation: none; }
+    .soon-page .soon-hand { animation: none; clip-path: none; }
+}
+
+/* =========================================
    归档时间线（layout/archive.ejs：/archives/、/tags/<名>/、按年月的归档页）
    - 顶部一张毛玻璃卡片（标题、统计、标签切换），下面按年份各一张卡片；卡片配色走 --arc-*（这里夜间，白天见第 8 节）
    - 每篇一行：日期 · 时间线上的圆点 · 小封面（card_cover 的 @thumb）· 标题与简介 · 标签与字数
@@ -6650,6 +7022,12 @@ body.post-page:not(.dark-theme) main {
     --sheet-highlight: rgba(255, 255, 255, 0.5);
     --sheet-shadow: rgba(110, 70, 40, 0.22);
 }
+
+/* 白天的 CW 预告页：拼贴碎片的投影带暖色、浅一些（夜间见「CW 预告页」） */
+body:not(.dark-theme) .soon-sheet { box-shadow: 0 1.6cqi 4cqi rgba(70, 45, 30, .3), 0 .3cqi .8cqi rgba(70, 45, 30, .2), inset 0 0 0 1px rgba(255, 255, 255, .06); }
+body:not(.dark-theme) .soon-note { filter: drop-shadow(0 1cqi 1.4cqi rgba(70, 45, 30, .26)); }
+body:not(.dark-theme) .soon-chips, body:not(.dark-theme) .soon-dial { box-shadow: 0 .8cqi 2.2cqi rgba(70, 45, 30, .22); }
+body:not(.dark-theme) .soon-stamp { filter: drop-shadow(0 .6cqi 1cqi rgba(70, 45, 30, .24)); }
 
 /* 白天模式卡片投影：带一点暖色，与晚霞底色融合 */
 body:not(.dark-theme) .post-item.cw-card {

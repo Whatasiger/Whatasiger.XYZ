@@ -1,0 +1,71 @@
+<%
+// CARRiER WAVE. 预告页（/carrier_wave/soon/，source/carrier_wave/soon/index.md）：CW 暂时隐藏（carrier_wave.yml 的 hide_entry）时首页预告卡片点进来到这里
+// 一张拼贴：夜空载波底片（与首页 CW 卡片同款）+ 手写「Coming soon」的撕边纸条 + 篇目色调的色卡 + 邮票与邮戳 + 搜台刻度条
+// 不算阅读页（layout.ejs / header.ejs / head.ejs 都排除了 soon）；CW 不再隐藏时直接转去目录页
+var album = (site.data && site.data.carrier_wave) || {};
+var tints = [];
+(Array.isArray(album.tracks) ? album.tracks : []).forEach(function (t) {
+    var c = String(t.tint || '').toUpperCase();
+    if (/^#[0-9A-F]{6}$/.test(c) && tints.indexOf(c) === -1) tints.push(c);
+});
+var wave = 'M0 50';
+for (var x = 0; x < 1600; x += 40) wave += ' Q' + (x + 10) + ' 38 ' + (x + 20) + ' 50 T' + (x + 40) + ' 50';
+var stampWave = 'M0 30';
+for (var x = 0; x < 120; x += 20) stampWave += ' Q' + (x + 5) + ' 18 ' + (x + 10) + ' 30 T' + (x + 20) + ' 30';
+%>
+<% if (!cw_hidden()) { %>
+<script>location.replace('<%- url_for("/carrier_wave/") %>');</script>
+<% } %>
+<%- partial('_partial/cw-title-font') %>
+<%- partial('_partial/soon-font') %>
+<main>
+    <div class="wrap mid soon-wrap">
+        <section class="soon-board" aria-label="CARRiER WAVE. 预告">
+            <%# 色卡：每一格是一篇的色调（同色只取一次），不写篇名 %>
+            <div class="soon-scrap soon-chips" aria-hidden="true">
+                <% tints.forEach(function (c) { %><i style="--c: <%= c %>"></i><% }) %>
+            </div>
+
+            <div class="soon-scrap soon-sheet">
+                <span class="soon-tape is-a" aria-hidden="true"></span>
+                <span class="soon-tape is-b" aria-hidden="true"></span>
+                <div class="soon-sheet-wave" aria-hidden="true">
+                    <svg viewBox="0 0 1600 100" preserveAspectRatio="none">
+                        <path class="is-ghost" d="<%= wave %>"/>
+                        <path d="<%= wave %>"/>
+                    </svg>
+                </div>
+                <h2 class="soon-title">CARRiER WAVE.</h2>
+                <span class="soon-crop" aria-hidden="true"></span>
+            </div>
+
+            <div class="soon-scrap soon-dial" aria-hidden="true">
+                <div class="soon-dial-scale">
+                    <% [88, 92, 96, 100, 104, 108].forEach(function (n) { %><span><%= n %></span><% }) %>
+                </div>
+                <span class="soon-needle"></span>
+            </div>
+
+            <div class="soon-scrap soon-stamp" aria-hidden="true">
+                <div class="soon-stamp-face">
+                    <svg viewBox="0 0 120 60" preserveAspectRatio="none"><path d="<%= stampWave %>"/></svg>
+                </div>
+            </div>
+            <svg class="soon-postmark" viewBox="0 0 160 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="38"/>
+                <circle cx="50" cy="50" r="31"/>
+                <path d="M96 34 q8 -7 16 0 t16 0 t16 0 t16 0"/>
+                <path d="M96 46 q8 -7 16 0 t16 0 t16 0 t16 0"/>
+                <path d="M96 58 q8 -7 16 0 t16 0 t16 0 t16 0"/>
+                <path d="M96 70 q8 -7 16 0 t16 0 t16 0 t16 0"/>
+            </svg>
+
+            <div class="soon-scrap soon-note">
+                <span class="soon-tape is-c" aria-hidden="true"></span>
+                <div class="soon-paper">
+                    <p class="soon-hand">Coming soon</p>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>

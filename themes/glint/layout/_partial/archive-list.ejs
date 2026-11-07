@@ -1,8 +1,24 @@
 <section class="home-posts">
-    <% if (is_home() && page.current === 1 && !cw_hidden()) {   /* carrier_wave.yml 的 hidden 为 true 时不显示 */
+    <%
         var cwWave = 'M0 50';
         for (var cx = 0; cx < 1600; cx += 40) cwWave += ' Q' + (cx + 10) + ' 38 ' + (cx + 20) + ' 50 T' + (cx + 40) + ' 50';
     %>
+    <% if (is_home() && page.current === 1 && cw_hidden()) { %>
+        <%# CW 暂时隐藏（carrier_wave.yml 的 hide_entry）时换成预告卡片：同款夜空与载波，副题换成手写的 Coming soon，点进去是预告页 %>
+        <a class="post-item card-style cw-card is-soon" href="<%- url_for('/carrier_wave/soon/') %>">
+            <span class="cw-soon-tape" aria-hidden="true"></span>
+            <div class="cw-card-wave-box" aria-hidden="true">
+                <svg class="cw-card-wave" viewBox="0 0 1600 100" preserveAspectRatio="none">
+                    <path class="cw-card-strand is-ghost" d="<%= cwWave %>"/>
+                    <path class="cw-card-strand" d="<%= cwWave %>"/>
+                </svg>
+            </div>
+            <div class="cw-card-body">
+                <h2 class="cw-card-title">CARRiER WAVE.</h2>
+                <p class="cw-soon-hand">Coming soon</p>
+            </div>
+        </a>
+    <% } else if (is_home() && page.current === 1) { %>
         <%# 「新信号」：有读者上次打开目录页之后才接收的篇目时，卡片右上角亮一枚小点（只在读者打开过目录页之后才比较，见下方脚本） %>
         <a class="post-item card-style cw-card" href="<%- url_for('/carrier_wave/') %>" data-cw-tracks="<%= cw_published().join(',') %>">
             <span class="cw-card-new" aria-hidden="true">新信号</span>

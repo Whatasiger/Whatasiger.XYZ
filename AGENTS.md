@@ -21,7 +21,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 ## 结构要点
 - 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）
 - 【特殊】短篇辑 CARRiER WAVE.：正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/` 单独生成
-  - 暂时隐藏：`carrier_wave.yml` 顶部 `hidden: true` 时首页（Glint 与 Origin）不显示 CW 卡片、首页不预渲染目录页、`search.json` 不收录各篇（helper `cw_hidden()`）；页面本身照常生成。删掉该行或改 false 即恢复
+  - 暂时隐藏：`carrier_wave.yml` 顶部 `hide_entry: true`（**不能叫 `hidden`**：文件里已有 `hidden:` 隐藏篇目列表，重复的键会让整个文件解析失败、CW 数据全部丢失） 时 Glint 首页的 CW 卡片换成预告卡片 `.cw-card.is-soon`（同款夜空载波 + 手写 Coming soon + 胶带，只接 `pressable`，不预取目录页、不做一镜到底），点进去是预告页 `/carrier_wave/soon/`（`source/carrier_wave/soon/index.md`，layout `soon` = `themes/glint/layout/soon.ejs`，glint.css「CW 预告页」：拼贴画板按 cqi 等比缩放，窄屏另一套位置）；Origin 首页不显示卡片；`search.json` 不收录各篇与预告页（helper `cw_hidden()`）；CW 页面本身照常生成；预告页背景用「阅读页」那一项模糊度，从首页进来时由清晰过渡到模糊。删掉该行或改 false 即恢复（预告页随之直接转去目录页）。手写字体 `CW Soon` 是 Mrs Saint Delafield 的内联子集（`_partial/soon-font.ejs`，只含 Coming soon 的字母）。`soon` 与 `gizmo` / `stats` 一样不算阅读页（layout / header / head 三处），底栏只留版权
 - 主题：`themes/glint`（Glint，自定义 EJS；Origin 见上），样式在 `themes/glint/source/static/glint.css`（按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，注释风格为中文行尾注释）
 - 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、`asset_url` 静态资源版本号
 - 地址一律带结尾斜杠：`_config.yml` 的 `pretty_urls` 两项为 false（规范地址 / 站点地图是 `/about-me/` 而非 `/about-me/index.html`），菜单与站内链接写 `/about-me/`（不带斜杠时 GitHub Pages 会先 301 一次）

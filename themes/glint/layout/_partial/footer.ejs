@@ -1,7 +1,7 @@
 <footer>
     <div class="wrap min">
-        <%# Gizmo 陈列页只留版权信息，不要最新文章 / 时光机 / 标签云三张卡片 %>
-        <% if (page.layout !== 'gizmo') { %>
+        <%# Gizmo 陈列页、CW 预告页只留版权信息，不要最新文章 / 时光机 / 标签云三张卡片 %>
+        <% if (page.layout !== 'gizmo' && page.layout !== 'soon') { %>
         <section class="widget">
             <div class="footer-grid">
                 <div class="footer-card">

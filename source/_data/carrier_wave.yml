@@ -9,9 +9,10 @@
 # flat   : 为 true 时载波被拉直，不再起伏
 # wave   : 载波颜色，可留空（默认由 tint 推出）；暗色时整条载波变暗，阅读页进度点只照亮前后一小段
 
-# hidden : 为 true 时首页不显示 CARRiER WAVE. 卡片、站内搜索不收录各篇（目录页与阅读页照常生成，知道地址仍可访问）；
-#          恢复：删掉这一行或改成 false
-hidden: true
+# hide_entry : 为 true 时首页的 CARRiER WAVE. 卡片换成预告卡片（点进去是 /carrier_wave/soon/ 预告页）、站内搜索不收录各篇
+#              （目录页与阅读页照常生成，知道地址仍可访问）；恢复：删掉这一行或改成 false
+#              注意不要写成 hidden——下面的 hidden 是隐藏篇目列表，同名键会让整个文件解析失败
+hide_entry: true
 
 title: CARRiER WAVE.
 subtitle: 载波

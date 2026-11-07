@@ -57,7 +57,7 @@ hexo.extend.generator.register('search_json', async function (locals) {
 
   locals.pages.forEach((page) => {
     if (page.layout === false || page.layout === 'false' || page.sitemap === false) return;
-    if (page.layout === 'gizmo') return;           // Gizmo 陈列页本身没有正文，下面按小玩意逐个收录
+    if (page.layout === 'gizmo' || page.layout === 'soon') return;   // soon：CW 预告页，没有正文           // Gizmo 陈列页本身没有正文，下面按小玩意逐个收录
     const title = String(page.title || '').trim();
     if (!title) return;
     items.push({ k: '页面', t: title, u: urlFor(page.path), d: '', g: [], s: '', i: '', c: plain(page.content) });
@@ -65,7 +65,7 @@ hexo.extend.generator.register('search_json', async function (locals) {
 
   // CARRiER WAVE.：目录里已接收的篇目（隐藏篇目是彩蛋，不进搜索）
   const album = locals.data && locals.data.carrier_wave;
-  if (album && !album.hidden && Array.isArray(album.tracks)) {   // hidden：入口暂时隐藏时也不进搜索
+  if (album && album.hide_entry !== true && Array.isArray(album.tracks)) {   // hide_entry：入口暂时隐藏时也不进搜索
     const dir = path.join(hexo.source_dir, '_carrier_wave');
     for (const raw of album.tracks) {
       const file = path.join(dir, raw.slug + '.md');
