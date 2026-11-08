@@ -167,7 +167,8 @@ body.bg-baked:before,
 html.bg-prebaked body:before { filter: none; }
 
 /* 禁用背景图过渡动画，用于需要立即切换背景的场景 */
-body.no-bg-transition:before {
+body.no-bg-transition:before,
+body.bg-tuning:before {             /* 拖动背景可见度 / 模糊度滑动条期间（glint.js）：实时跟手，不走过渡 */
     transition: none !important;
 }
 
@@ -2102,7 +2103,7 @@ body.post-page main .post-comments > * { animation: fade-in-top .3s .4s backward
 /* 阅读页等字体（head.ejs 挂 html.page-loading）：正文先隐藏，入场动画停在起点，思源黑体就绪后从头播，不再先显示微软雅黑再整页跳字体
    隐藏用 visibility（不能动祖先透明度，玻璃会失去模糊）；等超过 300ms 才浮出转圈，缓存命中时一闪而过看不到 */
 html.page-loading body.post-page main,
-html.page-loading .toc-mini { visibility: hidden; }
+html.page-loading .toc-mini { visibility: hidden !important; }   /* 须压过第 7 节「收起时现身」的规则（main 一并 !important 无妨） */
 html.page-loading body.post-page main,
 html.page-loading body.post-page main *,
 html.page-loading body.post-page main *::before,
@@ -2928,6 +2929,21 @@ body {
     flex-direction: column;
     box-sizing: border-box;
     padding: 1.05em 1.15em .9em;
+    color: #333;
+    font-size: 1em;                 /* 目录字号，与正文同大 */
+    transition: top .5s var(--ease-spring);
+}
+/* 玻璃画在 ::before 上，开合时它单独形变（glint.js tocMorph 用 WAAPI 改宽高 / 位置 / 圆角），在迷你目录那一块与整张卡片之间伸缩；
+   卡片本身不能有 opacity / filter / transform 动画（祖先透明度 < 1 时毛玻璃失效） */
+.article-list:before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     border-radius: var(--glass-radius);
     corner-shape: squircle;
     background: var(--glass-bg);
@@ -2935,8 +2951,6 @@ body {
     box-shadow: var(--glass-shadow);
     backdrop-filter: var(--glass-filter);
     -webkit-backdrop-filter: var(--glass-filter);
-    color: #333;
-    font-size: 1em;                 /* 目录字号，与正文同大 */
 }
 .dark-theme .article-list { color: #ddd; }
 
@@ -3055,11 +3069,10 @@ body {
     backdrop-filter: var(--glass-filter);
     -webkit-backdrop-filter: var(--glass-filter);
     cursor: pointer;
-    opacity: 0;
+    visibility: hidden;             /* 卡片展开时藏起；收起时现身（第 7 节），两者之间的形变见 glint.js tocMorph */
     pointer-events: none;
-    transform: scale(.6);
     transform-origin: 100% 0;
-    transition: opacity .2s ease, transform .3s var(--ease-exit), top .5s var(--ease-spring);
+    transition: top .5s var(--ease-spring), transform .55s cubic-bezier(0.22, 1, 0.36, 1), opacity .35s var(--ease-spring);
 }
 .toc-mini span {
     display: block;
@@ -3469,10 +3482,21 @@ html.vt-from-hop::view-transition-new(root) { animation: hop-root-in .6s cubic-b
 .dark-theme .settings-tabs button { color: #888; }
 .dark-theme .settings-tabs button[aria-selected="true"] { color: var(--tc-soft); }
 
-/* 两页叠在同一格里：面板高度取较高的一页，切换时不跳；「外观」在左、「阅读」在右，各自从自己那一侧滑入滑出 */
-.settings-panes { display: grid; }
+/* 两页叠在同一格里，「外观」在左、「阅读」在右，各自从自己那一侧滑入滑出
+   高度跟着当前页：glint.js 把当前页的高度写成 .settings-panes 的 height，切换时平滑伸缩；另一页多出来的部分竖向裁掉
+   （上下各留 6px 再用负外边距抵回，聚焦描边与入场时下移 6px 的控件不被裁） */
+.settings-panes {
+    display: grid;
+    overflow-x: visible;
+    overflow-y: clip;
+    box-sizing: content-box;        /* height 只算内容，上下 6px 另计 */
+    padding-block: 6px;
+    margin-block: -6px;
+    transition: height .5s var(--ease-glide);
+}
 .settings-pane {
     grid-area: 1 / 1;
+    align-self: start;
     display: flex;
     flex-direction: column;
     gap: 0.5em;
@@ -4050,6 +4074,9 @@ pre[class*="language-"].line-numbers {
         transition: padding-right 0.5s var(--ease-spring),
                     background-color .5s var(--ease-spring), border-color .5s var(--ease-spring); /* 保留底栏自身的配色过渡 */
     }
+    /* 开合会让正文宽度改变时（窗口不够宽），留白一步到位：逐帧过渡要逐帧整篇重新断行（glint.js tocMorph 判断）
+       不要改用 .wrap 的 translate 做 FLIP：变换动画中的图层不按视口裁剪绘制，长文第一帧要录整篇，实测 60–80ms */
+    body.toc-snap main { transition: none !important; }
     body.has-trees.toc-collapsed main,
     body.has-trees.toc-collapsed footer { padding-right: 0; }
 
@@ -4061,28 +4088,41 @@ pre[class*="language-"].line-numbers {
         right: 1em;
         width: 17.5em;              /* 目录卡片宽度；改动时同步上方 main / footer 的 padding-right */
         max-height: calc(100vh - 3.2em - 2em);
-        transform-origin: 100% 0;   /* 收起 / 展开都以右上角（迷你目录所在处）为原点 */
-        transition: transform 0.6s var(--ease-spring), opacity 0.3s ease, top 0.5s var(--ease-spring);
     }
 
     /* 沉浸模式收起顶栏时，目录卡片与迷你目录跟着上移，贴到原来顶栏的位置 */
     html.header-hidden body.immersive .article-list,
     html.header-hidden body.immersive .toc-mini { top: 1em; }
 
-    /* 目录收起：卡片朝右上角缩进迷你目录里；展开时从迷你目录处弹性长出 */
-    body.toc-collapsed .article-list {
-        transform: scale(.18);
-        opacity: 0;
-        pointer-events: none;
-        transition: transform 0.4s var(--ease-exit), opacity 0.25s ease, visibility 0s .4s;
-    }
     .toc-mini { display: flex; }
-    body.toc-collapsed .toc-mini {
-        opacity: 1;
-        pointer-events: auto;
-        transform: none;
-        transition: opacity .25s ease .12s, transform .55s var(--ease-spring) .08s, top .5s var(--ease-spring); /* 等卡片缩进来再浮现 */
-    }
+}
+
+/* 目录的开 / 关两种静止状态（桌面端收起是 body.toc-collapsed，窄屏展开是卡片挂 .active）：收起时卡片隐去、迷你目录现身
+   两者之间的过程全由 glint.js 的 tocMorph 编排（见那里的注释）：期间 body 挂 .toc-morphing，卡片保持可见、迷你目录藏起，
+   被「接管」的目录项（.toc-ghosted）轨道透明——由飞行中的替身线条（.toc-ghost）代替它们，在竖轨道与短横线之间形变 */
+@media screen and (min-width: 800px) {
+    body.toc-collapsed .article-list { visibility: hidden; pointer-events: none; }
+    body.toc-collapsed .toc-mini { visibility: visible; pointer-events: auto; }
+}
+@media screen and (max-width: 799px) {
+    .article-list:not(.active) { visibility: hidden; pointer-events: none; }
+    body:not(:has(.article-list.active)) .toc-mini { visibility: visible; pointer-events: auto; }
+}
+body.toc-morphing .article-list { visibility: visible !important; pointer-events: none; }
+body.toc-morphing .toc-mini { visibility: hidden !important; pointer-events: none; }
+.article-list a.toc-ghosted { border-left-color: transparent !important; transition: none; }
+body.toc-settle :is(.article-list a, .toc-mini, .toc-mini span) { transition: none !important; }   /* 收尾那一帧：替身换回真身不走过渡 */
+.toc-ghosts {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    contain: strict;
+}
+.toc-ghost {                        /* 替身线条：一枚短横线大小的圆头条，由 glint.js 逐帧采样的 translate / rotate / scale 带着走 */
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
 }
 
 /* 宽度小于 800px：与桌面端同一套做法——平时只在右上角露出迷你目录，点它从右上角展开目录卡片
@@ -4093,17 +4133,6 @@ pre[class*="language-"].line-numbers {
         left: .6em;
         right: .6em;
         max-height: min(65vh, calc(100vh - 3.2rem - 1.2em));
-        opacity: 0;
-        pointer-events: none;
-        transform: scale(.2);
-        transform-origin: 100% 0;   /* 以右上角（迷你目录所在处）为原点缩放 */
-        transition: transform 0.35s var(--ease-exit), opacity 0.25s ease, top 0.5s var(--ease-spring), visibility 0s .35s; /* 收起：快速利落 */
-    }
-    .article-list.active {
-        opacity: 1;
-        pointer-events: auto;
-        transform: none;
-        transition: transform 0.55s var(--ease-spring), opacity 0.3s var(--ease-spring), top 0.5s var(--ease-spring); /* 展开：先快后缓 */
     }
 
     .toc-mini {
@@ -4112,24 +4141,11 @@ pre[class*="language-"].line-numbers {
         right: .6em;
         width: 3.1em;
         padding: .8em .75em;
-        opacity: 1;
-        pointer-events: auto;
-        transform: none;
-        transition: opacity .25s ease .1s, transform .5s var(--ease-spring) .06s, top .5s var(--ease-spring);
     }
     /* 向下滚动时半隐到屏幕右缘、半透明（glint.js 挂 .is-docked），向上滚动再完整露出 */
     .toc-mini.is-docked {
         transform: translateX(calc(50% + .6em));
         opacity: .45;
-        transition: opacity .35s var(--ease-spring), transform .55s cubic-bezier(0.22, 1, 0.36, 1), top .5s var(--ease-spring);
-    }
-
-    /* 目录展开时迷你目录让位（卡片正是从它这里长出来的） */
-    body:has(.article-list.active) .toc-mini {
-        opacity: 0;
-        pointer-events: none;
-        transform: scale(.6);
-        transition: opacity .2s ease, transform .3s var(--ease-exit), top .5s var(--ease-spring);
     }
 
     /* 沉浸模式收起顶栏时，迷你目录与目录卡片跟着上移 */
@@ -6440,7 +6456,7 @@ body:not(.dark-theme) .lb-back { background: rgba(40, 32, 26, .5); }
     color: var(--near-ink);
     text-decoration: none;
     transition: translate .55s var(--ease-spring), scale .55s var(--ease-spring);
-    animation: near-rise .8s var(--ease-spring) both;
+    animation: near-rise .8s var(--ease-spring) backwards;      /* 不能用 both：填充到结束后仍占着 translate，悬停的上浮就不走过渡、直接跳上去 */
 }
 .post-near-card.is-newer { grid-column: 2; text-align: right; align-items: flex-end; animation-delay: .08s; }
 .post-near-card:only-child.is-newer { grid-column: 2; }
@@ -6500,7 +6516,7 @@ body:not(.dark-theme) .lb-back { background: rgba(40, 32, 26, .5); }
     backdrop-filter: blur(22px) saturate(150%);
     -webkit-backdrop-filter: blur(22px) saturate(150%);
     color: var(--near-ink);
-    animation: near-rise .8s var(--ease-spring) .14s both;
+    animation: near-rise .8s var(--ease-spring) .14s backwards;
 }
 .post-related-title {
     display: flex;
@@ -6524,7 +6540,7 @@ body:not(.dark-theme) .lb-back { background: rgba(40, 32, 26, .5); }
     corner-shape: squircle;
     color: var(--near-ink);
     text-decoration: none;
-    animation: arc-row-in .6s var(--ease-spring) calc(var(--i, 0) * 50ms + 260ms) both;
+    animation: arc-row-in .6s var(--ease-spring) calc(var(--i, 0) * 50ms + 260ms) backwards;
 }
 .post-related-item:before {
     content: "";
@@ -6623,8 +6639,9 @@ body:not(.dark-theme) .read-badge:not(.post-card-meta *) { color: var(--tc-warm-
     -webkit-user-select: none;
     padding-right: 1.8em;
     border-radius: 8px;
-    transition: color .25s;
+    transition: color .25s, margin-bottom .45s var(--ease-exit);  /* 下边距随内容一起收放：瞬间改会让正文先往上跳一下 */
 }
+.cl-head[aria-expanded="true"] { transition: color .25s, margin-bottom .55s var(--ease-spring); }
 .cl-head:after {
     content: "\f107";               /* FontAwesome 向下箭头：展开时转过来 */
     position: absolute;
@@ -6638,7 +6655,8 @@ body:not(.dark-theme) .read-badge:not(.post-card-meta *) { color: var(--tc-warm-
 }
 .cl-head[aria-expanded="true"]:after { rotate: 0deg; opacity: .75; }
 .cl-head[aria-expanded="false"] { margin-bottom: .1em; }     /* 收起时版本之间排得紧凑些 */
-.cl-body:not(.is-open) + hr { margin: .7em 0; }
+.cl-body + hr { transition: margin .55s var(--ease-spring); }
+.cl-body:not(.is-open) + hr { margin: .7em 0; transition: margin .45s var(--ease-exit); }
 .cl-head:hover { color: var(--blue); }
 .dark-theme .cl-head:hover { color: var(--tc-soft); }
 .cl-head:focus-visible { outline: 2px solid color-mix(in srgb, var(--tc-main) 40%, transparent); outline-offset: 3px; }

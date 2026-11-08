@@ -686,6 +686,16 @@ var Glint = function (config) {
             var TAB_KEY = "glint-settings-tab";
             var tabBtns = [].slice.call(tabBar.querySelectorAll("[role='tab']"));
             var panes = [].slice.call(panel.querySelectorAll(".settings-pane"));
+            var panesBox = panel.querySelector(".settings-panes");
+            // 容器高度 = 当前页的高度（glint.css「两页叠在同一格里」）：两页高矮不同，切到矮的那页时收起多出来的空白
+            var fitPanes = function () {
+                var cur = panes.filter(function (p) { return p.getAttribute("aria-hidden") === "false"; })[0];
+                if (panesBox && cur) panesBox.style.height = cur.offsetHeight + "px";
+            };
+            if (window.ResizeObserver) {
+                var paneRO = new ResizeObserver(fitPanes);
+                panes.forEach(function (p) { paneRO.observe(p); });
+            }
             var setTab = function (name, focus) {
                 tabBar.setAttribute("data-tab", name);
                 tabBtns.forEach(function (b) {
@@ -699,6 +709,7 @@ var Glint = function (config) {
                     p.setAttribute("aria-hidden", String(!on));
                     p.toggleAttribute("inert", !on);
                 });
+                fitPanes();
                 try { sessionStorage.setItem(TAB_KEY, name); } catch (e) {}
             };
             var savedTab = null;
@@ -816,12 +827,57 @@ var Glint = function (config) {
             });
         }
 
+        // 拖动滑动条时的实时预览（以前很卡）：
+        // - 每帧最多应用一次（applySoon），设置等松手 / change 再写进 localStorage
+        // - 排版类（字号、字重、字间距、行距、段距、行宽）：拖动期间撤掉正文的 .is-laid-out，段落回到 content-visibility: auto，
+        //   每帧只重排屏幕附近的段落；松手后再整篇排好（长文整篇重排一次要上百毫秒，逐帧做就跟不上手）
+        // - 背景类（可见度、模糊度）：拖动期间 body 挂 .bg-tuning 撤掉背景层的 0.5s / 0.8s 过渡，不再拖在手后面慢慢追
+        var applyFrame = 0;
+        function applySoon() {
+            if (applyFrame) return;
+            applyFrame = requestAnimationFrame(function () {
+                applyFrame = 0;
+                applyReadingSettings();
+            });
+        }
+        var liveArticle = document.querySelector("body.post-page .post-content:not(.is-special), body.post-page .page-content:not(.is-special)");
+        function whileDragging(input, start, end) {
+            if (!input) return;
+            input.addEventListener("pointerdown", function () {
+                start();
+                function up() {
+                    window.removeEventListener("pointerup", up);
+                    window.removeEventListener("pointercancel", up);
+                    setTimeout(end, 0);   // 等最后一次 input / 吸附生效后再收尾
+                }
+                window.addEventListener("pointerup", up);
+                window.addEventListener("pointercancel", up);
+            });
+            input.addEventListener("change", persistSettings);
+        }
+        var relayoutWasOn = false;
+        function layoutDragStart() {
+            relayoutWasOn = !!(liveArticle && liveArticle.classList.contains("is-laid-out"));
+            if (relayoutWasOn) liveArticle.classList.remove("is-laid-out");
+        }
+        function layoutDragEnd() {
+            persistSettings();
+            if (relayoutWasOn) requestAnimationFrame(function () { liveArticle.classList.add("is-laid-out"); });
+            relayoutWasOn = false;
+        }
+        [weightInput, letterInput, sizeInput, lineInput, paraInput, widthInput].forEach(function (el) {
+            whileDragging(el, layoutDragStart, layoutDragEnd);
+        });
+        [bgInput, bgBlurInput, homeBlurInput].forEach(function (el) {
+            whileDragging(el, function () { body.classList.add("bg-tuning"); },
+                function () { persistSettings(); body.classList.remove("bg-tuning"); });
+        });
+
         if (weightInput) {
             weightInput.addEventListener("input", function () {
                 var lvl = Math.round(parseFloat(this.value)) || 3;    // 拖动时无极，字重按最近一档生效；松手后滑动条吸附过去
                 currentSettings.fontWeight = getWeightFromLevel(lvl);
-                persistSettings();
-                applyReadingSettings();
+                applySoon();
                 updateSliderFill(this);
             });
         }
@@ -829,8 +885,7 @@ var Glint = function (config) {
         if (letterInput) {
             letterInput.addEventListener("input", function () {
                 currentSettings.letterSpacing = Math.round((parseFloat(this.value) || 0) * 100) / 100;   // 无极：不再取整
-                persistSettings();
-                applyReadingSettings();
+                applySoon();
                 updateSliderFill(this);
             });
         }
@@ -841,8 +896,7 @@ var Glint = function (config) {
                 var v = parseFloat(this.value);
                 if (isNaN(v)) v = defaultSettings[key];
                 currentSettings[key] = Math.round(v * round) / round;
-                persistSettings();
-                applyReadingSettings();
+                applySoon();
                 updateSliderFill(this);
             });
         }
@@ -872,8 +926,7 @@ var Glint = function (config) {
         if (sizeInput) {
             sizeInput.addEventListener("input", function () {
                 currentSettings.fontSize = Math.round((parseFloat(this.value) || defaultSettings.fontSize) * 10) / 10;
-                persistSettings();
-                applyReadingSettings();
+                applySoon();
                 updateSliderFill(this);
             });
         }
@@ -885,8 +938,7 @@ var Glint = function (config) {
                 if (v < 0) v = 0;
                 if (v > 50) v = 50;
                 currentSettings.bgOpacity = Math.round(v * 20) / 10;
-                persistSettings();
-                applyReadingSettings();
+                applySoon();
                 updateSliderFill(this);
             });
         }
@@ -899,7 +951,6 @@ var Glint = function (config) {
                 if (isNaN(v) || v < 0) v = 0;
                 if (v > 20) v = 20;
                 currentSettings[key] = v;
-                persistSettings();
                 if (live) {
                     bgBake.unbake(); // 拖动中用 CSS 模糊实时预览
                     body.style.setProperty("--bg-blur", v + "px");
@@ -1730,6 +1781,248 @@ var Glint = function (config) {
             }
         });
         window.addEventListener("resize", function () { syncToc(trees.classList.contains("active")); });
+
+        // ===== 目录开合的一镜到底（tocMorph） =====
+        // 迷你目录的每道短横线，就是展开后某个一级章节左边的那段竖轨道（超过 8 章时按比例对应，与 updateMini 点亮的规则一致）。
+        // 开合时它们是「同一条线」：替身线条（.toc-ghost）从竖轨道出发，沿一道弧线飞向右上角，途中放倒、伸缩成短横线
+        // （展开时反过来，竖起时带一点回弹）；同时卡片的玻璃（::before）在整张卡片与迷你目录那一块之间伸缩，
+        // 文字向左收进自己的轨道再消失（展开时等自己的轨道快落定，才从轨道里滑出来）。
+        // 走完那一帧，替身换回真的轨道 / 迷你目录，外观逐像素一致。
+        // - 线条与文字只动 transform / opacity（合成线程）；玻璃改宽高，但它是绝对定位的伪元素，不牵动别处排版
+        // - 半路再点一次：所有动画原路倒放
+        // - 状态以类名为准（body.toc-collapsed / .article-list.active），无论从哪里改（按钮、迷你目录、Esc、点卡片外）都在这里接住
+        var morph = null;
+        var tocWide = window.innerWidth >= 800;
+        var tocOpen = isTocOpen();
+        var motionOff = window.matchMedia("(prefers-reduced-motion: reduce)");
+        var EASE_GLIDE = (function () {   // glint.css 第 0 节：支持 linear() 时是带回弹的弹簧
+            var v = getComputedStyle(document.documentElement).getPropertyValue("--ease-glide").trim();
+            return v && CSS.supports("transition-timing-function", v) ? v : "cubic-bezier(0.16, 1, 0.3, 1)";
+        })();
+        // 缓动函数（逐帧采样用）：bez 同 CSS cubic-bezier；spring 与 glint.css 的 --ease-glide 同一组数值（阻尼比 0.8，过冲约 1.5%）
+        function bez(x1, y1, x2, y2) {
+            return function (t) {
+                if (t <= 0) return 0;
+                if (t >= 1) return 1;
+                var lo = 0, hi = 1, u = t;
+                for (var i = 0; i < 24; i++) {
+                    u = (lo + hi) / 2;
+                    var x = 3 * (1 - u) * (1 - u) * u * x1 + 3 * (1 - u) * u * u * x2 + u * u * u;
+                    if (x < t) lo = u; else hi = u;
+                }
+                return 3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u;
+            };
+        }
+        var SPRING = [0, 0.081, 0.253, 0.443, 0.616, 0.755, 0.857, 0.927, 0.972, 0.997, 1.01, 1.015,
+                      1.015, 1.013, 1.01, 1.007, 1.005, 1.003, 1.002, 1.001, 1, 1, 1];
+        function spring(t) {
+            if (t <= 0) return 0;
+            if (t >= 1) return 1;
+            var f = t * (SPRING.length - 1), i = Math.floor(f);
+            return SPRING[i] + (SPRING[i + 1] - SPRING[i]) * (f - i);
+        }
+        var SAMPLES = 48;                                   // 每条线的关键帧数
+        function isTocOpen() {
+            return window.innerWidth >= 800 ? !body.classList.contains("toc-collapsed") : trees.classList.contains("active");
+        }
+
+        // 桌面端开合会改正文的留白（main 的 padding-right，CSS 过渡）。正文宽度不变时（宽屏，.wrap 已到最大宽度）只是平移，
+        // 每帧重排只要一两毫秒；宽度会变时（窄一些的桌面窗口）每帧都要整篇重新断行，长文一帧上百毫秒——这时让留白一步到位（body.toc-snap）
+        function wrapWidthStable() {
+            var main = wrap.parentElement, cs = getComputedStyle(wrap), mcs = getComputedStyle(main);
+            var max = parseFloat(cs.maxWidth);
+            if (!isFinite(max)) return false;
+            if (cs.boxSizing !== "border-box") max += parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+            var pad = 19.5 * parseFloat(mcs.fontSize);     // 与 glint.css 第 7 节 main 的 padding-right（17.5em + 2em）一致
+            return main.clientWidth - parseFloat(mcs.paddingLeft) - pad >= max - 0.5;
+        }
+
+        // 一段轨道在屏上的中心、长度、粗细；只取目录列表可见范围内的部分（列表滚动过时，看不见的轨道从可见边缘处淡入淡出）
+        function railOf(a, clipTop, clipBottom) {
+            var r = a.getBoundingClientRect();
+            if (!r.height) return null;
+            var w = parseFloat(getComputedStyle(a).borderLeftWidth) || 2;
+            var top = Math.max(r.top, clipTop), bottom = Math.min(r.bottom, clipBottom);
+            var out = bottom - top < 1;
+            if (out) top = bottom = r.bottom <= clipTop ? clipTop : clipBottom;
+            return { cx: r.left + w / 2, cy: (top + bottom) / 2, len: Math.max(bottom - top, 0.01), thick: w, out: out };
+        }
+
+        function runMorph(open) {
+            if (morph) {
+                if (morph.open !== open) {                  // 半路掉头
+                    morph.open = open;
+                    morph.anims.forEach(function (an) { an.reverse(); });
+                }
+                return;
+            }
+            if (motionOff.matches || !trees.animate) return;
+
+            var cardR = trees.getBoundingClientRect(), miniR = mini.getBoundingClientRect();
+            var listR = tocBody.getBoundingClientRect();
+            var head = trees.querySelector(".article-list-head");
+            var anims = [];
+            var n1 = level1Idx.length, nb = miniBars.length;
+            var STAG = open ? 18 : 14;                      // 相邻两条线错开的时间：从上到下依次出发
+            var LINE = open ? 400 : 330;                    // 每条线飞行的时长
+            var LINE_DELAY = open ? 0 : 40;                 // 收起时先让文字收进轨道，线条再出发
+            var mapped = [];                                // [{ bar, link }]，从上到下
+            for (var m = 0; m < nb; m++) {
+                var li = n1 <= nb ? m : Math.round(m * (n1 - 1) / (nb - 1));
+                if (li < n1) mapped.push({ bar: miniBars[m], link: tocLinks[level1Idx[li]] });
+            }
+            var lastLand = LINE_DELAY + LINE + STAG * Math.max(mapped.length - 1, 0);
+
+            // 替身线条与玻璃用同一套运动函数，逐帧采样成关键帧（帧间线性插值，仍在合成线程上跑）：
+            // 线条每一刻的位置 / 角度 / 长短都算得出来，玻璃就能按它们的外沿收放——始终把线条包在里面，不会有线飞出玻璃
+            var layer = document.createElement("div");
+            layer.className = "toc-ghosts";
+            layer.style.zIndex = String((parseInt(getComputedStyle(trees).zIndex, 10) || 2) + 1);
+            var landAt = new Map();                         // 目录项 → 它的轨道落定的时刻（展开时文字据此浮现）
+            var lines = [];
+            // 收起：先往上收、再向右并拢（弧线朝上鼓），途中放倒；展开：先向左散开、再落到各自的高度（弧线朝外鼓），竖起时略过头再回正
+            var EX = open ? bez(0.2, 0.75, 0.25, 1) : bez(0.5, 0, 0.2, 1);
+            var EY = open ? bez(0.45, 0, 0.2, 1) : bez(0.25, 0.6, 0.3, 1);
+            var ER = open ? spring : bez(0.5, 0, 0.25, 1);
+            var ES = open ? bez(0.3, 0, 0.15, 1) : bez(0.55, 0, 0.3, 1);
+            mapped.forEach(function (pair, k) {
+                var rail = railOf(pair.link, listR.top, listR.bottom);
+                if (!rail) return;
+                var br = pair.bar.getBoundingClientRect();
+                var W = Math.max(br.width, 1), T = Math.max(br.height, 1);
+                var railColor = getComputedStyle(pair.link).borderLeftColor;   // 须在挂 .toc-ghosted（轨道透明）之前读
+                var barColor = getComputedStyle(pair.bar).backgroundColor;
+                var g = document.createElement("i");
+                g.className = "toc-ghost";
+                g.style.width = W + "px";
+                g.style.height = T + "px";
+                g.style.borderRadius = T / 2 + "px";
+                layer.appendChild(g);
+                pair.link.classList.add("toc-ghosted");
+                // 竖轨道 = 短横线转 -90°（收起时上端朝右倒下）、长宽换成轨道的长度与粗细
+                var A = { x: rail.cx, y: rail.cy, rot: -90, sx: rail.len / W, sy: rail.thick / T };
+                var B = { x: br.left + W / 2, y: br.top + T / 2, rot: 0, sx: 1, sy: 1 };
+                var ln = { W: W, T: T, from: open ? B : A, to: open ? A : B, delay: LINE_DELAY + STAG * k };
+                lines.push(ln);
+                var frames = [];
+                for (var f = 0; f <= SAMPLES; f++) {
+                    var st = lineAt(ln, f / SAMPLES);
+                    frames.push({ translate: (st.x - W / 2) + "px " + (st.y - T / 2) + "px", rotate: st.rot + "deg", scale: st.sx + " " + st.sy });
+                }
+                var timing = { duration: LINE, delay: ln.delay, fill: "both" };
+                anims.push(g.animate(frames, timing));
+                var cA = { backgroundColor: railColor, opacity: rail.out ? 0 : 1 };
+                var cB = { backgroundColor: barColor, opacity: 1 };
+                anims.push(g.animate(open ? [cB, cA] : [cA, cB], Object.assign({ easing: "ease" }, timing)));
+                landAt.set(pair.link, ln.delay + LINE);
+            });
+            document.body.appendChild(layer);
+            function lineAt(ln, p) {
+                var a = ln.from, b = ln.to;
+                return {
+                    x: a.x + (b.x - a.x) * EX(p), y: a.y + (b.y - a.y) * EY(p), rot: a.rot + (b.rot - a.rot) * ER(p),
+                    sx: a.sx + (b.sx - a.sx) * ES(p), sy: a.sy + (b.sy - a.sy) * ES(p)
+                };
+            }
+
+            // 玻璃：整张卡片 ↔ 迷你目录那一块（右上角对齐，圆角在两者之间过渡）
+            // 每一帧取「自身的缓动」与「包住所有线条（外沿留 PAD）所需」两者中较大的那个
+            var PAD = 12;
+            var bigR = parseFloat(getComputedStyle(trees, "::before").borderTopLeftRadius) || 0;
+            var smallR = parseFloat(getComputedStyle(mini).borderTopLeftRadius) || 0;
+            var big = { top: 0, right: 0, w: cardR.width, h: cardR.height, r: bigR };
+            var small = { top: miniR.top - cardR.top, right: cardR.right - miniR.right, w: miniR.width, h: miniR.height, r: smallR };
+            var S0 = open ? small : big, S1 = open ? big : small;
+            var shellDelay = open ? 0 : 20, shellDur = open ? 460 : lastLand - 20;
+            var shellEase = open ? spring : bez(0.5, 0, 0.25, 1);
+            var shellEnd = Math.max(shellDelay + shellDur, lastLand);
+            var shellFrames = [];
+            for (var sf = 0, steps = Math.ceil(shellEnd / 10); sf <= steps; sf++) {
+                var t = shellEnd * sf / steps;
+                var q = shellEase(Math.min(Math.max((t - shellDelay) / shellDur, 0), 1));
+                var top = S0.top + (S1.top - S0.top) * q, right = S0.right + (S1.right - S0.right) * q;
+                var w = S0.w + (S1.w - S0.w) * q, h = S0.h + (S1.h - S0.h) * q;
+                var edgeR = cardR.right - right, edgeT = cardR.top + top;
+                lines.forEach(function (ln) {
+                    var st = lineAt(ln, Math.min(Math.max((t - ln.delay) / LINE, 0), 1));
+                    var th = st.rot * Math.PI / 180, len = st.sx * ln.W, thick = st.sy * ln.T;
+                    var c = Math.abs(Math.cos(th)), s = Math.abs(Math.sin(th));
+                    var hx = c * len / 2 + s * thick / 2, hy = s * len / 2 + c * thick / 2;
+                    w = Math.max(w, edgeR - (st.x - hx - PAD));
+                    h = Math.max(h, st.y + hy + PAD - edgeT);
+                });
+                shellFrames.push({
+                    top: top + "px", right: right + "px", width: w + "px", height: h + "px",
+                    borderRadius: (S0.r + (S1.r - S0.r) * q) + "px"
+                });
+            }
+            anims.push(trees.animate(shellFrames, { pseudoElement: "::before", duration: shellEnd, fill: "both" }));
+
+            // 文字：收起时向左收进轨道淡去；展开时在自己的轨道快落定时从轨道里滑出（没有对应短横线的目录项按顺序跟上）
+            var shown = tocLinks.filter(function (a) { return a.getClientRects().length; });
+            shown.forEach(function (a, i) {
+                var kf = [{ opacity: 0, translate: "-10px 0" }, { opacity: 1, translate: "0 0" }];
+                if (open) {
+                    var at = landAt.has(a) ? landAt.get(a) - 150 : 120 + i * 16;
+                    anims.push(a.animate(kf, { duration: 300, delay: Math.max(at, 60), easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "both" }));
+                } else {
+                    anims.push(a.animate([kf[1], kf[0]], { duration: 120, delay: Math.min(i * 6, 36), easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "both" }));
+                }
+            });
+            if (head) {
+                var hk = [{ opacity: 0, translate: "0 -4px" }, { opacity: 1, translate: "0 0" }];
+                anims.push(head.animate(open ? hk : [hk[1], hk[0]], open
+                    ? { duration: 240, delay: 190, easing: "ease-out", fill: "both" }   // 等线条飞过标题栏再浮现
+                    : { duration: 110, easing: "ease-in", fill: "both" }));
+            }
+
+            // 收起时焦点本该交给迷你目录（bindDisclosure），但它在形变期间是藏起的，焦点会丢；记下来，收尾时还给它
+            var ae = document.activeElement;
+            var hadFocus = !!ae && (ae === mini || trees.contains(ae));
+            body.classList.add("toc-morphing");
+            var me = morph = { open: open, anims: anims, layer: layer, hadFocus: hadFocus };
+            Promise.all(anims.map(function (an) { return an.finished; })).then(function () {
+                if (morph === me) endMorph();
+            }, function () {});
+        }
+
+        // 收尾：替身换回真的轨道 / 迷你目录（同一帧、不带过渡，外观不跳）
+        function endMorph() {
+            var me = morph;
+            if (!me) return;
+            morph = null;
+            body.classList.add("toc-settle");
+            [].forEach.call(trees.querySelectorAll(".toc-ghosted"), function (a) { a.classList.remove("toc-ghosted"); });
+            body.classList.remove("toc-morphing");
+            me.anims.forEach(function (an) { an.cancel(); });
+            me.layer.remove();
+            getComputedStyle(trees).visibility;             // 先按无过渡生效
+            requestAnimationFrame(function () { body.classList.remove("toc-settle"); });
+            if (!me.open && me.hadFocus && (!document.activeElement || document.activeElement === document.body)) {
+                mini.focus({ preventScroll: true });
+            }
+        }
+
+        function onTocState() {
+            var wide = window.innerWidth >= 800, open = isTocOpen();
+            if (wide !== tocWide) {                         // 跨过 800px 断点：两种布局的「开」含义不同，不做动画
+                tocWide = wide;
+                tocOpen = open;
+                endMorph();
+                return;
+            }
+            if (open === tocOpen) return;
+            tocOpen = open;
+            if (wide && body.classList.contains("has-trees") && !wrapWidthStable()) {
+                body.classList.add("toc-snap");
+                requestAnimationFrame(function () { requestAnimationFrame(function () { body.classList.remove("toc-snap"); }); });
+            }
+            runMorph(open);
+        }
+        var tocStateObserver = new MutationObserver(onTocState);
+        tocStateObserver.observe(body, { attributes: true, attributeFilter: ["class"] });
+        tocStateObserver.observe(trees, { attributes: true, attributeFilter: ["class"] });
+
         mini.addEventListener("click", function (e) {
             e.stopPropagation();
             // 桌面端撤掉收起状态；手机端展开目录卡片（点卡片外会自动收起）
