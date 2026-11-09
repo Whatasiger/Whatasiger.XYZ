@@ -103,6 +103,53 @@ cover: /images/webp/043eba537105a620.webp
 
 ---
 
+### **订阅**
+
+<style>
+.feed-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 1.1rem 1.3rem;
+  border-radius: 16px;
+  color: inherit;
+  text-decoration: none !important;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+  transition: transform .25s, box-shadow .25s;
+}
+.feed-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.11); }
+.feed-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  color: #fff;
+  background: var(--blue);
+}
+.feed-text { display: flex; flex-direction: column; gap: .1rem; line-height: 1.5; }
+.feed-text strong { color: var(--blue); }
+.feed-text span { font-size: .85rem; opacity: .7; }
+.dark-theme .feed-card {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+</style>
+
+<a class="feed-card" href="/atom.xml"><span class="feed-icon"><i class="fa fa-rss"></i></span><span class="feed-text"><strong>订阅本站（RSS / Atom）</strong><span>加进 RSS 阅读器，有新文章时自动送到；点开查看订阅方法</span></span></a>
+
+订阅地址：`https://whatasiger.xyz/atom.xml`（阅读器只认 RSS 2.0 时可用 [**rss2.xml**](/rss2.xml)）
+
+---
+
 ### **版权声明**
 
 对于转载 / 二创等：[**CC BY-NC-SA 4.0**](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans)

@@ -76,6 +76,21 @@ window.vtFlip = (function () {
         });
         return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     }
+    // 组的盒子：transform 是「旋转 + 等比缩放 + 平移」时（如贴歪的拼贴纸片）记下未旋转的盒子与角度 r，形变时角度一并过渡；
+    // 其余情况取外接矩形、r = 0（与原先一致）
+    function boxOf(transform, w, h, fx, fy) {
+        var m = new DOMMatrix(transform && transform !== 'none' ? transform : undefined);
+        var s = Math.hypot(m.a, m.b);
+        if (m.is2D && s > 0 && Math.abs(m.a - m.d) < 1e-3 * s && Math.abs(m.b + m.c) < 1e-3 * s) {
+            var ox = fx * w, oy = fy * h;
+            var p = m.transformPoint(new DOMPoint(w / 2 - ox, h / 2 - oy));
+            var bw = w * s, bh = h * s;
+            return { x: p.x + ox - bw / 2, y: p.y + oy - bh / 2, w: bw, h: bh, r: Math.atan2(m.b, m.a) };
+        }
+        var b = rectOf(transform, w, h, fx, fy);
+        b.r = 0;
+        return b;
+    }
     // 变换原点占盒子的比例（计算值已换成 px，按同一时刻的宽高折回比例）
     function originFrac(cs) {
         var o = cs.transformOrigin.split(' ').map(parseFloat);
@@ -99,8 +114,8 @@ window.vtFlip = (function () {
         var w0 = parseFloat(from.width), h0 = parseFloat(from.height);
         var W = parseFloat(to.width), H = parseFloat(to.height);
         if (!(w0 > 0 && h0 > 0 && W > 0 && H > 0)) return null;
-        var A = rectOf(from.transform, w0, h0, gf[0], gf[1]);
-        var Z = rectOf(to.transform, W, H, gf[0], gf[1]);
+        var A = boxOf(from.transform, w0, h0, gf[0], gf[1]);
+        var Z = boxOf(to.transform, W, H, gf[0], gf[1]);
         var timing = group.effect.getTiming();
         var dur = +timing.duration;
         if (!(dur > 0)) return null;
@@ -135,12 +150,15 @@ window.vtFlip = (function () {
             }
         }
 
-        // 逐帧：组在屏幕上的矩形
+        // 逐帧：组在屏幕上的矩形（未旋转的盒子）与角度（走较短的一边）
         function track(Z) {
+            var dr = Z.r - A.r;
+            dr -= Math.round(dr / (2 * Math.PI)) * 2 * Math.PI;
             return eases.map(function (p) {
                 return {
                     x: A.x + (Z.x - A.x) * p, y: A.y + (Z.y - A.y) * p,
-                    w: Math.max(A.w + (Z.w - A.w) * p, .01), h: Math.max(A.h + (Z.h - A.h) * p, .01)
+                    w: Math.max(A.w + (Z.w - A.w) * p, .01), h: Math.max(A.h + (Z.h - A.h) * p, .01),
+                    r: A.r + dr * p
                 };
             });
         }
@@ -153,11 +171,16 @@ window.vtFlip = (function () {
                 return b;
             });
             var gox = gf[0] * W, goy = gf[1] * H;
+            var lcx = W / 2 - gox, lcy = H / 2 - goy;   // 盒子中心相对变换原点
             var list = [[gp, frames.map(function (b, i) {
-                // 盒子左上角落到 (b.x, b.y)：绕原点缩放后再平移
+                // 绕原点缩放、旋转，再平移到盒子中心落在 (b.x + b.w / 2, b.y + b.h / 2)；角度为 0 时即「左上角落到 (b.x, b.y)」
+                var cos = Math.cos(b.r), sin = Math.sin(b.r);
+                var ma = cos * b.sx, mb = sin * b.sx, mc = -sin * b.sy, md = cos * b.sy;
+                var e = b.x + b.w / 2 - gox - (ma * lcx + mc * lcy);
+                var f = b.y + b.h / 2 - goy - (mb * lcx + md * lcy);
                 return {
                     offset: i / n,
-                    transform: 'matrix(' + px(b.sx) + ',0,0,' + px(b.sy) + ',' + px(b.x - gox + b.sx * gox) + ',' + px(b.y - goy + b.sy * goy) + ')'
+                    transform: 'matrix(' + px(ma) + ',' + px(mb) + ',' + px(mc) + ',' + px(md) + ',' + px(e) + ',' + px(f) + ')'
                 };
             })]];
             sides.forEach(function (sd) {
@@ -225,11 +248,14 @@ window.vtFlip = (function () {
             if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(dw) < .5 && Math.abs(dh) < .5) return;
             r0 = r;
             if (visual) {
-                g.Z = { x: g.Z.x + dx, y: g.Z.y + dy, w: Math.max(g.Z.w + dw, .01), h: Math.max(g.Z.h + dh, .01) };
+                g.Z = { x: g.Z.x + dx, y: g.Z.y + dy, w: Math.max(g.Z.w + dw, .01), h: Math.max(g.Z.h + dh, .01), r: g.Z.r };
             } else {
-                g.W = Math.max(g.W + dw, .01);
-                g.H = Math.max(g.H + dh, .01);
-                g.Z = { x: g.Z.x + dx, y: g.Z.y + dy, w: g.W, h: g.H };
+                // 带旋转的元素：外接矩形的宽高变化不等于盒子的，只跟平移（拼贴纸片尺寸不会在过渡中变）
+                if (!g.Z.r) {
+                    g.W = Math.max(g.W + dw, .01);
+                    g.H = Math.max(g.H + dh, .01);
+                }
+                g.Z = { x: g.Z.x + dx, y: g.Z.y + dy, w: g.Z.r ? g.Z.w : g.W, h: g.Z.r ? g.Z.h : g.H, r: g.Z.r };
             }
             // 接上进度：沿用旧动画的起点时刻，不用 currentTime——新动画等合成线程启动的那几帧会停在原处，
             // 元素连续几帧都在动时一次次重建，就会被越拖越慢

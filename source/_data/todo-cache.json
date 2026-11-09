@@ -2,14 +2,14 @@
   "bangumi": {
     "items": [
       {
-        "id": 495291,
-        "name": "再见菈菈",
+        "id": 248175,
+        "name": "辉夜大小姐想让我告白～天才们的恋爱头脑战～",
         "type": 2,
-        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/18/af/495291_9WuBW.jpg",
-        "epStatus": 6,
+        "cover": "https://lain.bgm.tv/r/200/pic/cover/l/2a/f7/248175_2w4zT.jpg",
+        "epStatus": 0,
         "eps": 12,
-        "updatedAt": "2026-11-07T00:07:54+08:00",
-        "url": "https://bgm.tv/subject/495291"
+        "updatedAt": "2026-11-09T23:14:09+08:00",
+        "url": "https://bgm.tv/subject/248175"
       },
       {
         "id": 502499,
@@ -112,23 +112,23 @@
         "url": "https://bgm.tv/subject/845"
       }
     ],
-    "fetchedAt": "2026-11-07T14:46:20.513Z"
+    "fetchedAt": "2026-11-09T15:21:23.644Z"
   },
   "netease": {
     "songs": [
-      {
-        "id": 2111740365,
-        "name": "itsuka",
-        "artists": "ひとひら",
-        "cover": "https://p1.music.126.net/19xlS-oxqi3yG7890PEehA==/109951173986849987.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2111740365"
-      },
       {
         "id": 438580723,
         "name": "雨上がり",
         "artists": "きのこ帝国",
         "cover": "https://p1.music.126.net/9kgIXjxfcDR335N4Hljnjg==/17918740998092311.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=438580723"
+      },
+      {
+        "id": 2111740365,
+        "name": "itsuka",
+        "artists": "ひとひら",
+        "cover": "https://p1.music.126.net/19xlS-oxqi3yG7890PEehA==/109951173986849987.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2111740365"
       },
       {
         "id": 2722426126,
@@ -145,18 +145,11 @@
         "url": "https://music.163.com/#/song?id=26405133"
       },
       {
-        "id": 3363527827,
-        "name": "芽吹くとき",
-        "artists": "yonige",
-        "cover": "https://p1.music.126.net/mkcHO_3dQ9jgyoK6fpFCmw==/109951172946101598.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=3363527827"
-      },
-      {
-        "id": 26405131,
-        "name": "スクールフィクション",
+        "id": 438580725,
+        "name": "死がふたりをわかつまで",
         "artists": "きのこ帝国",
-        "cover": "https://p1.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=26405131"
+        "cover": "https://p1.music.126.net/9kgIXjxfcDR335N4Hljnjg==/17918740998092311.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=438580725"
       },
       {
         "id": 2066755272,
@@ -166,18 +159,18 @@
         "url": "https://music.163.com/#/song?id=2066755272"
       },
       {
-        "id": 2600524616,
-        "name": "流れゆく季節",
-        "artists": "Haruka Nakamura",
-        "cover": "https://p1.music.126.net/TZyy6V0geCU5zP0j9lLDZg==/109951169703704961.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=2600524616"
+        "id": 26405131,
+        "name": "スクールフィクション",
+        "artists": "きのこ帝国",
+        "cover": "https://p1.music.126.net/4O2l1Fu4KzWbUFgM74rUXg==/109951163560123951.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=26405131"
       },
       {
-        "id": 28095029,
-        "name": "海と花束",
-        "artists": "きのこ帝国",
-        "cover": "https://p1.music.126.net/o7w7szxFLTeSnDJJa9hoKw==/109951163560123952.jpg?param=80y80",
-        "url": "https://music.163.com/#/song?id=28095029"
+        "id": 3363527827,
+        "name": "芽吹くとき",
+        "artists": "yonige",
+        "cover": "https://p1.music.126.net/mkcHO_3dQ9jgyoK6fpFCmw==/109951172946101598.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=3363527827"
       },
       {
         "id": 2712589107,
@@ -185,8 +178,15 @@
         "artists": "羊文学",
         "cover": "https://p1.music.126.net/jd5vRmlAEaJ40ao4HK2Wag==/109951171268447043.jpg?param=80y80",
         "url": "https://music.163.com/#/song?id=2712589107"
+      },
+      {
+        "id": 2647387719,
+        "name": "I Must Come Back（重回巅峰）",
+        "artists": "我好像在哪见过你",
+        "cover": "https://p1.music.126.net/1Xs6-9ZsQVYqdE9fdqnXEA==/109951172449490832.jpg?param=80y80",
+        "url": "https://music.163.com/#/song?id=2647387719"
       }
     ],
-    "fetchedAt": "2026-11-07T14:46:22.329Z"
+    "fetchedAt": "2026-11-09T15:21:24.331Z"
   }
 }

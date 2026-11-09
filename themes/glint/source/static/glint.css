@@ -1913,6 +1913,15 @@ html:is(.cw-leaving, .cw-back) .cw-card-sub { view-transition-name: cw-hero-sub;
     .post-item.cw-card .cw-soon-hand { font-size: 2.4em; margin-left: 2.2em; }
     .cw-soon-tape { width: 76px; height: 20px; left: 26px; }
 }
+/* 一镜到底去预告页（head.ejs 的 leaveToSoon 在 pageswap 时挂 soon-leaving）：卡片 → 拼贴的夜空底片，胶带、载波、标题、手写字各自配对
+   快照前把悬停 / 按下的动效直接收回静止状态；编排见本文件「CW 预告页」末尾 */
+html.soon-leaving .post-item.cw-card.is-soon { view-transition-name: soon-sheet; }
+html.soon-leaving .post-item.cw-card.is-soon .cw-soon-tape { view-transition-name: soon-tape; }
+html.soon-leaving .post-item.cw-card.is-soon .cw-card-wave-box { view-transition-name: soon-wave; }
+html.soon-leaving .post-item.cw-card.is-soon .cw-card-title { view-transition-name: soon-title; letter-spacing: .04em; transform: none; transition: none; }
+html.soon-leaving .post-item.cw-card.is-soon .cw-soon-hand { view-transition-name: soon-hand; transform: none; transition: none; }
+html.soon-leaving .post-item.cw-card.is-soon .cw-card-strand { stroke: rgba(228, 228, 224, .38); transform: none; transition: none; }
+html.soon-leaving .post-item.cw-card.is-soon .cw-card-strand.is-ghost { stroke: rgba(174, 191, 214, .16); transform: translateY(5px) scaleY(.7); }
 
 /* 反向：从 /carrier_wave/ 回到首页，整屏收回成卡片（cw-back 只在这次过渡期间挂在 html 上） */
 /* 文章卡片的逐张浮出由过渡代替，不再重播 */
@@ -2214,9 +2223,71 @@ html.page-loading body.post-page:after {
     display: inline-block;
 }
 
-/* 文章正文链接：带虚线下划线 */
-/* - 阅读页正文 */
-article a { border-bottom: 1px dashed currentColor; }
+/* 正文（文章 / 独立页面）的 Markdown 外观：链接与表格共用的配色变量（这里是夜间，白天在第 8 节） */
+:is(.post-content, .page-content) {
+    --md-link: #55bde2;                                                 /* 链接（用户指定的色值，不随主题色变） */
+    --md-link-hover: #bdebfc;                                           /* 悬停：文字与下划线同一道更亮的蓝（用户指定） */
+    --md-th-bg: rgba(0, 0, 0, .14);                                     /* 表头色块：比玻璃底板略深一点 */
+    --md-th-edge: inset 0 1px 0 rgba(255, 255, 255, .05), inset 0 -1px 0 rgba(0, 0, 0, .18); /* 表头上沿一线微光、下沿一线暗边 */
+    --md-th-ink: #EDEDE9;
+    --md-row-line: rgba(228, 228, 224, .09);                            /* 行间分隔：浅灰细线 */
+    --md-row-hover: rgba(255, 255, 255, .035);
+}
+
+/* 正文链接：平时没有下划线，只靠颜色区分；悬停 / 聚焦时下划线从左向右划出，移走时继续向右滑出（不原路收回）
+   做法：下划线是一条 background 渐变。悬停时定位在左、宽度 0 → 100%（从左长出）；移走时定位瞬间换到右（宽 100% 时看不出变化）、宽度 100% → 0（向右收走）。
+   定位不参与过渡，宽度用各自的缓动；跨行的链接下划线按行依次划过。
+   卡片式链接（带 class）、脚注标号与回跳、包着图片的链接不接管 */
+:is(.post-content, .page-content) a:not([class]):not([data-footnote-ref]):not([data-footnote-backref]):not(:has(img)) {
+    color: var(--md-link);
+    text-decoration: none;
+    border-bottom: 0;
+    padding-bottom: .1em;
+    background: linear-gradient(currentColor, currentColor) right bottom / 0 1.5px no-repeat;
+    transition: color .4s ease, background-size .32s cubic-bezier(.6, 0, .4, 1);   /* 移走：先慢后快、加速滑出 */
+}
+:is(.post-content, .page-content) a:not([class]):not([data-footnote-ref]):not([data-footnote-backref]):not(:has(img)):is(:hover, :focus-visible) {
+    color: var(--md-link-hover);
+    background-position: left bottom;
+    background-size: 100% 1.5px;
+    transition: color .25s ease, background-size .4s cubic-bezier(.22, 1, .36, 1); /* 移上：快速划出、缓缓到头 */
+}
+:is(.post-content, .page-content) a:not([class]):focus-visible { outline: none; }
+@media (prefers-reduced-motion: reduce) {
+    :is(.post-content, .page-content) a:not([class]) { transition: color .2s ease; }
+}
+
+/* 正文表格：表头是一整条圆角色块（比周围略深，白天更白），正文行之间只用浅灰细线；数字等宽对齐
+   单元格分离（separate）才能给表头首尾两格画圆角；kico 给 tr 的边框在 separate 模式下不画，分隔线改画在 td 上 */
+:is(.post-content, .page-content) table {
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 1.4em 0;
+    font-variant-numeric: tabular-nums;
+}
+:is(.post-content, .page-content) table th {
+    padding: .7em 1em;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--md-th-ink);
+    background: var(--md-th-bg);
+    box-shadow: var(--md-th-edge);
+}
+:is(.post-content, .page-content) table th:first-child { border-radius: 7px 0 0 7px; }
+:is(.post-content, .page-content) table th:last-child { border-radius: 0 7px 7px 0; }
+:is(.post-content, .page-content) table th:only-child { border-radius: 7px; }
+:is(.post-content, .page-content) table td {
+    padding: .75em 1em;
+    border-bottom: 1px solid var(--md-row-line);
+    transition: background-color .25s ease;
+}
+:is(.post-content, .page-content) table tbody tr:first-child td { padding-top: .95em; }
+:is(.post-content, .page-content) table tbody tr:last-child td { border-bottom: 0; }
+:is(.post-content, .page-content) table tbody tr:hover { background: none; }
+:is(.post-content, .page-content) table tbody tr:hover td { background-color: var(--md-row-hover); }
+:is(.post-content, .page-content) table tbody tr:hover td:first-child { border-radius: 6px 0 0 6px; }
+:is(.post-content, .page-content) table tbody tr:hover td:last-child { border-radius: 0 6px 6px 0; }
+:is(.post-content, .page-content) table tbody tr:hover td:only-child { border-radius: 6px; }
 
 /* 文章正文图片：圆角处理 */
 article img {
@@ -2372,15 +2443,7 @@ article em, .post-content em {
     font-style: italic;             /* 斜体样式 */
 }
 
-/* 文章正文表格行悬停：浅色高亮 */
-article table tr:hover, .post-content table tr:hover {
-    background-color: rgba(0, 0, 0, 0.05); /* 表格行悬停背景透明度 */
-}
-
-/* 夜间模式表格行悬停：白色高亮 */
-.dark-theme article table tr:hover, .dark-theme .post-content table tr:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-}
+/* 正文表格的行悬停见上方「正文表格」（高亮画在单元格上、首尾圆角） */
 
 /* 阅读页相关文章（上一篇/下一篇）区块：淡入动画 */
 /* - 阅读页其他文章 */
@@ -4032,7 +4095,7 @@ pre[class*="language-"].line-numbers {
     .post-content > p { content-visibility: visible !important; }  /* 首帧只排屏幕附近段落的优化，打印时整篇排好 */
     .post-title h2, .page-title h2, .post-content, .page-content, .post-content *, .page-content * { color: #000 !important; }
     .post-meta, .post-tags, .post-tags a { color: #555 !important; }
-    .post-content a, .page-content a { text-decoration: underline; border: 0; }
+    .post-content a, .page-content a { text-decoration: underline; border: 0; background: none !important; }
     .post-content h1, .post-content h2, .post-content h3, .post-content h4 { break-after: avoid; }
     .post-content img, .quote-box, pre, table { break-inside: avoid; }
     .quote-box { background: none !important; border: 1px solid #ccc !important; }
@@ -5846,6 +5909,11 @@ html.gizmo-from-leaf .gizmo-head > :not(.gizmo-emblem), html.gizmo-from-leaf .gi
     line-height: 1;
     letter-spacing: .06em;
     color: #EDEDE9;
+    /* 盒子只包住文字、居中摆放（与首页卡片上的标题同样包住文字，一镜到底时两端的快照才按比例对得上） */
+    left: 50%;
+    right: auto;
+    width: max-content;
+    translate: -50% 0;
 }
 .soon-page .soon-title::before, .soon-page .soon-title::after { display: none; }
 /* 四角的裁切线 */
@@ -6073,6 +6141,75 @@ html.gizmo-from-leaf .gizmo-head > :not(.gizmo-emblem), html.gizmo-from-leaf .gi
     .soon-scrap, .soon-postmark, .soon-needle, .soon-sheet-wave svg { animation: none; }
     .soon-page .soon-hand { animation: none; clip-path: none; }
 }
+
+/* 预告卡片一镜到底（首页 → 预告页，脚本见 _partial/soon-vt.ejs，卡片一侧的挂名见「预告卡片」一节）：
+   - 卡片沉成夜空底片（边放大边转到贴歪的角度，vtFlip 带旋转），胶带跟着贴到底片左上角，载波、标题落到底片上
+   - 手写的 Coming soon 从卡片上飞到纸条上，奶白墨迹在途中换成深色墨水；纸条本身随页面淡入，不再「落下」，也不再重写一遍
+   - 色卡、刻度条、邮票、邮戳先藏着（soon-scraps-wait），底片快落定时依次落下
+   - 所有碎片都单独挂名、各成一组，组的 z-index 照抄它们在画板里的层叠：留在 root 里的话会被底片组整个压住，过渡一结束才突然冒到上面；
+     而且 root 里有东西在动时整张 root 快照（连同模糊的背景）每帧都要重绘，是卡顿的主因
+   - 背景直接落到预告页的模糊（不再走一遍模糊度过渡），由 root 的交叉淡化从清晰换成模糊 */
+html.soon-from-card .soon-sheet { view-transition-name: soon-sheet; }
+html.soon-from-card .soon-tape.is-a { view-transition-name: soon-tape; }
+html.soon-from-card .soon-sheet-wave { view-transition-name: soon-wave; }
+html.soon-from-card .soon-page .soon-title { view-transition-name: soon-title; }
+html.soon-from-card .soon-page .soon-hand { view-transition-name: soon-hand; }
+html.soon-from-card .soon-note { view-transition-name: soon-note; }
+html.soon-from-card .soon-chips { view-transition-name: soon-chips; }
+html.soon-from-card .soon-dial { view-transition-name: soon-dial; }
+html.soon-from-card .soon-stamp { view-transition-name: soon-stamp; }
+html.soon-from-card .soon-postmark { view-transition-name: soon-postmark; }
+html.soon-from-card body:before { transition: none !important; }
+/* 带名元素与手写字所在的纸条保持静止；soon-card-in 常驻，自带的入场一旦恢复就会重播 */
+html.soon-card-in .soon-sheet, html.soon-card-in .soon-note { animation: none; }
+html.soon-card-in .soon-page .soon-hand { animation: none; clip-path: none; }
+html.soon-card-in .soon-postmark { animation-delay: .75s; }
+html.soon-scraps-wait :is(.soon-chips, .soon-dial, .soon-stamp, .soon-postmark) { animation: none; opacity: 0; }
+
+html.soon-from-card::view-transition-group(*) {
+    animation-duration: .85s;
+    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+/* 层叠与画板一致：色卡 < 底片（载波、标题、胶带在它上面）< 刻度条、邮票 < 纸条（手写字在它上面）< 邮戳 */
+html.soon-from-card::view-transition-group(soon-chips) { z-index: 1; }
+html.soon-from-card::view-transition-group(soon-sheet) { z-index: 2; }
+html.soon-from-card::view-transition-group(soon-wave) { z-index: 3; }
+html.soon-from-card::view-transition-group(soon-title) { z-index: 4; }
+html.soon-from-card::view-transition-group(soon-tape) { z-index: 5; animation-duration: .95s; animation-timing-function: cubic-bezier(.3, 1.25, .5, 1); }
+html.soon-from-card::view-transition-group(soon-dial),
+html.soon-from-card::view-transition-group(soon-stamp) { z-index: 6; }
+html.soon-from-card::view-transition-group(soon-note) { z-index: 7; }
+html.soon-from-card::view-transition-group(soon-hand) { z-index: 8; animation-duration: 1s; animation-timing-function: cubic-bezier(.3, 1.2, .5, 1); }
+html.soon-from-card::view-transition-group(soon-postmark) { z-index: 9; }
+/* 只在新页存在的碎片：落下动画在实时快照里照常播；快照层自己也按同样的延时淡入（撤掉 soon-scraps-wait 那一刻才开始），
+   等待期间藏着，不依赖元素自身的透明度是否算进快照 */
+html.soon-scraps-wait::view-transition-new(soon-chips),
+html.soon-scraps-wait::view-transition-new(soon-dial),
+html.soon-scraps-wait::view-transition-new(soon-stamp),
+html.soon-scraps-wait::view-transition-new(soon-postmark) { animation: none; opacity: 0; }
+html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-chips) { animation: post-vt-in .3s ease-out .2s both; }
+html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-dial) { animation: post-vt-in .3s ease-out .5s both; }
+html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-stamp) { animation: post-vt-in .3s ease-out .6s both; }
+html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-postmark) { animation: post-vt-in .2s ease-out .75s both; }
+html.soon-from-card::view-transition-new(soon-note) { animation: post-vt-in .4s ease-out .1s both; }
+/* 底片、胶带、载波拉伸铺满组（两端的夜空是同一种底色，拉伸看不出来）；新底片盖在旧卡片上淡入 */
+html.soon-from-card::view-transition-old(soon-sheet), html.soon-from-card::view-transition-new(soon-sheet),
+html.soon-from-card::view-transition-old(soon-tape), html.soon-from-card::view-transition-new(soon-tape),
+html.soon-from-card::view-transition-old(soon-wave), html.soon-from-card::view-transition-new(soon-wave) {
+    height: 100%;
+    object-fit: fill;
+}
+/* 底片：新底片（自带贴纸的投影）先盖上来，旧卡片（连同它被拉大的投影）随后淡去，不留到过渡结束才一下消失 */
+html.soon-from-card::view-transition-old(soon-sheet) { animation: post-vt-out .3s ease-in .3s both; mix-blend-mode: normal; }
+html.soon-from-card::view-transition-new(soon-sheet) { animation: post-vt-in .4s ease-out both; mix-blend-mode: normal; }
+/* 标题：卡片上的小字很快淡出，底片上的大字早早接手 */
+html.soon-from-card::view-transition-old(soon-title) { animation: post-vt-out .25s linear both; }
+html.soon-from-card::view-transition-new(soon-title) { animation: post-vt-in .25s linear both; }
+/* 手写字：飞行中段换墨水 */
+html.soon-from-card::view-transition-old(soon-hand) { animation: post-vt-out .4s ease-in .15s both; }
+html.soon-from-card::view-transition-new(soon-hand) { animation: post-vt-in .4s ease-out .15s both; }
+html.soon-from-card::view-transition-old(root) { animation-duration: .4s; }
+html.soon-from-card::view-transition-new(root) { animation-duration: .5s; }
 
 /* =========================================
    归档时间线（layout/archive.ejs：/archives/、/tags/<名>/、按年月的归档页）
@@ -7039,6 +7176,18 @@ body.post-page:not(.dark-theme) main {
     --sheet-border: rgba(255, 255, 255, 0.65);
     --sheet-highlight: rgba(255, 255, 255, 0.5);
     --sheet-shadow: rgba(110, 70, 40, 0.22);
+}
+
+/* 白天的正文链接与表格（夜间见「正文（文章 / 独立页面）的 Markdown 外观」）：
+   链接比原先的 tc-deep 稍亮、悬停换成更亮的蓝（不用全站白天悬停的落日橙）；表头色块比暖白底板更白，行间线是淡淡的暖灰 */
+body:not(.dark-theme) :is(.post-content, .page-content) {
+    --md-link: color-mix(in srgb, var(--tc-deep) 72%, var(--tc-main));
+    --md-link-hover: var(--tc-main);
+    --md-th-bg: rgba(255, 255, 255, .78);
+    --md-th-edge: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(110, 70, 40, .06);
+    --md-th-ink: #33302C;
+    --md-row-line: rgba(70, 60, 50, .1);
+    --md-row-hover: rgba(255, 255, 255, .38);
 }
 
 /* 白天的 CW 预告页：拼贴碎片的投影带暖色、浅一些（夜间见「CW 预告页」） */

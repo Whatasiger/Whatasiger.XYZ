@@ -19,3 +19,4 @@ exclude:
   - '**/*.bak'
   - 'images/**'
   - 'robots.txt'
+  - 'feed.xsl'          # 订阅源的浏览器预览只给 Glint 根路径下的订阅源用（Origin 不生成订阅源）

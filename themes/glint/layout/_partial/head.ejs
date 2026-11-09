@@ -238,7 +238,7 @@
         })();
     </script>
     <% } %>
-    <% if (is_home() || is_post()) { %>
+    <% if (is_home() || is_post() || page.layout === 'soon') { %>
     <%- partial('_partial/vt-flip') %>
     <% } %>
     <%- partial('_partial/title-hop') %>
@@ -317,13 +317,14 @@
     </script>
     <!-- 卡片副题「载波·短篇辑」与目录页同用思源宋体；只取这几个字，字体文件很小 -->
     <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300&text=<%- encodeURIComponent('载波短篇辑') %>&display=swap">
-    <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」「首页 → 文章」（文章卡片一镜到底）与「首页 → Gizmo」（叶片一镜到底），其余跳转一律跳过 -->
+    <!-- 跨页面过渡只用于「首页 ↔ CARRiER WAVE.」「首页 → CW 预告页」「首页 → 文章」（文章卡片一镜到底）与「首页 → Gizmo」（叶片一镜到底），其余跳转一律跳过 -->
     <style>@view-transition { navigation: auto; } @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }</style>
     <script>
         (function () {
             var root = document.documentElement;
             var target = '<%- url_for("/carrier_wave/") %>';
             var gizmo = '<%- url_for("/gizmo/") %>';
+            var soon = '<%- url_for("/carrier_wave/soon/") %>';
             function norm(u) {
                 try { return new URL(u, location.href).pathname.replace(/index\.html$/, ''); } catch (err) { return ''; }
             }
@@ -334,6 +335,7 @@
                 if (!e.viewTransition) return;
                 if (takeTitleHop(e)) return;     // 从搜索结果点进文章：标题飞过去（_partial/title-hop.ejs）
                 if (to && norm(to) === gizmo && leaveToGizmo()) return;
+                if (to && norm(to) === soon && leaveToSoon()) return;
                 if (to && norm(to) !== target && leaveToPost(norm(to))) return;
                 if (!to || norm(to) !== target) { e.viewTransition.skipTransition(); return; }
                 // 快照前把卡片收回静止状态：悬停时标题字距变宽、载波鼓起变色，与目录页首屏对不上，交叉淡化时会出现重影
@@ -390,6 +392,16 @@
                 try { sessionStorage.setItem('gizmo-leaf-hop', String(Date.now())); } catch (err) {}
                 return true;
             }
+            // CW 预告卡片一镜到底：卡片沉成预告页拼贴里的夜空底片，胶带、载波、标题、手写字各自飞到对应位置（落点与编排见 _partial/soon-vt.ejs）
+            // 卡片不在视口内就不做；留一份记录，预告页据此决定是否接过渡
+            function leaveToSoon() {
+                var card = document.querySelector('.post-item.cw-card.is-soon');
+                var r = card && card.getBoundingClientRect();
+                if (!r || r.bottom <= 0 || r.top >= innerHeight) return false;
+                root.classList.add('soon-leaving');
+                try { sessionStorage.setItem('soon-hop', String(Date.now())); } catch (err) {}
+                return true;
+            }
             function resetGizmoLeaf() {
                 root.classList.remove('gizmo-leaving');
                 var body = document.querySelector('.gizmo-leaf-body');
@@ -416,7 +428,7 @@
             window.addEventListener('pagereveal', function (e) {
                 var restored = revealed;
                 revealed = true;
-                root.classList.remove('cw-back', 'cw-leaving');
+                root.classList.remove('cw-back', 'cw-leaving', 'soon-leaving');
                 resetWave();
                 resetPostCard();
                 resetGizmoLeaf();
@@ -496,6 +508,9 @@
     <% } %>
     <% if (page.layout === 'gizmo') { %>
     <%- partial('_partial/gizmo-vt') %>
+    <% } %>
+    <% if (page.layout === 'soon') { %>
+    <%- partial('_partial/soon-vt') %>
     <% } %>
     <% if (is_post()) { %>
     <%- partial('_partial/post-vt') %>
