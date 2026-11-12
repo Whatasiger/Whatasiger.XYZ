@@ -36,6 +36,6 @@
     "marked-footnote": "^1.4.0"
   },
   "devDependencies": {
-    "esbuild": "^0.25.11"
+    "esbuild": "^0.28.2"
   }
 }
