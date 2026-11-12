@@ -1,12 +1,13 @@
 # 构建与检查（源码仓库 Whatasiger/Whatasiger.XYZ）
 #
 # - 推送到 main / 提 PR：完整构建（Glint + Origin + 压缩），再跑 tools/check-site.js（站内链接、页面体积、图片格式、一叶关卡）
-# - 每天北京时间 06:30 定时构建：顺带重新抓取网易云周榜、Bangumi 与友链，检查是否仍能构建通过
 # - 手动运行（Actions 页面 Run workflow）：可勾选「部署」
+# - 每天刷新网易云周榜另见 todo.yml（只替换线上的 /todo.json，不在这里定时整站重建部署：
+#   源码仓库常落后于已部署的站点，定时部署会把线上改回旧版）
 #
-# 部署默认关闭，只在以下情况发生，且须先在仓库 Settings 里配好：
-#   - Secrets → DEPLOY_TOKEN：对 Whatasiger/Whatasiger.github.io 有 Contents 读写权限的 fine-grained token
-#   - 手动运行时勾选 deploy；或 Variables → AUTO_DEPLOY 设为 true 后，定时构建也会自动部署（刷新 TODO 周榜）
+# 部署默认关闭，只在手动运行并勾选 deploy 时发生，且须先在仓库 Settings → Secrets 配好
+# DEPLOY_TOKEN：对 Whatasiger/Whatasiger.github.io 有 Contents 读写权限的 fine-grained token
+# 部署前确认源码仓库已是线上那一版（npm run source:publish 过），否则同样会回滚
 # 部署方式与 hexo-deployer-git 等价：把 public/ 的内容提交到 Whatasiger.github.io 的 main（保留其提交历史，不强推）
 
 name: 构建与检查
@@ -15,8 +16,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    - cron: '30 22 * * *'
   workflow_dispatch:
     inputs:
       deploy:
@@ -66,8 +65,7 @@ jobs:
       - name: 部署到 Whatasiger.github.io
         if: >-
           env.HAS_DEPLOY_TOKEN == 'true' && github.ref == 'refs/heads/main' &&
-          ((github.event_name == 'workflow_dispatch' && inputs.deploy) ||
-           (github.event_name == 'schedule' && vars.AUTO_DEPLOY == 'true'))
+          github.event_name == 'workflow_dispatch' && inputs.deploy
         env:
           DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |

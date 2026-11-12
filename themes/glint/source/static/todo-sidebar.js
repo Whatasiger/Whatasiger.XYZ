@@ -1,4 +1,5 @@
 // 首页「TO DO」侧边栏：展开/收起 + Bangumi 实时刷新（失败时保留构建时数据）
+// 网易云周榜：页面里是构建时的数据，另读 /todo.json（CI 每天刷新的那份），更新的话换上
 (function () {
     var sidebar = document.getElementById("todo-sidebar");
     var drawer = sidebar && sidebar.parentNode;
@@ -14,6 +15,7 @@
     var bgmLoaded = false;
     var animating = false;
     var pendingRender = null;
+    var pendingMusic = null;
     var animTimer = null;
 
     // 封面图要等第一次展开才加载：抽屉靠 transform 移出屏幕，loading="lazy" 仍会把它们算作视口附近而提前下载
@@ -38,6 +40,7 @@
         clearTimeout(animTimer);
         animTimer = setTimeout(finishAnimation, 700); // 兜底：无过渡（减少动态效果）时不会触发 transitionend
         loadBangumi();
+        loadMusic();
     }
 
     function finishAnimation() {
@@ -47,6 +50,11 @@
             var items = pendingRender;
             pendingRender = null;
             renderBangumi(items);
+        }
+        if (pendingMusic) {
+            var music = pendingMusic;
+            pendingMusic = null;
+            renderMusic(music);
         }
     }
 
@@ -217,15 +225,75 @@
         });
     }
 
-    // 周榜的抓取时间换成相对说法：今天 / 昨天 / x 天前（超过 60 天仍写日期）——数据只在构建时更新，读者能看出新旧
-    [].forEach.call(document.querySelectorAll(".todo-note[data-time]"), function (el) {
-        var t = new Date(el.getAttribute("data-time"));
-        if (isNaN(t)) return;
+    // 周榜的抓取时间换成相对说法：今天 / 昨天 / x 天前（超过 60 天仍写日期），读者能看出新旧
+    function noteText(time) {
+        var t = new Date(time);
+        if (isNaN(t)) return "";
         function dayNo(d) { return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5); }
         var n = dayNo(new Date()) - dayNo(t);
-        if (n < 0 || n > 60) return;
-        el.textContent = "更新于 " + (n === 0 ? "今天" : n === 1 ? "昨天" : n + " 天前");
-    });
+        if (n < 0 || n > 60) {
+            var pad = function (x) { return (x < 10 ? "0" : "") + x; };
+            return "更新于 " + t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate());
+        }
+        return "更新于 " + (n === 0 ? "今天" : n === 1 ? "昨天" : n + " 天前");
+    }
+    var musicList = sidebar.querySelector(".todo-music");
+    var musicNote = sidebar.querySelector(".todo-note[data-time]");
+    if (musicNote) musicNote.textContent = noteText(musicNote.getAttribute("data-time")) || musicNote.textContent;
+
+    function renderMusic(data) {
+        var frag = document.createDocumentFragment();
+        data.songs.forEach(function (song, i) {
+            var li = el("li");
+            li.style.setProperty("--i", i);
+            var a = el("a");
+            a.href = song.url;
+            a.target = "_blank";
+            a.rel = "noopener";
+            var img = el("img");
+            if (opened) img.src = song.cover || ""; else img.setAttribute("data-src", song.cover || "");
+            img.alt = "";
+            img.loading = "lazy";
+            img.referrerPolicy = "no-referrer";
+            var text = el("span", "todo-text");
+            text.appendChild(el("span", "todo-title", song.name));
+            text.appendChild(el("span", "todo-meta", song.artists));
+            a.appendChild(el("span", "todo-rank", String(i + 1)));
+            a.appendChild(img);
+            a.appendChild(text);
+            li.appendChild(a);
+            frag.appendChild(li);
+        });
+        if (!frag.childNodes.length) frag.appendChild(el("li", "todo-empty", "暂无数据"));
+        musicList.innerHTML = "";
+        musicList.appendChild(frag);
+        musicList.setAttribute("data-time", data.fetchedAt);
+        if (!musicNote) {
+            musicNote = el("p", "todo-note");
+            musicList.parentNode.appendChild(musicNote);
+        }
+        musicNote.setAttribute("data-time", data.fetchedAt);
+        musicNote.title = data.fetchedAt.slice(0, 10);
+        musicNote.textContent = noteText(data.fetchedAt);
+    }
+
+    // CI 每天只替换线上的 /todo.json（不重建整站）：比页面里的新才换上，失败就留着构建时的
+    var musicLoaded = false;
+    function loadMusic() {
+        if (musicLoaded || !musicList || !window.fetch || document.body.classList.contains("hide-todo")) return;
+        musicLoaded = true;
+        fetch("/todo.json", { cache: "no-cache" }).then(function (res) {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json();
+        }).then(function (json) {
+            var data = json && json.netease;
+            if (!data || !Array.isArray(data.songs) || !data.fetchedAt) return;
+            var have = Date.parse(musicList.getAttribute("data-time") || "") || 0;
+            if (!(Date.parse(data.fetchedAt) > have)) return;
+            if (animating) pendingMusic = data;
+            else renderMusic(data);
+        }).catch(function () {});
+    }
 
     var savedOpen = false;
     try { savedOpen = sessionStorage.getItem(STATE_KEY) === "1"; } catch (e) {}
@@ -233,8 +301,8 @@
 
     // 空闲时预取 Bangumi，展开时已是最新数据
     if ("requestIdleCallback" in window) {
-        requestIdleCallback(loadBangumi, { timeout: 3000 });
+        requestIdleCallback(function () { loadBangumi(); loadMusic(); }, { timeout: 3000 });
     } else {
-        setTimeout(loadBangumi, 1500);
+        setTimeout(function () { loadBangumi(); loadMusic(); }, 1500);
     }
 })();

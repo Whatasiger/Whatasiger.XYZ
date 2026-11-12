@@ -52,7 +52,7 @@
         <h3>
             <a href="https://music.163.com/#/user/songs/rank?id=<%= todoCfg.netease_uid %>" target="_blank" rel="noopener"><i class="fa fa-music" aria-hidden="true"></i><span>本周听歌 Top 10</span></a>
         </h3>
-        <ol class="todo-list todo-music">
+        <ol class="todo-list todo-music" data-time="<%= todo.songsFetchedAt %>">
             <% if (todo.songs.length) { %>
                 <% todo.songs.forEach(function (song, i) { %>
                 <li style="--i: <%= i %>">
@@ -71,7 +71,7 @@
             <% } %>
         </ol>
         <% if (fetchedDate) { %>
-            <%# 周榜在构建时抓取：显示「更新于 x 天前」（todo-sidebar.js 换算），悬停看具体日期 %>
+            <%# 周榜在构建时抓取（CI 每天另刷新线上的 /todo.json，todo-sidebar.js 读到更新的就换上）：显示「更新于 x 天前」，悬停看具体日期 %>
             <p class="todo-note" data-time="<%= todo.songsFetchedAt %>" title="<%= fetchedDate %>">更新于 <%= fetchedDate %></p>
         <% } %>
     </section>

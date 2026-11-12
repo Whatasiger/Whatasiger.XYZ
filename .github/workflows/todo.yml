@@ -1,0 +1,64 @@
+# 每天刷新首页的网易云周榜（源码仓库 Whatasiger/Whatasiger.XYZ）
+#
+# 只抓周榜、只替换线上站点仓库 Whatasiger.github.io 里的 /todo.json，不重建、不动其他文件：
+# 源码是人工审核后才发布的（npm run source:publish），常落后于已部署的站点，
+# 若每天拿源码仓库整站重建部署，会把线上改回旧版。首页脚本读到比页面里新的 todo.json 就换上。
+#
+# 须先在仓库 Settings → Secrets 配好 DEPLOY_TOKEN：对 Whatasiger/Whatasiger.github.io 有 Contents 读写权限的 fine-grained token
+# 抓取失败（网易云接口变了 / 拒绝访问）时这次运行失败，线上保留旧榜
+
+name: 刷新周榜
+
+on:
+  schedule:
+    - cron: '30 22 * * *'   # 北京时间每天 06:30
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: todo-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Asia/Shanghai
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci --ignore-scripts
+
+      - name: 取出线上站点
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::没有配置 DEPLOY_TOKEN secret，无法写入 Whatasiger.github.io"
+            exit 1
+          fi
+          git clone --depth 1 "https://x-access-token:${DEPLOY_TOKEN}@github.com/Whatasiger/Whatasiger.github.io.git" site
+
+      - name: 抓取周榜
+        run: node tools/todo-refresh.js site/todo.json
+
+      - name: 写回线上站点
+        working-directory: site
+        run: |
+          git add todo.json
+          if git diff --cached --quiet; then
+            echo "周榜没有变化，不必提交"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "TODO 周榜更新：$(date '+%Y-%m-%d %H:%M')"
+          git push origin HEAD:main

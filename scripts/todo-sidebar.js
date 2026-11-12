@@ -2,19 +2,16 @@
 
 // 首页「TO DO」侧边栏数据：构建时抓取网易云周榜 + Bangumi 在看/在玩
 // 网易云接口不支持 CORS，只能在这里抓；Bangumi 在浏览器端还会实时刷新，这里的数据作为兜底
+// 抓取逻辑在 tools/todo-fetch.js（CI 每天单独刷新周榜的 tools/todo-refresh.js 也用它）
+// 周榜另生成 /todo.json：CI 每天只替换线上这一个文件，首页脚本读到更新的就换上（不必整站重建部署）
 
 var fs = require('fs');
 var path = require('path');
-var https = require('https');
+var todoFetch = require('../tools/todo-fetch');
+var fetchNeteaseWeek = todoFetch.fetchNeteaseWeek;
+var fetchBangumiDoing = todoFetch.fetchBangumiDoing;
 
 var TODO_CACHE_PATH = path.join('source', '_data', 'todo-cache.json');
-
-var USER_AGENT = 'whatasiger-blog/1.0 (https://github.com/Whatasiger)';
-var REQUEST_TIMEOUT_MS = 8000;
-var MAX_BODY_BYTES = 2 * 1024 * 1024;
-var SONG_LIMIT = 10;
-var BGM_LIMIT = 30;
-var BGM_SUBJECT_TYPES = [2, 4]; // 2 动画 / 4 游戏
 
 var lastFetchPromise = null;
 
@@ -41,92 +38,6 @@ function loadCache(filePath, logger) {
 function saveCache(filePath, cache) {
   ensureDir(filePath);
   fs.writeFileSync(filePath, JSON.stringify(cache, null, 2) + '\n', 'utf8');
-}
-
-function fetchJson(targetUrl, headers) {
-  return new Promise(function (resolve, reject) {
-    var req = https.get(targetUrl, {
-      headers: Object.assign({ 'User-Agent': USER_AGENT, 'Accept': 'application/json' }, headers || {})
-    }, function (res) {
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        res.resume();
-        reject(new Error('HTTP ' + res.statusCode + ' for ' + targetUrl));
-        return;
-      }
-      var chunks = [];
-      var size = 0;
-      res.on('data', function (chunk) {
-        size += chunk.length;
-        if (size > MAX_BODY_BYTES) {
-          req.destroy(new Error('Response too large: ' + targetUrl));
-          return;
-        }
-        chunks.push(chunk);
-      });
-      res.on('end', function () {
-        try {
-          resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-        } catch (err) {
-          reject(new Error('Invalid JSON from ' + targetUrl + ': ' + err.message));
-        }
-      });
-    });
-    req.setTimeout(REQUEST_TIMEOUT_MS, function () {
-      req.destroy(new Error('Timeout: ' + targetUrl));
-    });
-    req.on('error', reject);
-  });
-}
-
-function toHttps(url) {
-  return typeof url === 'string' ? url.replace(/^http:\/\//i, 'https://') : '';
-}
-
-async function fetchNeteaseWeek(uid) {
-  var url = 'https://music.163.com/api/v1/play/record?uid=' + encodeURIComponent(uid) + '&type=1';
-  var json = await fetchJson(url, { 'Referer': 'https://music.163.com/', 'User-Agent': 'Mozilla/5.0' });
-  if (!json || json.code !== 200 || !Array.isArray(json.weekData)) {
-    throw new Error('Unexpected NetEase response (code ' + (json && json.code) + ')');
-  }
-  return json.weekData.slice(0, SONG_LIMIT).map(function (item) {
-    var song = item.song || {};
-    var album = song.al || {};
-    return {
-      id: song.id,
-      name: song.name || '',
-      artists: (song.ar || []).map(function (a) { return a.name; }).filter(Boolean).join(' / '),
-      cover: album.picUrl ? toHttps(album.picUrl) + '?param=80y80' : '',
-      url: 'https://music.163.com/#/song?id=' + song.id
-    };
-  });
-}
-
-function simplifyBangumi(c) {
-  var subject = c.subject || {};
-  var images = subject.images || {};
-  return {
-    id: c.subject_id,
-    name: subject.name_cn || subject.name || '',
-    type: c.subject_type,
-    cover: images.small || images.grid || '',
-    epStatus: c.ep_status || 0,
-    eps: subject.eps || 0,
-    updatedAt: c.updated_at || '',
-    url: 'https://bgm.tv/subject/' + c.subject_id
-  };
-}
-
-async function fetchBangumiDoing(user) {
-  var lists = await Promise.all(BGM_SUBJECT_TYPES.map(function (subjectType) {
-    var url = 'https://api.bgm.tv/v0/users/' + encodeURIComponent(user) +
-      '/collections?type=3&subject_type=' + subjectType + '&limit=' + BGM_LIMIT;
-    return fetchJson(url).then(function (json) {
-      return (json && Array.isArray(json.data)) ? json.data : [];
-    });
-  }));
-  var all = [].concat.apply([], lists).map(simplifyBangumi);
-  all.sort(function (a, b) { return Date.parse(b.updatedAt) - Date.parse(a.updatedAt); });
-  return all;
 }
 
 async function refreshTodoCache(hexoCtx) {
@@ -184,4 +95,12 @@ hexo.extend.helper.register('get_todo_data', function () {
     songsFetchedAt: (cache.netease && cache.netease.fetchedAt) || '',
     bangumi: (cache.bangumi && cache.bangumi.items) || []
   };
+});
+
+// /todo.json：与 CI 每天写到线上的是同一格式；本地部署时用构建当时的数据（首页脚本取两者中较新的一份）
+// Origin 构建（tools/build-origin.js）删掉了这个生成器
+hexo.extend.generator.register('todo_json', function () {
+  var cache = loadCache(path.join(hexo.base_dir, TODO_CACHE_PATH), hexo.log);
+  if (!cache.netease || !Array.isArray(cache.netease.songs)) return [];
+  return { path: 'todo.json', data: todoFetch.todoJson(cache.netease) };
 });
