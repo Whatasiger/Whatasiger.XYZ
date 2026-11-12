@@ -31,7 +31,8 @@ var tracks = page.tracks || [];
                 var dotUrl = url_for('/carrier_wave/dot/');
                 var hasDot = album.title.slice(-1) === '.';
                 var parts = (hasDot ? album.title.slice(0, -1) : album.title).split('i');
-            %><%= parts[0] %><a class="cw-i" href="<%- iUrl %>" aria-label="i.">i</a><%= parts.slice(1).join('i') %><% if (hasDot) { %><a class="cw-period" href="<%- dotUrl %>" aria-label=".">.</a><% } %></h1>
+                            var secret = page.secret || {};   // 隐藏篇目正文不在时只显示字，不做链接
+            %><%= parts[0] %><% if (secret.i) { %><a class="cw-i" href="<%- iUrl %>" aria-label="i.">i</a><% } else { %><span class="cw-i">i</span><% } %><%= parts.slice(1).join('i') %><% if (hasDot) { %><% if (secret.dot) { %><a class="cw-period" href="<%- dotUrl %>" aria-label=".">.</a><% } else { %><span class="cw-period">.</span><% } %><% } %></h1>
             <div class="cw-axis" data-cw-axis></div>
             <p class="cw-sub cw-rise" style="--d:2">
                 <span><%= album.subtitle %></span><i class="cw-dot" aria-hidden="true"></i><span><%= album.caption %></span>

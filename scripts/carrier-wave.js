@@ -131,7 +131,8 @@ hexo.extend.generator.register('carrier_wave', async function (locals) {
   const routes = [{
     path: BASE + '/index.html',
     layout: ['carrier-wave-index'],
-    data: { album: meta, tracks, title: meta.title, path: BASE + '/' }
+    // 隐藏篇目的入口（首屏标题里的 i / 末尾句点）只在正文存在时才是链接，否则会链到不存在的页面
+    data: { album: meta, tracks, secret: Object.fromEntries(hidden.map(t => [t.slug, !!t.published])), title: meta.title, path: BASE + '/' }
   }];
 
   published.forEach((track, i) => {
