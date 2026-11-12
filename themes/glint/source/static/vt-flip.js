@@ -230,8 +230,18 @@ window.vtFlip = (function () {
         var measure = visual ? spec.el : (function (el) {
             return el && function () { return el.getBoundingClientRect(); };
         })(spec.el && document.querySelector(spec.el));
-        var r0 = measure && measure();
+        // 没写 el 的组（如铺满视口的封面）不量元素，只跟下面的视口高度校正
+        if (!measure) {
+            var still = { left: 0, top: 0, width: 0, height: 0 };
+            measure = function () { return still; };
+        }
+        var r0 = measure();
         if (!r0) return null;
+        // 组的坐标原点是 snapshot containing block 的顶端（含手机地址栏占的那一截），元素量出来的是布局视口坐标。
+        // 手机上新页（尤其是预渲染后激活的）常在过渡开始后才因地址栏被缩小：快照区大小不变，视口矮了多少，
+        // 布局视口原点就在快照区里下移多少，而 getBoundingClientRect 看不出来——不补上，终点会整体偏高一个地址栏
+        // （载波落到大标题上，同时浏览器自己摆的画布载波在正确位置）。电脑上视口高度不会在过渡中变，复现不了
+        var vh0 = window.innerHeight;
         // 函数终点：以带名元素此刻的盒子为基准，第一帧检查时就会按差值校正到函数给的矩形（如已吸顶、振幅缩小）
         // 基准必须与 measure() 同一坐标系（布局视口，getBoundingClientRect）。不能拿 g.Z：它是浏览器给的组矩形，
         // 坐标原点是 snapshot containing block——手机 Chrome 顶部地址栏露出时，它比布局视口高出地址栏那一截，
@@ -244,9 +254,11 @@ window.vtFlip = (function () {
         return function () {
             var r = measure();
             if (!r) return;
-            var dx = r.left - r0.left, dy = r.top - r0.top, dw = r.width - r0.width, dh = r.height - r0.height;
+            var vh = window.innerHeight;
+            var dx = r.left - r0.left, dy = r.top - r0.top + (vh0 - vh), dw = r.width - r0.width, dh = r.height - r0.height;
             if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(dw) < .5 && Math.abs(dh) < .5) return;
             r0 = r;
+            vh0 = vh;
             if (visual) {
                 g.Z = { x: g.Z.x + dx, y: g.Z.y + dy, w: Math.max(g.Z.w + dw, .01), h: Math.max(g.Z.h + dh, .01), r: g.Z.r };
             } else {

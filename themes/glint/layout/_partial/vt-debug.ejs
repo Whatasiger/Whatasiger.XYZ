@@ -1,3 +1,3 @@
-<%# 跨页面过渡诊断：默认关闭。控制台执行 localStorage.setItem('cw-vt-debug', '1') 开启，cwVtLog() 导出记录 %>
+<%# 跨页面过渡诊断：默认关闭。控制台执行 localStorage.setItem('cw-vt-debug', '1') 开启，cwVtLog() 导出记录；另设 localStorage.setItem('cw-vt-slow', '10') 可让进页过渡按 1/10 慢放 %>
 <%# 平时只留这一行判断；开启时用 document.write 同步载入，赶在 pagereveal 之前挂好监听 %>
 <script>try { if (localStorage.getItem('cw-vt-debug') === '1') document.write('<script src="<%- asset_url('static/vt-debug.js') %>"><\/script>'); } catch (err) {}</script>

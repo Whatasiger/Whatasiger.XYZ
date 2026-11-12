@@ -53,15 +53,24 @@
             if (window.pageReveal) pageReveal();
             // vt-card-in 不随过渡结束移除：标题区的入场动画一旦恢复就会重播
             root.classList.add('vt-from-card', 'vt-card-in');
+            // 背景已是烤好模糊的图（首页预烤 → head.ejs 挂 bg-prebaked；或预渲染中 glint.js 已烤好 → body.bg-baked）：
+            // .vt-cover 画上它，作为封面组新页一侧的模糊层（glint.css「文章卡片一镜到底」）；否则是空层，只放大卡片快照
+            var live = false;
+            try {
+                var b = document.body;
+                live = (root.classList.contains('bg-prebaked') || b.classList.contains('bg-baked')) &&
+                    parseFloat(getComputedStyle(b).getPropertyValue('--bg-blur')) > 0;
+            } catch (err) {}
+            root.classList.toggle('vt-cover-live', live);
             // 封面与标题的形变只动 transform，交给合成线程：文章页正在加载时主线程再忙也不掉帧（见 _partial/vt-flip.ejs）
             vtFlip(e.viewTransition, {
-                'post-cover': { old: 'cover' },
+                'post-cover': live ? { old: 'cover', new: 'cover', radius: 24 } : { old: 'cover' },
                 'post-shadow': { follow: 'post-cover', how: 'box' },
                 'post-light': { follow: 'post-cover', how: 'box' },
                 'post-info': { follow: 'post-cover', how: 'content' },
                 'post-title': { old: 'auto', new: 'auto', el: '#vt-post-title' }
             });
-            e.viewTransition.finished.finally(function () { root.classList.remove('vt-from-card'); });
+            e.viewTransition.finished.finally(function () { root.classList.remove('vt-from-card', 'vt-cover-live'); });
         });
         // 离开文章页：不做过渡（从搜索结果点进另一篇文章除外，见 _partial/title-hop.ejs）
         window.addEventListener('pageswap', function (e) {

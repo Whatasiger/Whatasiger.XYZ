@@ -1970,8 +1970,12 @@ html.cw-back::view-transition-new(root) {
 /* 文章卡片一镜到底：首页卡片放大铺满全屏，沉入文章页的背景，标题飞到正文标题处（只做进入方向）
    - 首页 pageswap（head.ejs）只给被点的那张卡片挂名：卡片 post-cover、卡片标题文字 post-title，并给 html 挂 post-leaving
    - 文章页 pagereveal（_partial/post-vt.ejs）确认来自首页后挂 vt-from-card：全屏的空层 .vt-cover（post.ejs）接 post-cover，正文标题接 post-title
-   - 封面全程只用离场时那张「悬停态」的卡片快照（模糊 + 压暗）：一张静态位图放大，不在新页实时重绘大图，开销小；
-     模糊的图放大也看不出糊，且与文章页的模糊背景同一调子，不会「模糊 → 清晰 → 模糊」来回跳。末段淡出，露出 root 里的最终背景
+   - 卡片**按点下那一刻的样子原样截图**，离场前不再改它的画面（原先在 pageswap 里把封面硬切到「放大 1.45 + 模糊层不透明」：
+     截图就在下一帧，整张卡片的栅格全部作废重画，手机上图片来不及解码 / 屏外的瓦片来不及画，截到的就是卡片的黑底或缺一块的图）
+   - 模糊由新页一侧给：.vt-cover 里画一张烤好模糊的封面（首页预烤、文章页首帧就有的那张，见 head.ejs / glint.js bgBake.prebake），
+     与卡片快照同在 post-cover 组里按 cover 铺满、一起放大；它先盖着卡片淡入（清晰 → 模糊，卡片快照垫底不透明，中途不透出首页），
+     铺满后整层淡出，露出 root 里的最终背景与正文。两张都是静态位图，全程只有合成线程的缩放与透明度
+   - 没有预烤图时（html 不带 vt-cover-live：模糊度为 0、或点得太快还没烤好）.vt-cover 是空层，只放大卡片快照、途中淡出
    - 标题挂在文字本身（行内块）上，两端的盒子都只包住文字，形变时字号按比例过渡，新旧快照几乎重合；新标题早早接手，落定时是清晰的实物
    - 投影、高光与细边、摘要信息各成一层（post-shadow / post-light / post-info），离场时保持原样，
      由 vtFlip 的 follow 跟着封面一起放大（前两者随盒子伸缩，摘要等比缩放、留在盒子里），在前段渐隐
@@ -1984,9 +1988,7 @@ html.cw-back::view-transition-new(root) {
 }
 .post-item.card-style:not(.cw-card).is-pressed .post-card-zoom { transform: scale(1.45); }
 .post-item.card-style:not(.cw-card).is-pressed .post-card-blur { opacity: 1; }
-/* 离场快照前：封面一律定格在悬停态（模糊放大），未走完的过渡直接到位 */
-html.post-leaving .post-item.vt-active .post-card-zoom { transform: scale(1.45); transition: none; }
-html.post-leaving .post-item.vt-active .post-card-blur { opacity: 1; transition: none; }
+/* 离场：封面保持原样（见上），只把投影、高光与细边、摘要分出去各成一层 */
 html.post-leaving .post-item.vt-active .post-card-shadow { view-transition-name: post-shadow; }
 html.post-leaving .post-item.vt-active .post-card-light { view-transition-name: post-light; }
 html.post-leaving .post-item.vt-active .post-card-info { view-transition-name: post-info; }
@@ -2000,6 +2002,16 @@ html.vt-from-card .vt-cover {
     pointer-events: none;
     view-transition-name: post-cover;
 }
+/* 有烤好的模糊背景时（post-vt.ejs 挂 vt-cover-live）：黑底 + 那张模糊图，压暗到与卡片（封面 + 35% 黑遮罩）相近的调子 */
+html.vt-from-card.vt-cover-live .vt-cover { background: #000; }
+html.vt-from-card.vt-cover-live .vt-cover::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: center/cover no-repeat;
+    background-image: var(--page-bg-image);
+    opacity: .6;
+}
 html.vt-from-card .post-title h2 { view-transition-name: post-title; }
 /* 标题区自带的入场（从上方 20px 滑下）由一镜到底代替：带过渡名的元素在过渡中须保持静止，
    否则每帧都要重新截取位置，且形变的终点（_partial/vt-flip.ejs 在开始时算定）会与实际位置差这 20px */
@@ -2011,14 +2023,31 @@ html.vt-from-card::view-transition-group(*) {
     animation-duration: .8s;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
-/* 封面：卡片快照按 cover 裁切铺满（圆角随放大被裁到画面外）；新页一侧是空层，不画 */
+/* 封面：卡片快照按 cover 裁切铺满（圆角随放大被裁到画面外） */
 html.vt-from-card::view-transition-image-pair(post-cover) { overflow: clip; }
-html.vt-from-card::view-transition-old(post-cover) {
+html.vt-from-card::view-transition-old(post-cover),
+html.vt-from-card::view-transition-new(post-cover) {
     height: 100%;
     object-fit: cover;
-    animation: post-vt-out .4s ease-in .4s both;
+    mix-blend-mode: normal;         /* 默认的 plus-lighter 是给对称交叉淡化用的；这里是新的盖在不透明的旧的上面 */
 }
-html.vt-from-card::view-transition-new(post-cover) { animation: none; opacity: 0; }
+/* 没有模糊层：新页一侧是空层，不画；卡片快照放大途中淡出 */
+html.vt-from-card:not(.vt-cover-live)::view-transition-old(post-cover) { animation: post-vt-out .35s ease-in .3s both; }
+html.vt-from-card:not(.vt-cover-live)::view-transition-new(post-cover) { animation: none; opacity: 0; }
+/* 有模糊层：圆角裁切挂在 image-pair 上（时长 / 缓动须与组一致，vtFlip 按组的缩放折算），随放大收成直角；
+   卡片快照垫底到模糊层盖满为止，模糊层淡入 → 停留 → 淡出露出正文 */
+html.vt-from-card.vt-cover-live::view-transition-image-pair(post-cover) {
+    animation: post-vt-unround .8s cubic-bezier(.22, 1, .36, 1) both;
+}
+html.vt-from-card.vt-cover-live::view-transition-old(post-cover) { animation: post-vt-out .01s linear .3s both; }
+html.vt-from-card.vt-cover-live::view-transition-new(post-cover) { animation: post-vt-veil .8s linear both; }
+@keyframes post-vt-unround { from { border-radius: 24px; } to { border-radius: 0; } }
+@keyframes post-vt-veil {
+    0% { opacity: 0; animation-timing-function: ease-out; }
+    35% { opacity: 1; animation-timing-function: linear; }
+    50% { opacity: 1; animation-timing-function: ease-in; }
+    100% { opacity: 0; }
+}
 /* 投影、高光与细边、摘要：跟着封面放大（_partial/post-vt.ejs 的 follow），前段渐隐；摘要最先退场 */
 html.vt-from-card::view-transition-old(post-shadow),
 html.vt-from-card::view-transition-old(post-light) { animation: post-vt-out .35s ease-out both; }
@@ -6166,9 +6195,9 @@ html.soon-card-in .soon-page .soon-hand { animation: none; clip-path: none; }
 html.soon-card-in .soon-postmark { animation-delay: .75s; }
 html.soon-scraps-wait :is(.soon-chips, .soon-dial, .soon-stamp, .soon-postmark) { animation: none; opacity: 0; }
 
-html.soon-from-card::view-transition-group(*) {
-    animation-duration: .85s;
-    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+html.soon-from-card::view-transition-group(*) {   /* 起步柔和些：太靠前的曲线前 200ms 就走完八成，大卡片像是一闪而过（新页首几帧常掉帧，也正好藏住） */
+    animation-duration: .9s;
+    animation-timing-function: cubic-bezier(.32, .72, 0, 1);
 }
 /* 层叠与画板一致：色卡 < 底片（载波、标题、胶带在它上面）< 刻度条、邮票 < 纸条（手写字在它上面）< 邮戳 */
 html.soon-from-card::view-transition-group(soon-chips) { z-index: 1; }
@@ -6191,7 +6220,13 @@ html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-chips) { an
 html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-dial) { animation: post-vt-in .3s ease-out .5s both; }
 html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-stamp) { animation: post-vt-in .3s ease-out .6s both; }
 html.soon-from-card:not(.soon-scraps-wait)::view-transition-new(soon-postmark) { animation: post-vt-in .2s ease-out .75s both; }
-html.soon-from-card::view-transition-new(soon-note) { animation: post-vt-in .4s ease-out .1s both; }
+/* 纸条：很快变得不透明、轻轻放下（略大、偏上 → 落定），不慢慢淡入——半透明时压在下面的底片角和米色胶带会透出来 */
+html.soon-from-card::view-transition-new(soon-note) { animation: soon-note-lay .5s cubic-bezier(.3, 1.15, .5, 1) .06s both; }
+@keyframes soon-note-lay {
+    from { opacity: 0; transform: translateY(-12px) scale(1.04); }
+    30% { opacity: 1; }
+    to { opacity: 1; transform: none; }
+}
 /* 底片、胶带、载波拉伸铺满组（两端的夜空是同一种底色，拉伸看不出来）；新底片盖在旧卡片上淡入 */
 html.soon-from-card::view-transition-old(soon-sheet), html.soon-from-card::view-transition-new(soon-sheet),
 html.soon-from-card::view-transition-old(soon-tape), html.soon-from-card::view-transition-new(soon-tape),
@@ -6205,9 +6240,9 @@ html.soon-from-card::view-transition-new(soon-sheet) { animation: post-vt-in .4s
 /* 标题：卡片上的小字很快淡出，底片上的大字早早接手 */
 html.soon-from-card::view-transition-old(soon-title) { animation: post-vt-out .25s linear both; }
 html.soon-from-card::view-transition-new(soon-title) { animation: post-vt-in .25s linear both; }
-/* 手写字：飞行中段换墨水 */
-html.soon-from-card::view-transition-old(soon-hand) { animation: post-vt-out .4s ease-in .15s both; }
-html.soon-from-card::view-transition-new(soon-hand) { animation: post-vt-in .4s ease-out .15s both; }
+/* 手写字：飞到纸条上方时换墨水；新旧两份字形排版略有出入，交叉的时间窗要短，否则叠出重影 */
+html.soon-from-card::view-transition-old(soon-hand) { animation: post-vt-out .2s ease-in .15s both; }
+html.soon-from-card::view-transition-new(soon-hand) { animation: post-vt-in .2s ease-out .15s both; }
 html.soon-from-card::view-transition-old(root) { animation-duration: .4s; }
 html.soon-from-card::view-transition-new(root) { animation-duration: .5s; }
 

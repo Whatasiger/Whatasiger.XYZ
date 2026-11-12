@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "hexo generate && node tools/build-origin.js && node tools/minify.js",
+    "build": "hexo generate --force && node tools/build-origin.js && node tools/minify.js",
     "clean": "hexo clean && node -e \"require('fs').rmSync('.origin-build',{recursive:true,force:true})\"",
     "deploy": "hexo deploy",
     "source:preview": "node tools/push-source.js",

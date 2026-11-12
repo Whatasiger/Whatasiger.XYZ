@@ -241,8 +241,12 @@
 
     function resize() {
         if (!gl) return;
-        vw = window.innerWidth;
-        vh = window.innerHeight;
+        // 按画布实际铺开的大小算，不用 innerWidth / innerHeight：后者把滚动条（html 的 scrollbar-gutter: stable 始终留着那条沟）
+        // 也算进去，比 position: fixed 的画布与 body:before 宽出一截——静水按错的宽度 cover，画布一显示背景就被横向压一下，
+        // 水静下来藏起画布又弹回去（叶片每隔几秒搅一次水，看起来就是背景自己隔一阵抽动一次）
+        var rect = canvas.getBoundingClientRect();
+        vw = rect.width || document.documentElement.clientWidth || window.innerWidth;
+        vh = rect.height || document.documentElement.clientHeight || window.innerHeight;
 
         var dpr = Math.min(window.devicePixelRatio || 1, CFG.maxPixelRatio);
         if (vw * vh * dpr * dpr > CFG.maxPixels) dpr = Math.sqrt(CFG.maxPixels / (vw * vh));
@@ -302,9 +306,10 @@
         var blurM = (beforeCS.filter || "").match(/blur\(([\d.]+)px\)/);
         var blur = blurM ? parseFloat(blurM[1]) : 0;
         // 背景层的实际高度：手机端按大视口 / 锁定高度铺，比画布（当前视口）高，cover 要按它算，静水才与 CSS 背景对齐
+        var layerW = parseFloat(beforeCS.width) || vw;
         var layerH = parseFloat(beforeCS.height) || vh;
 
-        var key = [canvas.width, canvas.height, color, opacity, blur, layerH, bgImg ? bgSrc : ""].join("|");
+        var key = [canvas.width, canvas.height, color, opacity, blur, layerW, layerH, bgImg ? bgSrc : ""].join("|");
         if (key === bgKey) return;
         bgKey = key;
 
@@ -316,12 +321,12 @@
         bgCtx.fillStyle = color;
         bgCtx.fillRect(0, 0, w, h);
         if (bgImg && opacity > 0) {
-            var lh = layerH * k;
-            var s  = Math.max(w / bgImg.naturalWidth, lh / bgImg.naturalHeight);
+            var lw = layerW * k, lh = layerH * k;
+            var s  = Math.max(lw / bgImg.naturalWidth, lh / bgImg.naturalHeight);
             var dw = bgImg.naturalWidth * s, dh = bgImg.naturalHeight * s;
             bgCtx.globalAlpha = Math.min(opacity, 1);
             if (blur > 0) bgCtx.filter = "blur(" + blur * k + "px)";
-            bgCtx.drawImage(bgImg, (w - dw) / 2, (lh - dh) / 2, dw, dh);
+            bgCtx.drawImage(bgImg, (lw - dw) / 2, (lh - dh) / 2, dw, dh);
         }
 
         gl.bindTexture(gl.TEXTURE_2D, bgTex);

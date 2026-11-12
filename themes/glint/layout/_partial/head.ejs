@@ -132,7 +132,7 @@
         if (is_post() && page.cover) bgImage = page.cover;
     %>
     <% if (bgImage) { %>
-    <style>body{ --page-bg-image: url(<%- bgImage %>) }</style>
+    <style id="bg-base">body{ --page-bg-image: url(<%- bgImage %>) }</style>
     <% } %>
     <%
         // 首页背景可切换（_data/backgrounds.yml，glint.js setupBgSwitch）：用主页背景的页面首帧前换成所选的那张，默认那张不必加载
@@ -159,16 +159,33 @@
         })();
     </script>
     <% } %>
-    <% if (is_post() && bgImage) { %>
-    <%# 首页指针移上卡片时已按文章页的模糊度把这张图烤好（glint.js bgBake.prebake）：首帧就用烤好的图，背景层不挂实时的全屏模糊
-       图、模糊度（设置里的 bgBlur，缺省 8，与 glint.js defaultSettings 一致）、视口尺寸都对得上才用；glint.js 载入后接管 %>
+    <% if (bgImage && (is_post() || page.layout === 'soon')) { %>
+    <%# 预告页（layout soon）同理：用的是主页背景（读者自选的那张在 #bg-choice 里）配阅读页的模糊度，首页的预告卡片进入视口时预烤；
+       不接的话过渡全程背景挂着实时的全屏 CSS 模糊，模糊在视口边缘晕成透明、四周一圈暗边，烘焙换上时才一下消失 %>
+    <%# 首页卡片进入视口时已按文章页的模糊度把这张图烤好（glint.js bgBake.prebake，存的是一个数组）：首帧就用烤好的图，背景层不挂实时的全屏模糊；
+       一镜到底里它也是封面组的模糊层（post-vt.ejs）。图、模糊度（设置里的 bgBlur，缺省 8，与 glint.js defaultSettings 一致）、视口宽度对得上才用；
+       高度只要求相差不到三成：手机地址栏伸缩会改视口高度（滚过的首页地址栏收起、新页又露出，原先要求相等时手机上几乎总用不上），
+       而背景按 cover 铺，烤图只是分辨率略有出入。glint.js 载入后接管 %>
     <script>
         (function () {
             try {
-                var p = JSON.parse(sessionStorage.getItem('glint-bg-prebake'));
+                var list = JSON.parse(sessionStorage.getItem('glint-bg-prebake'));
                 var s = JSON.parse(localStorage.getItem('whatasiger_reader_settings')) || {};
                 var blur = typeof s.bgBlur === 'number' ? Math.max(0, Math.min(20, s.bgBlur)) : 8;
-                if (!p || p.src !== <%- JSON.stringify(bgImage) %> || p.blur !== blur || p.w !== innerWidth || p.h !== innerHeight) return;
+                var p = null;
+                var want = <%- JSON.stringify(bgImage) %>;
+                var choice = document.getElementById('bg-choice');
+                <% if (page.layout === 'soon') { %>
+                var cm = choice && choice.textContent.match(/url\("([^"]+)"\)/);
+                if (cm) want = cm[1];   // 预告页用读者自选的主页背景，预烤时记的也是这张（glint.js setupBgPrebake）
+                <% } else { %>
+                if (choice) return;   // 没封面的文章用的是读者自选的主页背景，不是卡片上那张默认图
+                <% } %>
+                (Array.isArray(list) ? list : []).forEach(function (q) {
+                    if (!p && q && q.src === want && q.blur === blur && q.w === innerWidth &&
+                        Math.abs(q.h - innerHeight) < q.h * .3) p = q;
+                });
+                if (!p) return;
                 var st = document.createElement('style');
                 st.id = 'bg-prebake';
                 st.textContent = 'body{--page-bg-image:url("' + p.url + '")}';
@@ -511,6 +528,7 @@
     <% } %>
     <% if (page.layout === 'soon') { %>
     <%- partial('_partial/soon-vt') %>
+    <%- partial('_partial/vt-debug') %>
     <% } %>
     <% if (is_post()) { %>
     <%- partial('_partial/post-vt') %>

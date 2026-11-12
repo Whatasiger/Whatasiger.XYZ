@@ -247,31 +247,45 @@ var Glint = function (config) {
             });
         }
 
-        // 预烤：src 为文章页将用的背景图，blur 为文章页的模糊度；结果以 data URL 存进 sessionStorage，供下一页首帧使用
-        var prebaking = "";
-        function prebake(src, blur) {
-            if (!src || !(blur > 0)) return;
-            var tag = src + "|" + blur + "|" + window.innerWidth + "x" + window.innerHeight;
-            if (prebaking === tag) return;
+        // 预烤：src 为文章页将用的背景图（只作标识），from 为实际拿来烤的图——卡片上已经加载好的那档封面（同一张图的缩小版，
+        // 模糊后看不出差别，不必等原图下载：手机上点下去到跳转只有一两百毫秒，等原图多半来不及），blur 为文章页的模糊度
+        // 结果以 data URL 存进 sessionStorage（一个数组，新的在前，最多 6 张 / 约 2.4M 字符），供下一页首帧使用；
+        // 它同时是一镜到底里封面组的模糊层（post-vt.ejs），所以卡片一进视口就烤，不等悬停 / 按下
+        // 只比对图、模糊度、视口宽度：手机地址栏伸缩会改视口高度，而背景按 cover 铺、差一点高度无妨（head.ejs 取用时同样放宽）
+        var prebaking = {};
+        function prebakeList() {
             try {
-                var p = JSON.parse(sessionStorage.getItem(PREBAKE_KEY));
-                if (p && p.src + "|" + p.blur + "|" + p.w + "x" + p.h === tag) return;
-            } catch (e) {}
-            prebaking = tag;
-            loadImage(src, function (img) {
-                if (!img) { prebaking = ""; return; }
+                var list = JSON.parse(sessionStorage.getItem(PREBAKE_KEY));
+                return Array.isArray(list) ? list : [];
+            } catch (e) { return []; }
+        }
+        function prebake(src, from, blur) {
+            if (!src || !(blur > 0)) return;
+            var w = window.innerWidth;
+            var tag = src + "|" + blur + "|" + w;
+            if (prebaking[tag]) return;
+            if (prebakeList().some(function (p) { return p.src === src && p.blur === blur && p.w === w; })) return;
+            prebaking[tag] = 1;
+            function end() { delete prebaking[tag]; }
+            loadImage(from || src, function (img) {
+                if (!img) { end(); return; }
                 blurBlob(img, blur, function (blob) {
-                    if (!blob) { prebaking = ""; return; }
+                    if (!blob) { end(); return; }
                     var fr = new FileReader();
                     fr.onload = function () {
-                        prebaking = "";
+                        end();
+                        var entry = { src: src, blur: blur, w: w, h: window.innerHeight, url: fr.result };
+                        var list = prebakeList().filter(function (p) { return p.src !== src; });
+                        list.unshift(entry);
+                        var size = function () { return list.reduce(function (n, p) { return n + p.url.length; }, 0); };
+                        while (list.length > 1 && (list.length > 6 || size() > 2.4e6)) list.pop();
                         try {
-                            sessionStorage.setItem(PREBAKE_KEY, JSON.stringify({
-                                src: src, blur: blur, w: window.innerWidth, h: window.innerHeight, url: fr.result
-                            }));
-                        } catch (e) {}
+                            sessionStorage.setItem(PREBAKE_KEY, JSON.stringify(list));
+                        } catch (e) {
+                            try { sessionStorage.setItem(PREBAKE_KEY, JSON.stringify([entry])); } catch (e2) {}
+                        }
                     };
-                    fr.onerror = function () { prebaking = ""; };
+                    fr.onerror = end;
                     fr.readAsDataURL(blob);
                 }, false);
             });
@@ -340,20 +354,53 @@ var Glint = function (config) {
 
     // 首页：指针移上（或按下、聚焦）文章卡片时，按文章页的模糊度预烤它的背景（见上方 bgBake.prebake）
     // 只有首页（含分页，都有 .home-hero）的卡片会一镜到底进文章，归档 / 标签页不必
+    // 卡片一进视口就在空闲时烤（触屏没有悬停，按下才烤来不及；用的是卡片上已加载的封面，不额外下载），指针事件作兜底
     function setupBgPrebake() {
         if (!document.querySelector(".home-hero")) return;
+        var DPR = window.devicePixelRatio || 1;
+        var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 60); };
+        var io = window.IntersectionObserver && new IntersectionObserver(function (entries) {
+            entries.forEach(function (en) {
+                if (!en.isIntersecting) return;
+                io.unobserve(en.target);
+                idle(function () { if (en.target.glintPrebake) en.target.glintPrebake(); }, { timeout: 800 });
+            });
+        }, { rootMargin: "10% 0px" });
         ks(".post-item.card-style:not(.cw-card)").each(function (card) {
-            var layer = card.querySelector(".post-card-img[data-cover]");   // 卡片显示的是缩小的封面，文章页背景用原图（archive-list.ejs 记在 data-cover）
+            var layer = card.querySelector(".post-card-img[data-cover]");   // 文章页背景是原图（archive-list.ejs 记在 data-cover），卡片显示的是它缩小的两档
             if (!layer) return;
             function go() {
                 var src = layer.getAttribute("data-cover");
                 var blur = typeof currentSettings.bgBlur === "number" ? currentSettings.bgBlur : defaultSettings.bgBlur;
-                if (src) bgBake.prebake(src, Math.max(0, Math.min(20, blur)));
+                // 卡片在用的那档封面：image-set(1x, 2x) 按设备像素比取（与 setupCardBlur 同一规则），可能还在 data-bg-style 里没写上
+                var style = layer.getAttribute("data-bg-style") || layer.style.backgroundImage || "";
+                var urls = [], um, ure = /url\(\s*["']?([^"')]+)["']?\s*\)/g;
+                while ((um = ure.exec(style))) urls.push(um[1]);
+                var from = urls.length ? (DPR > 1.25 ? urls[urls.length - 1] : urls[0]) : src;
+                if (src) bgBake.prebake(src, from, Math.max(0, Math.min(20, blur)));
             }
+            card.glintPrebake = go;
             ["pointerenter", "pointerdown", "focus"].forEach(function (t) {
                 card.addEventListener(t, go, { passive: true });
             });
+            if (io) io.observe(card);
         });
+        // CW 预告卡片：预告页的背景是主页背景（读者自选的在 #bg-choice 里，否则是 head.ejs 的 #bg-base）配阅读页的模糊度，同样预烤，
+        // 预告页 head.ejs 首帧就用上——否则一镜到底全程挂着实时的全屏 CSS 模糊，视口四周晕出一圈暗边，烘焙换上时才突然消失
+        var soon = document.querySelector(".post-item.cw-card.is-soon");
+        if (soon) {
+            var goSoon = function () {
+                var st = document.getElementById("bg-choice") || document.getElementById("bg-base");
+                var m = st && st.textContent.match(/url\(\s*["']?([^"')]+)["']?\s*\)/);
+                var blur = typeof currentSettings.bgBlur === "number" ? currentSettings.bgBlur : defaultSettings.bgBlur;
+                if (m) bgBake.prebake(m[1], m[1], Math.max(0, Math.min(20, blur)));
+            };
+            soon.glintPrebake = goSoon;
+            ["pointerenter", "pointerdown", "focus"].forEach(function (t) {
+                soon.addEventListener(t, goSoon, { passive: true });
+            });
+            if (io) io.observe(soon);
+        }
     }
 
     // 思源宋体：选「宋体」正文时才加载（首帧前由 head.ejs 按设置插入；在设置里切换时由这里插入），地址须与 head.ejs 一致

@@ -98,6 +98,25 @@
         track(i, e.viewTransition);
     });
 
+    // 慢放：localStorage cw-vt-slow 设为倍数（如 '10'）时，进页过渡的所有动画（含 vtFlip 重建的）按 1 / 倍数播放，便于逐帧审视
+    window.addEventListener('pagereveal', function (e) {
+        var k = 0;
+        try { k = +localStorage.getItem('cw-vt-slow') || 0; } catch (err) {}
+        if (!e.viewTransition || !(k > 1)) return;
+        var done = false;
+        e.viewTransition.finished.finally(function () { done = true; });
+        e.viewTransition.ready.then(function () {
+            (function slow() {
+                if (done) return;
+                document.getAnimations().forEach(function (a) {
+                    var pe = a.effect && a.effect.pseudoElement;
+                    if (pe && pe.indexOf('::view-transition') === 0 && a.playbackRate !== 1 / k) a.updatePlaybackRate(1 / k);
+                });
+                requestAnimationFrame(slow);
+            })();
+        }, function () {});
+    });
+
     window.cwVtLog = function () {
         var list = read();
         console.table(list);

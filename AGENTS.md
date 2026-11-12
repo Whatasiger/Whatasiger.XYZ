@@ -2,122 +2,153 @@
 
 Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 GitHub Pages。
 
-## 常用命令
-- `npm run server` 本地预览（只有 Glint）/ `npm run build` 生成（Glint + Origin，最后由 `tools/minify.js` 用 esbuild 压缩 `public/` 下各 `static/` 里的 CSS / JS，文件开头的署名注释保留，压缩失败即构建失败；`hexo s` 预览的是未压缩源码）/ `npm run clean`
-- 预览两套界面：`npm run build` 后 `npx hexo server -s`（静态模式，直接伺服 public/）
-- 部署：先 `npm run build`，再 `npm run deploy`（只运行 hexo-deployer-git → Whatasiger.github.io main，不再发布源码）—— 只在我明确要求时执行；**不要只跑 `hexo generate` 就部署**，那样 Origin 不会更新
-- 源码发布（Whatasiger/Whatasiger.XYZ main）与部署分开：`npm run source:preview` 离线列出待推提交与文件；人工审核、手动提交且工作区干净后，经我明确授权才执行 `npm run source:publish -- --confirm --review <完整HEAD SHA>`。工具不会 add / commit，遇敏感路径拒绝发布
-
-## 界面主题：Glint / Origin
-- 全站有两套界面，在设置卡片里切换：**Glint**（当前设计，`themes/glint`，站点根路径）与 **Origin**（本轮改版前的界面，`themes/origin`，取自 `blog_bak/themes/hingle`，生成在 `/origin/` 下）
-- 两套是同一份内容（`source/`、`scripts/`）生成的两个站点：`tools/build-origin.js` 用 `_config.yml` + `_config.build-origin.yml`（root `/origin/`、theme origin、输出 `public/origin/`、缓存 `.origin-build/`）再生成一遍；图片只在根路径放一份（Origin 不复制 `source/images`）
-- 切换逻辑在两套主题各自的 `_partial/ui-switch.ejs`（`<head>` 最前面）：选择存 localStorage `whatasiger_ui`，页面与选择不符时跳到另一套的同一路径（加 / 去 `/origin` 前缀）
-- **CARRiER WAVE. 与界面主题无关**：只有 Glint 根路径下一份，Origin 构建不生成它，Origin 里指向它的链接一律写死 `/carrier_wave/`，CW 页面也不引用 ui-switch
-- Origin 页面带 `noindex`，规范链接指向 Glint 同一页；订阅源 / 站点地图链接指向根路径
-- 以下「主题与样式要点」除特别说明外都是 Glint 的；Origin 原则上保持改版前的样子，只为能在 `/origin/` 下工作做过必要改动（绝对路径改 `url_for`、加切换项）
-- **今后若无特殊说明，所有前端改动只做在 Glint（`themes/glint`）上，Origin（`themes/origin`）不再更新**，不要顺手同步到 Origin
-- Glint 原名 hingle（基于 Dreamer-Paul 的 Hingle 改写），已整体更名：目录 `themes/glint`、`glint.css` / `glint.js`、构造函数 `Glint`；对 Hingle 的署名（页尾、文件头、README、LICENSE、关于页）须保留。Origin 里的 `hingle.css` / `hingle.js` 属冻结旧版，不改名
-
-## 结构要点
-- 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）
-- 【特殊】短篇辑 CARRiER WAVE.：正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/` 单独生成
-  - 暂时隐藏：`carrier_wave.yml` 顶部 `hide_entry: true`（**不能叫 `hidden`**：文件里已有 `hidden:` 隐藏篇目列表，重复的键会让整个文件解析失败、CW 数据全部丢失） 时 Glint 首页的 CW 卡片换成预告卡片 `.cw-card.is-soon`（同款夜空载波 + 手写 Coming soon + 胶带，只接 `pressable`，不预取目录页；首页 → 预告页有一镜到底：`head.ejs` 的 `leaveToSoon` 在 pageswap 挂 `html.soon-leaving` 并写 sessionStorage `soon-hop`，`_partial/soon-vt.ejs` 接过渡——卡片 → 夜空底片 `soon-sheet`、胶带 `soon-tape`、载波 `soon-wave`、标题 `soon-title`、手写字 `soon-hand`（飞到纸条上），其余碎片在 `soon-scraps-wait` 撤掉后落下；**所有碎片都要单独挂名、组的 z-index 照抄画板层叠**（留在 root 里会被底片组压住、过渡结束才冒上来，且 root 里有东西动时整张快照连同模糊背景每帧重绘），过渡期间背景不走模糊度过渡；常驻的 `soon-card-in` 关掉带名元素的入场；编排在 glint.css「CW 预告页」末尾），点进去是预告页 `/carrier_wave/soon/`（`source/carrier_wave/soon/index.md`，layout `soon` = `themes/glint/layout/soon.ejs`，glint.css「CW 预告页」：拼贴画板按 cqi 等比缩放，窄屏另一套位置）；Origin 首页不显示卡片；`search.json` 不收录各篇与预告页（helper `cw_hidden()`）；CW 页面本身照常生成；预告页背景用「阅读页」那一项模糊度，从首页进来时由清晰过渡到模糊。删掉该行或改 false 即恢复（预告页随之直接转去目录页）。手写字体 `CW Soon` 是 Mrs Saint Delafield 的内联子集（`_partial/soon-font.ejs`，只含 Coming soon 的字母）。`soon` 与 `gizmo` / `stats` 一样不算阅读页（layout / header / head 三处），底栏只留版权
-- 主题：`themes/glint`（Glint，自定义 EJS；Origin 见上），样式在 `themes/glint/source/static/glint.css`（按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，注释风格为中文行尾注释）
-- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、`asset_url` 静态资源版本号
-- 地址一律带结尾斜杠：`_config.yml` 的 `pretty_urls` 两项为 false（规范地址 / 站点地图是 `/about-me/` 而非 `/about-me/index.html`），菜单与站内链接写 `/about-me/`（不带斜杠时 GitHub Pages 会先 301 一次）
-- 订阅源的浏览器预览：`scripts/feed-stylesheet.js` 在 after_generate 给 `atom.xml` / `rss2.xml` / `carrier_wave/atom.xml` 开头插入 `<?xml-stylesheet type="text/xsl" href="/feed.xsl"?>`，`source/feed.xsl`（XSLT 1.0，同时认 Atom 与 RSS 2.0）把它显示成订阅说明 + 最近更新列表，配色是天青色阶、日夜照博客设置；阅读器不受影响。Origin 构建排除了 feed.xsl。「关于网站」的「订阅」一节是可见入口（`.feed-card`）
-- 站点地图由 `hexo-generator-sitemap` 生成；不该收录的页面在 front matter 写 `sitemap: false`（如 404 页）
-- 大段脚本不要内联进每页 HTML（不能跨页缓存，预取 / 预渲染的 HTML 也变大）：`vt-flip` 是 head 里的同步外链 `static/vt-flip.js`，`vt-debug` 平时只有一行判断、开启时才 `document.write` 载入 `static/vt-debug.js`，评论脚本是 `static/comments.js`（defer，评论区进入视口约一屏内才加载 Twikoo；带页内找不到的锚点打开时立即加载）；只把首帧前必须执行的少量逻辑留作内联
-- Glint 引用主题自己的 CSS / JS 一律写 `<%- asset_url('static/xxx.js') %>`（`scripts/asset-version.js`，地址带内容哈希 `?v=`），不要再写死 `/static/xxx` 或用 `css()` / `js()`：否则手机常拿新 HTML 配缓存里的旧 CSS（曾致导航卡片的 Gizmo 长条变成普通磁贴）。CW 的 cw.css / cw.js 同样用 `asset_url`（原先按构建时间取版本号，每次部署都让缓存失效）
-- 【Gizmo】小玩意陈列页 `/gizmo/`：`source/gizmo/index.md` 只有 front matter（`layout: gizmo`），模板 `themes/glint/layout/gizmo.ejs`，篇目在 `source/_data/gizmo.yml`（加东西只改数据）；站内独立的小玩意放 `source/gizmo/<名字>/`，由 `_config.yml` 的 `skip_render: gizmo/*/**` 原样输出、不套主题。Gizmo 页不算阅读页（`layout.ejs` 的 `isReading`、`header.ejs` 的 `isArticle` 都排除 `page.layout === 'gizmo'`，body 挂 `gizmo-page`），底栏只留版权信息
-- 【Gizmo 示范】小游戏《一叶》`source/gizmo/yiye/`（点水成涟、把叶子推进夕照倒影）：`sim.js` 纯物理与关卡（无 DOM，固定步长、结果确定），`game.js` 画面 / 输入 / 声音 / 界面，`index.html` 结构与样式。叶子路径与首页 Gizmo 叶片相同；首帧前读博客的主题色（`whatasiger_reader_settings.accent`）与日夜（sessionStorage `theme`）。改关卡后跑 `node tools/yiye-solve.js` 检验可解并参考 par（求解器只模拟「停稳再点」，步数是上界）。改了 `game.js` / `sim.js` 记得把 `index.html` 里的 `?v=` 加一。进度存 localStorage `whatasiger_gizmo_yiye`。今后的独立小玩意可照此组织：自包含、相对路径（返回链接写 `../`，Origin 的 `/origin/gizmo/` 下同样可用）
-- 图片统一 webp，放 `source/images/webp/`；外链图转换用 `tools/external_images_to_webp.py`
-- 正文 `<img>` 由 `scripts/lazy-images.js` 在构建期加 `loading="lazy" decoding="async"`，站内图再写 width / height（glint.css `article img` 配 `height: auto`）；不要再用 JS 换 src 做懒加载
-- 卡片封面：首页 / 归档卡片不用原图，用 `tools/card-covers.py` 生成的两档 `source/images/webp/card/<名>.webp`（≈1280 宽）/ `<名>@2x.webp`（≈2048 宽），模板经 `card_cover()`（`scripts/card-cover.js`）写成内联 `image-set(1x, 2x)`，原图不比该档宽多少时回退原图；原图地址记在清晰层的 `data-cover`（悬停 prebake 文章页背景用它）。另生成 360px 宽的 `<名>@thumb.webp`（归档时间线 / 搜索结果的小封面，`card_cover().thumb`）。**新增 / 更换封面或默认背景后重跑该脚本**。前两张卡片直接写内联样式，其余放 `data-bg-style`，由 `archive-list.ejs` 末尾脚本在视口上下约 1.5 屏内才写上；glint.js `setupCardBlur` 按设备像素比取 1x / 2x 那张来烤
-- 图标：Font Awesome 4.7 不再外链 cdnjs，由 `tools/fa-subset.py` 扫描用到的图标（模板 / 脚本 / md / yml 的 `fa-xxx`、menu_icons、gizmo.yml 的 icon、glint.css 里的 `content: "\fxxx"`）切出子集，woff2 内联在 `static/fa/fa.css`；**新增图标后重跑**（原版字体在 `tools/fa-src/`），否则新图标显示为空白
-
-## 主题与样式要点
-- 主题色：全站强调色取自 glint.css 第 0 节的色阶 `--tc-ice / pale / light / glow / soft / main / dim / deep / ink / warm / warm-deep`（按明度排列，各处按用途取不同级；`--blue`、`--hd-*`、`--footer-*`、`--hero-*` 都引用它）。默认「天青」即原先的蓝，数值原样；其余主题由 `html[data-accent]` 设 `--tc-h`，整组用 OKLCH 同明度同彩度只换色相。半透明一律写 `color-mix(in srgb, var(--tc-x) N%, transparent)`，**新增样式不要再写死蓝色 hex / rgba**。设置保存在 `whatasiger_reader_settings.accent`，`header.ejs` 开头首帧前挂属性；新增主题色要同时改第 0 节与 `header.ejs` 的 `accents` 列表。CARRiER WAVE. 页面不加载 glint.css，不受主题色影响
-- 日夜模式：`body.dark-theme` 为夜间。`header.ejs` 开头首帧前判断：本次浏览中点过日月按钮（sessionStorage `theme-pick`）就照它，否则按设置里的「日夜」（`whatasiger_reader_settings.themeMode`：`dark` 夜间，默认 / `light` 白天 / `auto` 跟随系统）；结果写回 sessionStorage `theme`（一叶等独立页面读它），并改 `<meta name="theme-color">`（夜 `#0e0e10` / 日 `#e9eff7`）。glint.js 的 `setDark()` 负责切换（圆形扩散），`night()` 是日月按钮（写 `theme-pick`），改模式时清掉 `theme-pick`；跟随系统时监听系统外观变化
-- 只改白天模式时，选择器统一用 `body:not(.dark-theme) …`，集中写在 glint.css 第 8 节；夜间同理用 `.dark-theme …`
-- 背景图：`body:before` 伪元素，由 `--page-bg-image` / `--bg-opacity` / `--bg-blur` 控制；有 cover 的文章会把背景换成封面；阅读页加 `.bg-faded` 淡化——阅读页首帧就挂 `.bg-faded`、模糊度直接取最终值（`header.ejs`），**不要再改回进页后靠过渡变淡**：载入时主线程忙，过渡时间线照走，看起来就是亮背景硬切成灰
-- 阅读页等字体：`head.ejs` 在字体样式表后给 html 挂 `page-loading`，`main` / 迷你目录 `visibility: hidden`、其中入场动画暂停在起点，思源黑体就绪（`document.fonts.ready`）后撤掉、动画从头播；超 300ms 才浮出 `body.post-page:after` 转圈，最多等 1.2s；选系统字体不等；等待期间脚本读正文文字**不要用 `innerText`**（visibility: hidden 的文字会被跳过，取到空串，目录曾因此只剩竖线），用 `textContent`；卡片一镜到底时 `post-vt.ejs` 在 pagereveal 调 `pageReveal()` 立即撤掉。样式在 glint.css「阅读页等字体」
-- 顶栏字体：顶栏与导航（`header`、`.head-menu`）先用内联的思源黑体 600 子集 `Glint UI`（`_partial/ui-font.ejs`，只含站名、版本名、导航四项、Gizmo 长条、搜索框占位的字），首帧即是思源黑体；**顶栏 / 导航改字（含发版改版本名）须重新取子集**，否则新字会回退到外链字体、又出现先雅黑后思源。选了系统字体时 html 挂 `font-system`（`header.ejs` 首帧 + glint.js 设置）不用它
-- 手机端滚动性能（< 600px）：
-  - 背景模糊由 glint.js 的 `bgBake` 在页面载入约 1s 后用 canvas 烤进一张 blob 图，写回 `--page-bg-image` 并给 body 挂 `.bg-baked`（`body:before` 不再挂 blur 滤镜，白天的提亮 / 饱和照留）；拖模糊度滑块时先撤回 CSS 模糊预览，松手再烤。改背景层的滤镜时记得同步 `.bg-baked` / `html.bg-prebaked` 的几条规则
-  - **桌面端同样烘焙**（全屏固定层挂实时模糊时，上面任何东西在动——卡片悬停、跨页过渡——GPU 每帧都要重算整屏模糊）；画布密度按模糊半径降低（`min(dpr, 4 / blur)` px / CSS px）
-  - 烤图一律导出**无损 PNG**（有损 WebP 会在暗部压出方块网格）。页面上真正用的那张（`blurBlob(…, fine = true)`）画布密度为 `min(dpr, 8 / blur)` 并加 ±1 级抖动噪点去色带（`dither()`，卡片模糊层共用）
-  - 烘焙换图前 `whenBgIdle()` 先等 `body:before` 上在跑的过渡（`document.getAnimations()`）走完、且 header.ejs 已撤掉 `no-bg-transition`：换图时会临时撤掉过渡，若「从文章回首页」的变清晰 / 变亮还没走完就会被硬切，背景颤一下。glint.js 初始化时 `--bg-blur` 已由 header.ejs 设过就不再覆盖
-  - 预烤交接：首页指针移上 / 按下 / 聚焦文章卡片时 `bgBake.prebake()` 按文章页的模糊度（设置 `bgBlur`，缺省 8）把该封面烤好，以 data URL 存 sessionStorage `glint-bg-prebake`（低密度 `4 / blur`、不抖动，否则 PNG 太大）；文章页 `head.ejs` 在首帧前比对图 / 模糊度 / 视口，对得上就插入 `#bg-prebake` 样式并挂 `html.bg-prebaked`，glint.js 载入后转成普通的 `.bg-baked` 状态，等 `vtSettled` 后再按正式规格重烤一张悄悄换上
-  - 滚动时常驻屏上的毛玻璃（顶栏、迷你目录、首页博主卡、底栏）在 glint.css 第 7 节开头统一减半模糊、去掉 saturate；新增常驻屏上的毛玻璃也照此处理
-  - 根滚动：`html { overflow-x: hidden }` + `body { overflow-x: clip }`，**不要再让 html、body 同时 hidden**（body 会自成滚动盒，iOS 惯性滚动受影响）；html 另有 `scrollbar-gutter: stable`：页面边下载边显示时首帧常还没有滚动条，内容长出后滚动条冒出、视口窄 8px，顶栏会左跳、cover 背景会缩放颤一下，不要去掉
-  - glint.js 的滚动处理统一用 `onScrollFrame(fn)` 登记（一个监听、每帧最多一次）；目录高亮用 IntersectionObserver 记录标题是否越过阅读线
-  - 首页水波纹的触摸：轻点激发、按住 300ms 才进入长按 / 拖拽，一滑动就作废（`water-ripple.js` 的 `TOUCH_SLOP / TOUCH_HOLD`）
-- CARRiER WAVE. 一镜到底靠 `view-transition-name: cw-t-<slug>`：目录篇名、阅读页标题静态带名；文末翻页的篇名只在经它跳转时由 `carrier-wave-head.ejs` 临时挂名（否则回目录时会从页底飞出）
-- 首页 → CARRiER WAVE. 目录页：首页用 speculation rules 预渲染目录页（悬停/按下卡片即开始），点击后过渡立即开始；大标题字体是内联的子集 `CW Title`（`_partial/cw-title-font.ejs`，标题改字须重新取子集）；离场时 `head.ejs` 给 html 挂 `cw-leaving` 撤掉卡片悬停态，并把卡片载波的波长/相位/振幅对准目录页画布（`cw-wave-hop`），画布在 `cw-from-home` 期间定格（时钟停住，只在载波位置 / 缩放因滚动改变时按同一时刻重画）（过渡中凡是带过渡名的元素和 root 都应保持静止，否则每帧都要重新截取快照）。首页 CW 卡片的四个过渡名只在 `html.cw-leaving`（离开去目录页）/ `html.cw-back`（从目录页回来）时挂上，常驻会让点文章卡片时也多截四张快照。目录页一侧的圆角裁切挂在 `::view-transition-image-pair(cw-stage)` 上（`cw-vt-unround`，时长 / 缓动须与组一致，`vtFlip` 会按组的缩放逐帧折算成椭圆半径）
-- 目录页载波画布 `.cw-wave` 是 280px 高的窄带，由 cw.js 用 transform 跟随载波中线平移（`band` 选项），不是全屏画布
-- CARRiER WAVE. 视觉更新前的备份在 `.backup/carrier-wave-2026-10-23/`（还原方法见其中 RESTORE.md）
-- Quote Box 折叠动画用 grid 行高 `min-content 1fr ↔ 0fr` 实现；顶栏行必须是 `min-content`（`auto` 会在过渡中被拉高）
-- 浮层卡片（设置面板、手机端导航卡片）共用 `--glass-*` 变量（第 0 节定义、第 1 节夜间覆盖）：毛玻璃 + squircle 圆角（`corner-shape`，不支持时退回普通圆角）+ 展开用 `--ease-spring`、收起用 `--ease-exit`；新增浮层沿用这套
-- 顶栏导航收起判断的 MutationObserver 只在 body 内联 `font-family` 真的变了时才重算（滑动条会逐帧改写 body 的 style，别再改回监听整个 style）
-- 顶栏导航的展开 / 收起不按宽度断点，而由 `header.ejs` 中紧跟 nav 的内联脚本实测：四个按钮居中排开会碰到左侧 Logo 或右侧搜索框 / 按钮（或宽度 < 600px）时给 html 挂 `.nav-collapsed`，导航变为汉堡按钮 + 卡片。相关 CSS 用 `html.nav-collapsed` / `html:not(.nav-collapsed)` 区分，不要再写进 600px 媒体查询；设置面板仍按 600px 切换
-- 顶栏配色走 `--hd-*` 变量（挂在 body 上，因为导航 `.head-menu` 在 header 之外；第 2 节为夜间，第 8 节白天覆盖）。页顶时较透，`header:before` 是滚动后渐显的实层（`animation-timeline: scroll()`，前 160px）。桌面导航的强调框是 nav 里唯一一枚 `.head-menu-pill`，由 `header.ejs` 的脚本写 `--pill-x/--pill-w` 在各项之间滑动（缓动 `--ease-glide`，支持 `linear()` 时为带回弹的弹簧）；`.head-menu > a` 的左右 padding / margin-right 改动时须同步收起判断里的 `PAD` / `SPACE`。Logo 版本名写死在 `header.ejs` 的 `.header-logo-ver`（现为 Ciel），发版时手动改；站名与版本号靠 `text-box: trim-both cap alphabetic` 按字形中线对齐
-- 沉浸模式（设置开关，`whatasiger_reader_settings.immersive`，默认关）：开启后 body 挂 `.immersive`，glint.js `setupImmersive()` 在下滑时给 html 挂 `.header-hidden`（顶栏与桌面横排导航一起收起，目录卡片 / 迷你目录上移到 1em），上滑须在 450ms 内滚过 ≥500px 才唤出（`REVEAL_WINDOW / REVEAL_DISTANCE`），离页顶 64px 内或有浮层 / 搜索时始终显示
-- 带 backdrop-filter 的浮层不能放进 `<header>`（header 自身有 backdrop-filter，嵌套会让毛玻璃失效），所以设置面板放在 header 之外；手机端导航图标在主题 `_config.yml` 的 `menu_icons`
-- 拖动选择（`header.ejs` 的 `window.glintDragPick`）：顶栏导航（桌面横排时）、设置面板的二选一按钮与分页，按住在选项上拖动，强调框跟着指针走，松手选中最近的一项（导航即前往）；点一下照旧。新增「一排选项 + 一枚强调框」的控件也照此接入，横向拖动的控件记得 `touch-action: pan-y`
-- 设置面板（`header.ejs`，样式在 glint.css「设置面板」，桌面端宽 390px；「外观」页有界面 / 日夜（三选一 `.settings-segment.is-three`）/ 字体，「背景模糊」只作用于阅读页，在任何页面拖都只改设置、不改当前页背景）分「外观」「阅读」两页（`.settings-tabs` + 两个 `.settings-pane` 叠在同一格，`.settings-panes` 的高度由 glint.js 写成当前页的高度（ResizeObserver 跟随），切换时平滑伸缩、另一页竖向裁掉；阅读页默认「阅读」，其余页「外观」，sessionStorage `glint-settings-tab` 记住）：开关是一排 `.settings-chip`（复选框藏在胶囊里），滑动条两两并排成 `.settings-tile`，「恢复默认」是标题栏右侧的圆钮。新增设置项照这几种控件放进对应的页，别再加长列表（原先全部纵排时面板高 841px，现在约 366px）
-- 设置面板的滑动条都是无极的「液态胶囊」：glint.js `makeSlider()`（配置在 `GS_SLIDERS`）把原生 range（`step="any"`）透明地叠在自绘的 `<glint-slider>` 上（部件是 `gs-*` 自定义元素，避开 `.settings-row span` 等规则），按 `--p` 逐帧画、位置用硬弹簧跟随；`updateSliderFill()` 只是转给它。字重拖动时无极、按最近一档生效，松手 / 键盘改完吸附到档位（`snap`）；其余各项存连续值。拖动时每帧最多应用一次（`applySoon`）、松手才写 localStorage；排版类滑动条拖动期间撤掉正文 `.is-laid-out`（只重排屏幕附近段落），背景类挂 `body.bg-tuning` 撤掉背景层过渡。入场动画别用 `both` 填充去碰悬停要过渡的属性（如文末卡片的 `translate`），填充会让悬停直接跳变，用 `backwards`。样式在 glint.css「设置面板 · 无极滑动条」
-- kico.css 会给 checkbox 加 `::before/::after` 方框对勾、给 range 加 `overflow:hidden` 和 `min-height`；设置面板的开关与滑动条已针对性覆盖，新增表单控件时注意；两个浮层同时打开时由 glint.js 的 `bringToFront` 挂 `.on-top` 决定上下
-- Gizmo 入口：桌面端（`html:not(.nav-collapsed)`）是首页右侧水面上的叶片 `.gizmo-leaf`（`index.ejs` + `static/gizmo-leaf.js`，图形是 `_partial/gizmo-leaf-svg.ejs`，与 Gizmo 页标题处的 `.gizmo-emblem` 共用）；顶栏导航收起时叶片隐藏，入口是导航卡片里与「归档」并排的方磁贴 `.head-menu-gizmo`（桌面横排导航里 display:none，收起判断与强调框的当前项都要排除它）。叶片随风漂动、留尾流，靠 `window.waterRipple` 的 `drop / stroke` 激发水波、`setProbe / sample` 取叶片处水面（PBO + fence 异步读回，不阻塞 GPU）被水波推动；推力系数在 `gizmo-leaf.js` 的 CFG，注释里有实测位移。首页 → Gizmo 叶片一镜到底：`head.ejs` 的 `leaveToGizmo` 在 pageswap 给叶身挂 `gizmo-leaf` 并写 sessionStorage `gizmo-leaf-hop`，`_partial/gizmo-vt.ejs` 据此接过渡，内容在 `gizmo-from-leaf` 期间隐藏、落定后浮现（常驻的 `gizmo-leaf-in` 关掉内容的入场动画）
-- 首页背景切换：篇目在 `source/_data/backgrounds.yml`（主题 `background` 为默认，须在其中），极缩略图 `source/images/webp/thumb/` 同名文件由 `py -3.9 tools/bg-thumbs.py` 生成（160px 宽）。入口只在首页：导航横排时是右上角竖排胶囊 `.bg-dock` 上半的 `.bg-switch` + 浮层 `.bg-picker`（`index.ejs`，浮层从整条胶囊长出），收起时是导航卡片最下方的 `.head-menu-bg`（`header.ejs`，是 div 不是 a，不进导航测量 / 强调框），磁贴共用 `_partial/bg-tiles.ejs`。缩略图要等打开浮层 / 导航卡片才加载，原图选中后才加载、解码好再淡出换图（`body.bg-swapping`）。所选存 localStorage `whatasiger_home_bg`（选默认即删除），写成 head 里的 `#bg-choice` 样式覆盖 `--page-bg-image`：`head.ejs` 首帧前对所有用主页背景的页面套用（有封面的文章不受影响），glint.js `setupBgSwitch()` 运行时切换并让 bgBake 重烤
-- 首页右上角浮层（背景）是容器形变 `.corner-morph`，不是另外浮出的卡片：浮层平时与按钮（整条竖排胶囊）同位置、同大小、同圆角、同底色，藏在按钮下面（按钮 z 9700 > 浮层 9600）；打开时宽高 / 圆角 / 底色过渡成卡片，按钮留在右侧当竖栏、只撤掉自己那层底（收起到底那一刻才换回，时刻按 `--morph-close` 对齐），内容按终点尺寸排在竖栏左边、逐渐露出，没有标题行。起点 `--from-w/h` 与终点 `--open-h` 由 glint.js `cornerMorph()` 量好写入。浮层不进 `.on-top` 的层级规则（否则会盖住自己的按钮）。尺寸统一走 `--corner-btn`（按钮直径 40px）/ `--corner-pad`（6px）：卡宽 `--open-w`，圆角始终 = 按钮半径（收起展开不变），卡内缩略图圆角 = `--corner-in-r`（外圆角 − 内边距，同心）；缩略图名称压在图片底部，所选描边画在磁贴内侧，单数时最后一张占满一排；导航卡片里按三列排（网格切 6 份、每张占 2 份），最后一排余 1 张占满、余 2 张各占半排，行高由 `.head-menu-bg` 容器宽度 `100cqi` 换算，每排等高
-- 首页沉浸（与设置里的「沉浸模式」无关）：入口是 `.bg-dock` 下半的 `.zen-switch`，导航收起时是导航卡片里的 `.head-menu-zen`。glint.js `setupHomeZen()` 给 html 挂 `home-zen`：博主卡、文章卡片、分页与 Gizmo 叶片（`gizmo-leaf.js` 同时停帧、不再搅水）淡出，TODO 与右上角胶囊保留；淡出后挂 `home-zen-done`，main 收成一屏高，底栏落在屏幕底边外、一下滑就露出。本次浏览中记住（sessionStorage `glint-home-zen`，`index.ejs` 开头首帧前挂类）。样式在 glint.css「首页沉浸」
-- 首页 TO DO 抽屉（`_partial/todo-sidebar.ejs` + `static/todo-sidebar.js`，样式在 glint.css「TO DO 侧边栏」）：浮起的 `--glass-*` 毛玻璃卡片（离左、下边 0.6rem，顶边 3.7rem），两个分区是 `--glass-tile` 色块，圆角同心收小（`--todo-tile-r / --todo-item-r`）；竖排标签是与右上角胶囊同款的 `--hd-*` 小毛玻璃，收起时贴屏幕左缘、展开后离开卡片成整颗胶囊。开合只位移外层 `.todo-drawer`（transform，展开弹簧 / 收起平稳），条目按 `--i`（模板与脚本都要写）依次浮现，「在看」的进度条按 `--p` 生长。标签的 `top` 由脚本按视口坐标算好、扣掉抽屉顶边写入。收起时卡片 `inert`（屏外链接不进 Tab 顺序）；封面图写 `data-src`，第一次展开才赋 `src`（抽屉只是 transform 移出屏幕，`loading="lazy"` 仍会提前下载）；设置里关掉 TO DO（`body.hide-todo`）时不请求 Bangumi
-- 首页内容不可选中：`index.ejs` 的 `main.home-main` 与 Gizmo 叶片 `user-select: none`、链接 / 图片不可拖动（CSS `-webkit-user-drag` + 火狐用 `draggable=false`），拖鼠标划水面时不会选中文字或拖出链接；归档等页不受影响
-- 首页水波纹 `static/water-ripple.js`：WebGL2 实现，物理与渲染都在 GPU；画布 `z-index:-1` 平时隐藏，激发时把 body 底色 + `body:before` 背景图（读其实际 opacity/blur）合成为纹理，静水时与 CSS 背景一致，改动背景层叠方式时需同步这里；物理网格按 CSS px 定格宽（`minCell`），手机与桌面波速一致；波动系数 `stiffness` 必须 < 2（显式格式稳定极限），物理通道用 texelFetch 取格并钳位，否则个别手机 GPU 上会发散成满屏泛白
-- CARRiER WAVE. 阅读页标题字号取 `min(原 clamp, 200cqi / --len)`，`--len` 由 reader 模板按字数（序号折算 1.5 字）写入，长标题自动缩小以保持篇名与序号同行居中
-- 首页博主信息（`index.ejs` 的 `.home-hero` + `_partial/social.ejs`）：一整张毛玻璃卡片，宽度 / 圆角 24px / 投影与下方文章卡片一致；头像在顶端居中，ID / 座右铭 / 社交图标依次居中纵排（头像链接 `display: contents`，头像与 ID 各占一行）。卡片自身有 backdrop-filter，里面的元素不能再用毛玻璃（名称标签用实色底）。配色走 `--hero-*`（第 3 节夜间，第 8 节白天）。座右铭文字写在 `index.ejs` 顶部的 `motto` 变量，隐形整句与打字文字叠在同一格，打字时行高不跳。社交图标是 SVG 遮罩 + `currentColor`（新增图标照 `.fa-xxx-icon` 写 `mask-image`）；社交栏的强调框 / 名称标签与顶栏导航强调框同一套做法（`social.ejs` 内联脚本写 `--x/--w`）。入场动画必须挂在玻璃元素自身：祖先透明度 < 1 时其中的 backdrop-filter 会失效；`.home-title` 归档页也在用，首页专属样式一律限定 `.home-hero`
-- 文章卡片一镜到底（只做首页 → 文章）：卡片本身是 `<a>`（标题只是 `<span>`），首页用 speculation rules 对卡片 **prerender**（指针停留 / 按下即开始，点击后过渡立即开始），另有 `immediate` 的 **prefetch** 预取卡片文章页的 HTML（预渲染没跑完就点下去时不必再等网络）——只预取视口上下各一屏内的卡片（`head.ejs` 里用 IntersectionObserver 动态插入规则；读者只能点屏上的卡片，滚过去远比下载慢，手感与全部预取相同），Save-Data / 2G 时不预取；触屏另在滚动停下 0.6s 后预渲染完整停在屏幕中央附近的那张（同时只留一张，换卡片即撤掉旧规则）；为此不蒜子由 `footer.ejs` 在页面真正打开（`document.prerendering` 为假 / `prerenderingchange`）后才加载，预渲染中的 bgBake 立即烘焙。新增有副作用的脚本（计数、上报）同样要等激活。按下卡片即挂 `is-pressed`（微沉；文章卡片同时开始放大、模糊），与 CW 卡片同一套 `pressable()`。首页 `pageswap`（`head.ejs` 的 `leaveToPost`）只给被点那张挂 `post-cover` / 其标题文字 `span`（行内块，盒子只包住文字）挂 `post-title`，html 挂 `post-leaving`（封面定格在悬停的模糊态；投影 `.post-card-shadow`、高光与细边 `.post-card-light`、摘要信息 `.post-card-info` 分别挂 `post-shadow` / `post-light` / `post-info`，保持原样，由 `vtFlip` 的 `follow` 跟着封面放大、前段渐隐，不在点击瞬间消失）；文章页 `_partial/post-vt.ejs` 声明 `@view-transition`，确认来自首页（含分页）后挂 `vt-from-card`，`post.ejs` 顶部的全屏**空层** `.vt-cover`（平时 display:none）接 `post-cover`、正文 `h2`（inline-block）接 `post-title`。封面全程只放大那张模糊的卡片快照（新页一侧不画大图，省去每帧重绘），末段淡出露出最终背景；其余离开文章页的跳转一律 skip。文章页 head 里的 `<link rel="expect" href="#vt-post-title" blocking="render">` 不能删：首帧须等正文标题解析完，否则新页快照里还没有 `.vt-cover` 与标题，配不上对，只剩整页淡入淡出。过渡期间 `body:before` 去掉 transition，背景直接落到阅读状态，封面组淡出时露出的就是最终画面。文章封面背景改由 `head.ejs` 服务端直接写进 `--page-bg-image`（「关于网站」除外），不再由 post.ejs 脚本设置。编排在 glint.css「文章卡片一镜到底」。从卡片进来时 html 另挂常驻的 `vt-card-in` 关掉标题区自带的入场动画（带过渡名的元素须静止），评论（Twikoo）等 `window.vtSettled`（过渡结束）后才加载，不与过渡抢主线程
-- 跨页面过渡的形变走合成线程：`_partial/vt-flip.ejs` 定义 `vtFlip(vt, { 名字: { old, new, radius } })`（首页、文章页、CW 页的 head 都引入，须在各自的 pagereveal 脚本之前）。浏览器默认的组动画同时动画 width / height，只能在主线程跑，新页面一忙就掉帧；`vtFlip` 在 ready 时取消原组动画，新建只动 transform 的动画（组固定终点尺寸 + 非等比缩放，快照按 auto / fill / cover 反向缩放，按缓动逐帧取样成线性关键帧），与原动画逐帧一致；组的 transform 是「旋转 + 等比缩放 + 平移」时角度一并过渡（`boxOf`，预告页贴歪的拼贴纸片要用），其余情况仍按外接矩形。**不要改成 `setKeyframes` 原地改写**：合成动画等待启动的那几帧会沿用旧样式，组停在旧尺寸上与快照错位。调用处给每个名字写上新页面对应元素的选择器 `el`：过渡期间逐帧量它，一移动（滚动、版面变化）就按新终点重建动画、沿用旧动画的 `startTime` 接着播（与原生追随实时位置一致；**不要改用 `currentTime` 接续**，新动画等合成线程启动的几帧会停住，连续重建会越拖越慢）。`el` 也可以是返回屏幕矩形的函数，只改终点不改组的盒子（CW 载波用 cw.js 的 `cwCarrierRect`：吸顶后的位置与缩小的振幅）；用函数时须同时写 `box`（带过渡名元素的选择器）作换算基准——浏览器给的组坐标以 snapshot containing block 为原点，手机 Chrome 地址栏露出时比 `getBoundingClientRect` 的布局视口高出一个地址栏，混用会让终点整体上移（载波曾因此落到大标题上，电脑模拟手机尺寸复现不了）；带过渡名的新元素仍应尽量静止（入场动画须关掉），新加过渡名时同步写上快照的显示方式与 `el`。只在旧页存在的层可写 `{ follow: 领头名, how: 'box' | 'content' }` 跟着领头组的轨迹走（box 随盒子伸缩，content 等比缩放、中心随盒子）
-- 正文首帧只排屏幕附近的段落：阅读页正文的直接子 `p` 带 `content-visibility: auto`（glint.css 第 0 节「首帧只排屏幕附近的段落」），过渡落定（`vtSettled`）后 glint.js 空闲时给正文挂 `.is-laid-out` 撤掉它、整篇排好。长文（上千段）首次整篇排版要 0.5–1s+，不这样做首帧、预渲染完成与一镜到底的开始都得等它；但不能常驻——按估计高度占位时目录 / 脚注跳转会落错位置。实测（本地、长文 posts/5）点击到过渡开始：未预渲染 ~2s → <0.1s，已预渲染 ~0.4–0.6s → <0.1s。跨页过渡诊断（`vt-debug.ejs`）的 `ready` 记的是 pagereveal 到过渡开始的毫秒数
-- 续读位置（glint.js 末尾独立的 IIFE，只管文章 `.post-content:not(.is-special)`，正文直接子元素少于 8 块的不记）：按「正文第几块 + 块内比例」记录（不记像素），存 localStorage `whatasiger_read_progress`（`{ 路径: { i, f, p, t } }`，最多 60 篇，超出删最早的）；读者自己滚动过才开始记，停下 600ms 写入，离页时补写，还在开头不记，读到正文末尾即删除。再打开时等 `vtSettled` 后在底部浮出 `.resume-bar`（摘段首 18 字 + 百分比），点「继续阅读」才跳：先挂 `.is-laid-out` 整篇排好再按块定位、该段挂 `.resume-mark` 亮一下；带 `#锚点` 打开时不提示，读者自己读过该位置或 12s 无操作即收起。样式在 glint.css「续读位置」
-- 有目录的阅读页由 `layout.ejs` 在服务端给 body 挂 `has-trees`（判断与 glint.js `tree()` 一致：正文脚注之外有标题），首帧即让出目录位置，一镜到底的标题不会途中横移；glint.js 以实际标题为准，没有就撤掉
-- 首页卡片悬停只动 transform / opacity（合成线程），不要再过渡 `box-shadow`、`filter`、渐变位置：
-  - 投影：`::before`（静止，`--card-shadow`）与 `::after`（悬停，`--card-shadow-hover`）交叉淡化——文章卡片画在单独的 `.post-card-shadow` 上（一镜到底时要单独成层），CW 卡片画在卡片自身；卡片本身**不裁切**（`overflow` 可见），需要裁切的 `.post-card-bg`、`.post-card-overlay` 各自带圆角裁切。上浮用独立的 `translate` 属性
-  - 封面：`.post-card-bg > .post-card-zoom > .post-card-img ×3`（原图、`.post-card-soft` 3px 轻模糊、`.post-card-blur` 10px 模糊压暗），整组放大，两层模糊按原弹簧曲线换算的 `linear()` 缓动接力淡入（单层交叉淡入前段会透出清晰细节）。两层模糊由 glint.js `setupCardBlur()` 用 canvas 烤成小图（`.is-baked`），没烤好时退回静态 CSS filter；烤图按设备像素比（最多 2）提高密度、加 ±1 级抖动噪点、导出**无损 PNG**（有损 WebP 会在暗部压出方块网格，8 位色深下平滑渐变会出色带）。**图片只写在元素的内联 `background-image` 上**，不要经 CSS 变量传 `url()`：过渡中每次样式重算都会被当成换了图，合成层逐帧重绘
-  - 封面卡片：`.post-card-light`（自带圆角裁切）的 `::after` 是 mask 挖空的 1px 上亮下暗细边；其中的 `.post-card-sheen` 是悬停高光（背景为顶部天光，其中的光斑 `.post-card-spot` 由 glint.js 创建，按原生分辨率绘制、只用 transform 平移到指针处，不缩放——放大的合成层会发糊；只有一层大而淡的平顶钟形柔光，亮度 `--card-spot`、半径 `--spot-r`；不要再加小而亮的光芯，会显得中间一个小光斑）。倾斜由 `setupCardFloat()` 的弹簧逐帧写内联 `transform: perspective(900px) rotateX() rotateY()`（`TILT_X / TILT_Y / PERSPECTIVE`，透视须与 CSS 一致），同时给 `.post-card-shadow` 写内联 `translate` 让投影朝倾斜反方向挪（仅精确指针、未要求减少动效时）；配色变量白天在第 8 节覆盖
-- 阅读页（`body.post-page`，即文章与独立页面）玻璃底板：正文（模板里包在 `.reading-sheet` 中：标题 / 正文 / 标签）与评论区 `.post-comments` 各一块，中间留空；玻璃画在两者的 `::before` 上（z-index -1，两者不建立层叠上下文）。**不要给 `.wrap`、`.reading-sheet`、`.post-comments` 本身加 backdrop-filter / filter / transform / 透明度动画**——目录 `.article-list`（position: fixed）挂在 `.wrap` 里会错位，正文里的毛玻璃元素会嵌套失效，祖先透明度 < 1 时玻璃会失去模糊。`.wrap` 最大宽度 = 50em + 两侧玻璃内边距，正文行宽不变。配色走 `--sheet-*`（第 4 节夜间，第 8 节白天）。**手机端（≤ 599px）不用玻璃底板**（两侧描边干扰阅读，按用户要求去掉），正文与评论直接铺在背景上。文末的作者 / 版权信息块已按用户要求删除
-- 文章目录 `.article-list`（glint.js `tree()` 生成：`.article-list-head` 标题栏 + `.article-list-body` 滚动列表）：外层是 `--glass-*` 毛玻璃卡片，列表是左侧细竖线轨道式（当前章节点亮自己那段轨道 + 加粗，子章节缩进成自己的轨道、所属章节激活时展开），配色走 `--toc-*`。桌面端有目录时只给 `main` 和 `footer` 加 `padding-right` 让位（**不要再用 body 的 margin-right**：body 有 overflow-x: clip，底栏会被截成与目录重叠的一截）；收起后卡片缩进右上角的迷你目录 `.toc-mini`（短横线代表一级章节，当前章节亮起，点击展开）。开合的一镜到底（glint.js `tree()` 里的 tocMorph）：迷你目录的每道短横线就是某个一级章节的竖轨道（超过 8 章按比例对应，与 `updateMini` 同一规则），开合时由替身线条 `.toc-ghost` 在两者之间沿弧线飞行、旋转、伸缩（被接管的目录项挂 `.toc-ghosted`，轨道透明）；卡片的玻璃画在 `.article-list::before` 上，按线条每帧的外沿（留 12px）与自身缓动取大者伸缩，始终包住线条；文字收起时向左收进轨道、展开时等自己的轨道快落定再滑出。线条与玻璃都是 JS 逐帧采样成关键帧（`bez` / `spring`，spring 与 `--ease-glide` 同一组数值）；期间 body 挂 `.toc-morphing`，收尾那一帧挂 `.toc-settle` 无过渡换回真身；半路掉头即全部 `reverse()`；状态以类名为准，由 MutationObserver 接住各处的开合。时长有意偏短（收起约 0.44s、展开约 0.5s，目录是功能性的）。卡片本身不要加 opacity / transform 动画；也不要给 `.wrap` 做 translate 的 FLIP 来替代 main 的 padding 过渡（变换动画中的图层不按视口裁剪绘制，长文首帧 60–80ms），正文宽度会变的窄窗口改为留白一步到位（`body.toc-snap`），桌面端不再显示右下角的目录开关。手机端同理：平时右上角（顶栏下方）露出迷你目录，点击从右上角展开铺满屏宽的卡片，点章节 / 卡片外 / 收起按钮即缩回；右下角的目录开关 `.toggle-list` 已不再显示（glint.js 仍会创建它，放进 footer 的 `.buttons`，CSS 整组隐藏）。「回到顶部」按钮以及设置里的「显示回到顶部」「隐藏背景图片」开关已按用户要求删除，不要再加回
-- 底栏（`_partial/footer.ejs`）：footer 底板自带 backdrop-filter，里面三张 `.footer-card` 不再嵌套模糊，只靠半透明渐变 + 内高光 + 投影分层；配色全走 `--footer-*` 变量（第 5 节为夜间，第 8 节白天覆盖）。卡片入场用滚动驱动动画改 `translate`/`scale` 独立属性，悬停用 `transform`，两者不能混用同一属性
-- 站内搜索（glint.js `local_search`，样式 glint.css「站内搜索」）：所有页面顶栏都有搜索框，结果在 header 之外的 `.search-panel`（毛玻璃卡片，从搜索框下方以 clip-path 长出来）；索引是 `scripts/search-index.js` 生成的 `/search.json`（文章、独立页面、CW 已接收篇目、Gizmo，纯文本），第一次聚焦才下载；空格分隔多词须全部命中，按标题 > 标签 > 简介 > 正文命中次数排序；↑↓ 选择（`.search-pill` 强调框弹簧滑动）、↵ 打开、`/` 或 Ctrl / ⌘ + K 唤起；没输入时列出标签与归档入口。`search.xml`（hexo-generator-searchdb）留给 Origin，不要删
-- 标题一镜到底（`_partial/title-hop.ejs`）：从搜索结果 / 归档时间线点进文章，标题文字飞到正文标题处。点击时记 `window.glintTitleHopEl` 与 sessionStorage `title-hop`，各页 pageswap 先调 `takeTitleHop(e)`（首页 head.ejs、文章 post-vt.ejs、Gizmo gizmo-vt.ejs 已接入；其余页面由 title-hop.ejs 声明 `@view-transition` 并默认跳过），文章页挂 `vt-from-hop`（glint.css「站内搜索」末尾）。新增「点标题进文章」的列表照此接入
-- 归档 / 标签 / 年月归档页（`layout/archive.ejs`，glint.css「归档时间线」）：顶部毛玻璃卡片（统计 + 标签切换）+ 按年份的时间线卡片，每篇一行（日期、圆点、`card_cover().thumb` 小封面、标题与简介、标签与字数）；不分页（`_config.yml` 的 `archive_generator` / `tag_generator` per_page: 0）；配色 `--arc-*`（白天在第 8 节末）。导航第五项「归档」在收起的导航卡片里与 Gizmo 两块磁贴并排成第三排，标签页 / 年月归档页也算它的当前页
-- 顶栏 / 导航改字后重取 `Glint UI` 子集：`py -3.9 tools/ui-font.py [追加的字]`（自动并上现有字、菜单名、版本名、占位文字；走 Google Fonts，loli.net 镜像对 text= 子集返回的是 EOT）
-- 脚注预览（glint.js `setupFootnotePeek`，样式在「脚注样式」开头）：精确指针悬停 / 键盘聚焦标号浮出小毛玻璃卡片（从标号处弹出），点标号照旧跳到文末；触屏第一次点只浮出卡片
-- 阅读设置的「文字」「排版」两组：正文字体（黑体 / 思源宋体，宋体选中才加载：head.ejs 首帧前插入、glint.js `loadSerif`，两处地址一致）、字重 / 字间距 / 字号、行距 / 段距 / 行宽 / 段首缩进；变量 `--reader-*`（第 0 节），阅读页首帧前由 header.ejs 按设置写好；正文另开 `text-autospace`。设置面板过高时在面板内滚动
-- 日夜切换（glint.js `night()`）：支持视图过渡时新配色从日月按钮处圆形扩散（`html.theme-flipping` 关掉 root 的默认淡入淡出，clip-path 由脚本挂在 `::view-transition-new(root)`）
-- 首页背景：`backgrounds.yml` 可写 `artist` / `link`，桌面端浮层底部的 `.bg-credit` 显示屏上那张的署名（手机端导航卡片里不显示，按用户要求不占空间）；磁贴最前是「每日轮换」（id `@daily`，按本地日期取模轮换，head.ejs 首帧与 glint.js `todayId()` 同一算法）
-- TODO 周榜的「更新于」由 todo-sidebar.js 换成今天 / 昨天 / x 天前（构建时抓取的数据，看得出新旧）
-- 正文图片灯箱（glint.js 末尾，样式「图片灯箱」，取代 kico 的 `ks.image`）：图片从原位置形变放大（WAAPI，只动 transform），捏合 / 滚轮 / 双击缩放、拖动平移、左右滑动或 ← → 切换、下拉 / Esc / 点空白关闭（原图在屏上时缩回原位）；链接里的图片不接管
-- CI（`.github/workflows/site.yml`）：push / PR / 每天北京时间 06:30 构建并跑 `tools/check-site.js`（站内链接、页面体积、图片格式、一叶关卡）；部署默认关闭，须配 `DEPLOY_TOKEN` secret（只注入部署那一步，job 级只有 `HAS_DEPLOY_TOKEN`），并手动运行时勾选或设变量 `AUTO_DEPLOY=true`（定时构建才会部署）；部署是把 public/ 提交到 Whatasiger.github.io（不强推）
-- 文末「继续阅读」（post.ejs，glint.css「文末继续阅读」）：较早 / 较新一篇两张毛玻璃卡片（Hexo 的 `next` 是较早、`prev` 是较新）+ 相关阅读（先取 front matter `related: [abbrlink…]`，再按相同标签补足到 3 篇）；卡片带 `data-title-hop`（标题元素 `data-hop-title`），由 title-hop.ejs 的通用点击处理接上标题一镜到底；悬停即预渲染。配色 `--near-*`
-- 续读的延伸（glint.js 末尾）：首页卡片 / 归档行 / 文末卡片上读到一半的文章挂「读到 x%」胶囊（读续读记录）；目录卡片标题栏显示「本章约剩 x 分钟」（每分钟约 550 字）；读过的章节在目录里打勾——每篇读到过的最远一块记在 localStorage `whatasiger_read_max`，只沿着连续滚动经过的范围推进、停稳 2 秒才记（拖滚动条、刷新时恢复滚动位置这种一下跳过去的不算；点「继续阅读」那一次跳转算）
-- CARRiER WAVE. 的读者记录：阅读页读到文末（`.cw-end` 进入视口）记入 localStorage `whatasiger_cw_read`，目录页给这些篇目挂 `is-read`（cw.css「已读」）；打开目录页时把已接收的篇目记入 `whatasiger_cw_seen`，首页 CW 卡片（`data-cw-tracks`，来自 `cw_published()`）有没见过的篇目时挂 `has-new` 亮「新信号」（第一次来、没打开过目录页的读者不提示）。CW 另有订阅源 `/carrier_wave/atom.xml`（scripts/carrier-wave.js 生成，篇目无日期，按正文文件修改时间排）
-- 更新日志折叠与更新提示（glint.js 末尾，glint.css 同名一节）：「关于网站」页的版本标题可折叠，只展开最新一版（挂「最新」），从目录点到收起的版本会自动展开，`#changelog-latest` 滚到最新一版。footer.ejs 在 glint.js **之前**写 `window.GLINT_RELEASE`（从「关于网站」原文取最后一条 `#### **版本名**（日期）`）；老读者（localStorage `whatasiger_seen_release` 与之不同）在非阅读页底部浮出一次「更新到了「版本名」」，第一次来的只记下。**同一版本名下追加内容不会触发提示，发新版（改版本名或日期）才会**
-- 写作统计页 `/stats/`（`source/stats/index.md`，layout `stats`，glint.css「写作统计」）：构建时统计——四个大数字、逐年字数柱、按标签横条、写作日历（年 × 月热力格，五级）、最长的几篇；图都是单一色相（`--arc-accent`），悬停有提示、附表格视图。`stats` 与 `gizmo` 一样不算阅读页（`layout.ejs` / `header.ejs` / `head.ejs` 三处的判断都排除了它）。CW 字数来自 `cw_stats()`。入口在归档页标签条末尾与页尾「标签云」卡片的计数
-- 正文 Markdown 外观（glint.css「正文（文章 / 独立页面）的 Markdown 外观」，白天在第 8 节，变量 `--md-*`）：链接平时无下划线，悬停时下划线（background 渐变）从左划出、移走时向右滑走——靠「悬停定位在左 / 平时定位在右、只过渡宽度」实现，带 class 的卡片链接、脚注标号与回跳、包图片的链接不接管；表格用 `border-collapse: separate`，表头是首尾圆角的整条色块（夜间更深、白天更白），行间只有浅灰细线画在 td 上（kico 画在 tr 上的边框在 separate 下不生效）
-- 字数显示：满一万写「x.x 万字」，不足一万取整到百（post.ejs、文末卡片、归档时间线口径一致，数据是 hexo-symbols-count-time 写入的 `page.length`）
-- 站点图标：`static/img/icon.png`（512）、`apple-touch-icon.png`（180）、`icon-192.png`，manifest 在 `source/site.webmanifest`
-- 打印样式在 glint.css「打印样式」：只印标题、正文、标签与脚注，白底黑字；新增浮层 / 常驻控件时把它加进打印隐藏列表
-- 无头浏览器截图时页面常卡在 loading（外部脚本），DOMContentLoaded 绑定的交互不会生效
-
-## 更新日志
-- 写在 `source/about-website/index.md` 最底部，格式：`---` 分隔 + `#### **版本名**（YYYY-MM-DD）`（自 Ciel 起版本以名字称呼，之前是 GA x.y） + 简短中文列表（可二级缩进），口吻面向读者、不写实现细节。可参考学习近几次更新日志的措辞
-
-## 文章 front matter 约定
-title / abbrlink（数字短链）/ alias / tag / cover / description / hideIndex: true（不上首页）
-
 ## 规则
 - 不要改动文章正文内容，除非我明确要求（这是我的创作）
 - `public/`、`.deploy_git/`、`db.json` 是生成物，不要编辑
-- 若在工作过程中，以上描述内容存在变化，或有新增值得注意的要点，可以添加或修改该 AGENTS.md。对于代码内的注释同理
+- 部署、源码发布只在我明确要求时执行
+- 若无特殊说明，前端改动只做在 Glint（`themes/glint`），Origin（`themes/origin`）冻结、不同步
+- 维护本文件：
+  - 改动让本文件某处描述失效时（改名、挪位置、删功能），顺手改正或删掉那一条
+  - 只有满足以下之一才新增条目：① 不看本文件就容易做错、且看代码不易察觉的约束（写成「不要……」「须同时改……」）；② 改完必须执行的步骤（重跑脚本、加版本号）；③ 跨多个文件、单看一处找不全的关联（如同一判断分布在三个模板）
+  - 不要写进来：单次 Bug 的经过与排查过程、实测数值、纯视觉参数（尺寸、时长、配色）、「原先……现在……」的变迁、看代码一眼就知道的实现细节；需要的话写进相关代码的注释
+  - 每条尽量一两句，写「是什么 / 在哪 / 不要怎样」，原因最多半句；优先合并进已有条目或「通用前端约定」，不要另起长段
+  - 代码注释同理：写约束和原因，不写修改历史
+
+## 常用命令
+- `npm run server`：本地预览（只有 Glint，未压缩源码）
+- `npm run build`：生成 Glint + Origin，最后 `tools/minify.js` 用 esbuild 压缩 `public/` 下各 `static/` 的 CSS / JS（保留文件头署名注释，压缩失败即构建失败）。生成一律带 `--force`，**不要去掉**（`hexo s` 会把新哈希写进 `db.json`，不带 force 时 `public/` 会留下旧文件）
+- 预览两套界面：`npm run build` 后 `npx hexo server -s`
+- 部署：先 `npm run build`，再 `npm run deploy`（hexo-deployer-git → Whatasiger.github.io main）；**不要只跑 `hexo generate` 就部署**（Origin 不会更新）
+- 源码发布（Whatasiger/Whatasiger.XYZ main）与部署分开：`npm run source:preview` 离线列出待推内容；人工审核、手动提交且工作区干净后，经我授权才执行 `npm run source:publish -- --confirm --review <完整HEAD SHA>`（工具不 add / commit，遇敏感路径拒绝）
+- `npm run clean`
+
+## 两套界面：Glint / Origin
+- **Glint**（`themes/glint`，站点根路径，当前设计）与 **Origin**（`themes/origin`，改版前界面，生成在 `/origin/`），同一份 `source/`、`scripts/` 生成两遍：`tools/build-origin.js` 叠加 `_config.build-origin.yml`（root `/origin/`、输出 `public/origin/`、缓存 `.origin-build/`）；图片只在根路径放一份
+- 切换：两套各自的 `_partial/ui-switch.ejs`（`<head>` 最前），选择存 localStorage `whatasiger_ui`，不符时跳到另一套的同一路径
+- Origin 页面 `noindex`，canonical 指向 Glint；订阅源 / 站点地图指向根路径。Origin 只为能在 `/origin/` 下工作做过必要改动（绝对路径改 `url_for`、加切换项）
+- **CARRiER WAVE. 与界面无关**：只在 Glint 根路径生成一份，Origin 里的链接写死 `/carrier_wave/`，CW 页面不引用 ui-switch
+- Glint 原名 hingle（基于 Dreamer-Paul 的 Hingle），已更名为 `glint.css` / `glint.js` / 构造函数 `Glint`；对 Hingle 的署名（页尾、文件头、README、LICENSE、关于页）须保留。Origin 的 `hingle.*` 不改名
+
+## 内容与数据
+- 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）。front matter：title / abbrlink（数字短链）/ alias / tag / cover / description / hideIndex: true（不上首页）/ related: [abbrlink…]
+- 地址一律带结尾斜杠（`pretty_urls` 两项为 false），站内链接写 `/about-me/`
+- 不进站点地图的页面写 `sitemap: false`
+- 图片统一 webp，放 `source/images/webp/`；外链图用 `tools/external_images_to_webp.py` 转换。正文 `<img>` 由 `scripts/lazy-images.js` 构建期加懒加载与宽高，不要再用 JS 换 src
+- 自定义扩展在 `scripts/`：脚注、quote-box、hide-from-index、友链抓取、`asset_url`、搜索索引、卡片封面等
+- 更新日志：`source/about-website/index.md` 最底部，`---` 分隔 + `#### **版本名**（YYYY-MM-DD）` + 简短中文列表（可二级缩进），口吻面向读者、不写实现细节，参考近几次措辞。自 Ciel 起版本以名字称呼，之前是 GA x.y
+- 发版：Logo 版本名写死在 `header.ejs` 的 `.header-logo-ver`，手动改并重取 `Glint UI` 子集。更新提示：footer.ejs 在 glint.js **之前**写 `window.GLINT_RELEASE`（取更新日志最后一条），与 localStorage `whatasiger_seen_release` 不同时在非阅读页浮出一次；**同一版本名下追加内容不会触发，改版本名或日期才会**
+
+## 需要重新生成的东西
+- **卡片封面**：新增 / 更换封面或默认背景后重跑 `tools/card-covers.py`（生成 `source/images/webp/card/<名>.webp`、`@2x`、`@thumb`；模板经 `card_cover()`（`scripts/card-cover.js`）写成内联 `image-set`，原图不比该档宽多少时回退原图；原图地址记在 `data-cover`，悬停预烤文章页背景用它）
+- **首页背景缩略图**：`py -3.9 tools/bg-thumbs.py`（`source/images/webp/thumb/` 同名文件）
+- **图标**：Font Awesome 4.7 不外链，由 `tools/fa-subset.py` 扫描用到的图标（模板 / 脚本 / md / yml 的 `fa-xxx`、`menu_icons`、gizmo.yml 的 icon、glint.css 的 `content: "\fxxx"`）切子集内联在 `static/fa/fa.css`（原版字体在 `tools/fa-src/`），**新增图标后重跑**，否则显示空白
+- **顶栏字体 `Glint UI`**（`_partial/ui-font.ejs`）：顶栏 / 导航改字（含版本名）后跑 `py -3.9 tools/ui-font.py [追加的字]`（走 Google Fonts；loli.net 镜像对 text= 子集返回 EOT，不能用）
+- **CW 标题字体 `CW Title`**（`_partial/cw-title-font.ejs`）、**预告手写字 `CW Soon`**（`_partial/soon-font.ejs`）同为子集，改字须重取
+- **一叶**：改关卡后跑 `node tools/yiye-solve.js` 检验可解并参考 par（求解器只模拟「停稳再点」，步数是上界）；改 `game.js` / `sim.js` 后把 `index.html` 里的 `?v=` 加一
+
+## 通用前端约定（Glint）
+- 样式在 `themes/glint/source/static/glint.css`，按「0 变量 / 1 夜间 / 2 页眉 / … / 8 白天配色」分节，中文行尾注释
+- 引用主题 CSS / JS 一律 `<%- asset_url('static/xxx.js') %>`（带内容哈希 `?v=`），不要写死路径或用 `css()` / `js()`；CW 的 cw.css / cw.js 同样
+- 大段脚本不要内联进每页 HTML，做成 `static/` 外链；只把首帧前必须执行的少量逻辑内联
+- **主题色**：用第 0 节色阶 `--tc-ice / pale / light / glow / soft / main / dim / deep / ink / warm / warm-deep`，半透明写 `color-mix(in srgb, var(--tc-x) N%, transparent)`，**不要写死蓝色 hex / rgba**。其他主题由 `html[data-accent]` 换 `--tc-h`（OKLCH 只换色相）；新增主题色要同时改第 0 节与 `header.ejs` 的 `accents`。CW 页面不加载 glint.css
+- **日夜**：`body.dark-theme` 为夜间。只改白天写 `body:not(.dark-theme) …` 集中在第 8 节，夜间用 `.dark-theme …`。首帧判断在 `header.ejs`：本次浏览点过日月按钮（sessionStorage `theme-pick`）就照它，否则按设置 `themeMode`（`dark` 默认 / `light` / `auto` 跟随系统）；结果写 sessionStorage `theme`（一叶等独立页面读它）并改 `<meta name="theme-color">`。glint.js `setDark()` 切换、`night()` 是日月按钮（写 `theme-pick`），改模式时清掉 `theme-pick`
+- **毛玻璃**：
+  - 浮层卡片共用 `--glass-*`（squircle 圆角，展开 `--ease-spring`、收起 `--ease-exit`），新增浮层沿用
+  - 带 backdrop-filter 的元素不能嵌套（所以浮层放在 `<header>` 外）；祖先透明度 < 1 时其中的毛玻璃失效，入场动画挂在玻璃元素自身
+  - 常驻屏上的毛玻璃在第 7 节开头统一减半模糊、去 saturate，新增的照此处理
+- **动画性能**：悬停 / 过渡只动 transform / opacity，不要过渡 `box-shadow`、`filter`、渐变位置（投影用两层伪元素交叉淡化）。图片只写在元素内联 `background-image` 上，不要经 CSS 变量传 `url()`。独立属性 `translate`/`scale` 与 `transform` 不要混用同一属性。入场动画别用 `both` 填充去碰悬停要过渡的属性，用 `backwards`
+- **canvas 烤图**一律导出无损 PNG（有损 WebP 暗部出方块）、加 ±1 级抖动噪点去色带
+- 滚动处理用 glint.js 的 `onScrollFrame(fn)` 登记
+- 根滚动：`html { overflow-x: hidden; scrollbar-gutter: stable }` + `body { overflow-x: clip }`，不要让 html、body 同时 hidden，不要去掉 scrollbar-gutter
+- kico.css 会给 checkbox 加伪元素方框、给 range 加 overflow / min-height，新增表单控件注意覆盖
+- 「一排选项 + 一枚强调框」的控件接入 `window.glintDragPick`（拖动选择），横向拖动的控件写 `touch-action: pan-y`
+- 有副作用的脚本（计数、上报）等页面真正激活（`document.prerendering` 为假 / `prerenderingchange`）后再执行；评论等重活等 `window.vtSettled`
+- 新增浮层 / 常驻控件加进 glint.css「打印样式」的隐藏列表
+- 读正文文字用 `textContent`，不要用 `innerText`（等字体期间正文 visibility: hidden，会取到空串）
+
+## 页面类型
+- 阅读页 = 文章与独立页面（`body.post-page`）。`gizmo` / `stats` / `soon` 三种 layout 不算阅读页，判断分布在 `layout.ejs`（`isReading`）、`header.ejs`（`isArticle`）、`head.ejs`，新增同类 layout 三处都要排除；这些页面底栏只留版权
+- 有目录的阅读页由 `layout.ejs` 服务端挂 `has-trees`（与 glint.js `tree()` 判断一致）
+
+## 背景
+- `body:before` 伪元素，由 `--page-bg-image` / `--bg-opacity` / `--bg-blur` 控制；有 cover 的文章由 `head.ejs` 服务端把封面写进 `--page-bg-image`（「关于网站」除外）
+- 阅读页首帧就挂 `.bg-faded`、模糊度直接取最终值（`header.ejs`），**不要改回进页后靠过渡变淡**
+- 烘焙：glint.js `bgBake` 把模糊背景用 canvas 烤成 blob 图，body 挂 `.bg-baked`（不再挂 blur 滤镜），桌面与手机都烤。改背景层滤镜时同步 `.bg-baked` / `html.bg-prebaked` 的规则。换图前 `whenBgIdle()` 等背景过渡走完且 `no-bg-transition` 已撤掉；glint.js 初始化时 `--bg-blur` 已由 header.ejs 设过就不再覆盖
+- 预烤交接：首页卡片进视口时 `bgBake.prebake()` 按目标页模糊度烤好，存 sessionStorage `glint-bg-prebake`；目标页 `head.ejs` 首帧前比对，对得上就挂 `html.bg-prebaked`。文章卡片与 CW 预告卡片已接入，**今后新增「跨页过渡进入用模糊背景的页面」都要接预烤**（否则过渡全程是实时模糊，边缘一圈暗边）
+- 首页背景切换：篇目 `source/_data/backgrounds.yml`（可写 `artist` / `link`，主题 `background` 须在其中；首项「每日轮换」`@daily`，head.ejs 与 glint.js `todayId()` 同一算法）。所选存 localStorage `whatasiger_home_bg`（选默认即删除），写成 head 里的 `#bg-choice` 覆盖 `--page-bg-image`：`head.ejs` 首帧前对所有用主页背景的页面套用（有封面的文章不受影响），glint.js `setupBgSwitch()` 运行时切换并让 bgBake 重烤。缩略图等打开浮层 / 导航卡片才加载，原图选中后才加载、解码好再换（`body.bg-swapping`）。署名 `.bg-credit` 只在桌面浮层显示（手机导航卡片里按用户要求不显示）。入口：导航横排时右上角 `.bg-dock` → `.corner-morph` 浮层（按钮形变成卡片，尺寸变量 `--corner-btn` / `--corner-pad`，由 glint.js `cornerMorph()` 量好写入，不进 `.on-top` 层级），收起时为导航卡片里的 `.head-menu-bg`（div，不进导航测量）；磁贴共用 `_partial/bg-tiles.ejs`
+
+## 顶栏、导航与设置
+- 顶栏配色 `--hd-*`（挂在 body 上；第 2 节夜间、第 8 节白天）
+- 导航收起不按断点，由 `header.ejs` 紧跟 nav 的内联脚本实测（会碰到 Logo / 搜索框或宽 < 600px 时挂 `html.nav-collapsed`）。相关 CSS 用 `html.nav-collapsed` / `html:not(.nav-collapsed)`，不要写进 600px 媒体查询；改 `.head-menu > a` 的 padding / margin-right 须同步脚本里的 `PAD` / `SPACE`。设置面板仍按 600px 切换。收起判断的 MutationObserver 只在 body 内联 `font-family` 变了时重算
+- 桌面导航强调框 `.head-menu-pill` 由脚本写 `--pill-x/--pill-w`；Gizmo 磁贴 `.head-menu-gizmo`、背景 / 沉浸磁贴不参与测量与强调框。「归档」的当前页也包括标签页、年月归档页
+- 手机端导航图标在主题 `_config.yml` 的 `menu_icons`
+- 沉浸模式（设置项 `immersive`）：glint.js `setupImmersive()` 下滑挂 `html.header-hidden`，参数 `REVEAL_WINDOW / REVEAL_DISTANCE`
+- 设置面板（`header.ejs`，放在 header 外；设置存 localStorage `whatasiger_reader_settings`）：「外观」「阅读」两页；控件只用 `.settings-chip`（开关）、`.settings-tile`（两两并排的滑动条）、`.settings-segment`（分段），新增设置项照此放进对应页，**不要再加长列表**。滑动条是 glint.js `makeSlider()`（配置 `GS_SLIDERS`，部件为 `gs-*` 自定义元素，避开 `.settings-row span` 等规则），拖动时每帧最多应用一次（`applySoon`）、松手才写存储；字重松手吸附到档位（`snap`）；排版类拖动期间撤掉正文 `.is-laid-out`，背景类挂 `body.bg-tuning` 撤掉背景层过渡。「背景模糊」分首页 / 阅读页两项，只改设置不改当前页
+- 已按用户要求删除、**不要再加回**：「回到顶部」按钮、「显示回到顶部」「隐藏背景图片」开关、文末作者 / 版权信息块、手机端阅读页玻璃底板、桌面右下角目录开关
+- 两个浮层同时打开时由 glint.js `bringToFront` 挂 `.on-top`
+
+## 字体
+- 阅读页等字体：`head.ejs` 给 html 挂 `page-loading`（`main` / 迷你目录隐藏、入场动画暂停），`document.fonts.ready` 后撤掉（最多 1.2s，选系统字体不等）；卡片一镜到底时由 `post-vt.ejs` 在 pagereveal 调 `pageReveal()` 立即撤掉。样式在 glint.css「阅读页等字体」
+- 顶栏与导航先用内联子集 `Glint UI`；选系统字体时 html 挂 `font-system`
+- 正文宋体选中才加载（head.ejs 首帧与 glint.js `loadSerif` 两处地址一致）；排版变量 `--reader-*`（第 0 节），首帧由 header.ejs 写好
+
+## 首页
+- 博主卡 `.home-hero`（`index.ejs` + `_partial/social.ejs`）：一整张毛玻璃，里面不能再用毛玻璃；配色 `--hero-*`；座右铭在 `index.ejs` 顶部 `motto`；社交图标用 SVG mask + `currentColor`（照 `.fa-xxx-icon` 写）；`.home-title` 归档页也在用，首页专属样式限定 `.home-hero`
+- 文章卡片结构：`.post-card-shadow`（投影）、`.post-card-bg > .post-card-zoom > .post-card-img ×3`（原图 / 轻模糊 / 重模糊，由 glint.js `setupCardBlur()` 烤图）、`.post-card-light`（细边与悬停高光，光斑只平移不缩放，不要加小而亮的光芯）；卡片本身不裁切。倾斜由 `setupCardFloat()` 写内联 transform（透视须与 CSS 一致）。前两张卡片封面直接内联，其余写 `data-bg-style` 进视口附近才写上
+- 首页内容 `user-select: none`、链接图片不可拖动（划水面用）
+- 水波纹 `static/water-ripple.js`（WebGL2）：静水时须与 CSS 背景一致，改背景层叠方式要同步这里；尺寸按画布 / `body:before` 实际大小量，**不要用 `innerWidth / innerHeight`**（含 scrollbar-gutter）；物理网格按 CSS px 定格宽（`minCell`）；`stiffness` 必须 < 2，物理通道用 texelFetch 取格并钳位（否则个别手机 GPU 发散成满屏泛白）；触摸参数 `TOUCH_SLOP / TOUCH_HOLD`
+- Gizmo 叶片 `.gizmo-leaf`（`static/gizmo-leaf.js`，图形 `_partial/gizmo-leaf-svg.ejs`，与 Gizmo 页 `.gizmo-emblem`、一叶的叶子共用同一路径）：仅导航横排时显示，借 `window.waterRipple` 激发 / 采样水面，参数在 CFG
+- 首页沉浸：glint.js `setupHomeZen()` 挂 `html.home-zen`，sessionStorage `glint-home-zen`；样式「首页沉浸」
+- TO DO 抽屉（`_partial/todo-sidebar.ejs` + `static/todo-sidebar.js`）：只位移外层 `.todo-drawer`；条目按 `--i` 依次浮现（模板与脚本都要写）；封面 `data-src` 首次展开才加载；收起时 `inert`；设置关掉时不请求 Bangumi
+- 周榜：`/todo.json` 构建时生成（Origin 不生成），`.github/workflows/todo.yml` 每天北京时间 06:30 不重建、只替换线上 `/todo.json`（`tools/todo-refresh.js`；榜单没变不提交，抓取失败则运行失败、线上留旧榜；同样要 `DEPLOY_TOKEN`），抓取逻辑 `tools/todo-fetch.js` 与 `scripts/todo-sidebar.js` 共用；页面读到更新的 `fetchedAt` 才换上，本地 deploy 覆盖线上那份无妨
+
+## 跨页过渡（View Transitions）
+- **`vtFlip`**（`_partial/vt-flip.ejs` → `static/vt-flip.js`，须在各页 pagereveal 脚本之前引入）：取消浏览器默认组动画，改为只动 transform 的动画（合成线程）。调用 `vtFlip(vt, { 名字: { old, new, radius, el, box } })`：
+  - 每个名字写上新页对应元素的选择器 `el`，移动时按新终点重建动画并沿用 `startTime`；**不要改成 `setKeyframes` 原地改写，也不要用 `currentTime` 接续**
+  - `el` 为返回矩形的函数时须同时写 `box`（坐标基准不同，手机地址栏会让终点错位）；过渡中视口高度变了（地址栏在新页激活后才挤进来）终点按 `innerHeight` 的差值下移，**不要删**
+  - 只在旧页存在的层用 `{ follow: 领头名, how: 'box' | 'content' }`
+  - 组的 transform 是「旋转 + 等比缩放 + 平移」时角度一并过渡，其余按外接矩形
+  - 带过渡名的元素与 root 在过渡中应保持静止（入场动画要关掉），否则每帧重截快照；过渡名尽量只在离场时临时挂上；新加过渡名时同步写快照显示方式与 `el`
+- **首页 → 文章**（只做这一方向，离开文章页的其余跳转一律 skip）：卡片是 `<a>`，speculation rules 悬停 / 按下即 prerender，另 prefetch 视口上下各一屏的卡片（`head.ejs`，Save-Data / 2G 不预取），触屏滚动停下后预渲染屏幕中央那张。按下即挂 `is-pressed`（与 CW 卡片同一套 `pressable()`）。不蒜子由 `footer.ejs` 在页面激活后才加载。pageswap 的 `leaveToPost` 给被点卡片各层挂 `post-cover` / `post-title` / `post-shadow` / `post-light` / `post-info`；**离场前不要再改卡片画面**（截图就在下一帧，会截到黑底或残图）。文章页 `_partial/post-vt.ejs` 挂 `vt-from-card` / `vt-card-in`，全屏空层 `.vt-cover` 接封面、`h2` 接标题；模糊由新页给：背景已是烤好的图时挂 `vt-cover-live`，`.vt-cover` 画上那张图与卡片快照一起放大、淡入后淡出，否则只放大卡片快照；圆角裁切在 image-pair 上（`post-vt-unround`，时长缓动与组一致）；过渡期间 `body:before` 去掉 transition。`<link rel="expect" href="#vt-post-title" blocking="render">` 不能删。编排在 glint.css「文章卡片一镜到底」
+- **首页 → CW 目录页**：预渲染目录页；`head.ejs` 离场挂 `cw-leaving` 并写 `cw-wave-hop` 对准载波，目录页画布在 `cw-from-home` 期间定格；载波终点用 cw.js 的 `cwCarrierRect`；首页 CW 卡片的过渡名只在 `html.cw-leaving` / `html.cw-back` 时挂；圆角裁切在 `::view-transition-image-pair(cw-stage)`（`cw-vt-unround`，时长缓动与组一致）
+- **首页 → Gizmo**：`leaveToGizmo` + `_partial/gizmo-vt.ejs`（sessionStorage `gizmo-leaf-hop`）；内容在 `gizmo-from-leaf` 期间隐藏，常驻的 `gizmo-leaf-in` 关掉入场动画
+- **首页 → CW 预告页**：`leaveToSoon` 挂 `html.soon-leaving` + `_partial/soon-vt.ejs`（sessionStorage `soon-hop`），过渡名 `soon-sheet / soon-tape / soon-wave / soon-title / soon-hand`，其余碎片等 `soon-scraps-wait` 撤掉后落下；常驻的 `soon-card-in` 关掉带名元素的入场，过渡期间背景不走模糊度过渡。所有碎片单独挂名、组的 z-index 照抄画板层叠（留在 root 里会被底片压住）；纸条快速不透明放下（不要改回慢淡入）；手写字换墨窗口保持短（0.2s）。编排在 glint.css「CW 预告页」末尾
+- **标题一镜到底**（`_partial/title-hop.ejs`）：搜索结果 / 归档 / 文末卡片点进文章时标题飞到正文标题处；各页 pageswap 先调 `takeTitleHop(e)`（首页 head.ejs、post-vt.ejs、gizmo-vt.ejs 已接入；其余页面由 title-hop.ejs 声明 `@view-transition` 并默认跳过），文章页挂 `vt-from-hop`；新增「点标题进文章」的列表照此接入（`data-title-hop` / `data-hop-title`）
+- CW 篇目之间靠 `view-transition-name: cw-t-<slug>`；文末翻页篇名只在经它跳转时临时挂名
+- 正文直接子 `p` 带 `content-visibility: auto` 加快首帧，`vtSettled` 后挂 `.is-laid-out` 撤掉；跳转定位前须先整篇排好
+- 诊断：`vt-debug.ejs`（平时一行判断，开启才载入 `static/vt-debug.js`）；localStorage `cw-vt-slow` 设倍数可慢放。经 Chrome 扩展测试时过渡常因视口抖动被中止，逐帧审视用无头 Chrome + CDP `Animation.setPlaybackRate`
+- 日夜切换在支持视图过渡时从日月按钮圆形扩散（`html.theme-flipping`）
+
+## 阅读页
+- 玻璃底板画在 `.reading-sheet` 与 `.post-comments` 的 `::before` 上，配色 `--sheet-*`；**不要给 `.wrap`、`.reading-sheet`、`.post-comments` 本身加 backdrop-filter / filter / transform / 透明度动画**（会让 fixed 的目录错位、毛玻璃失效）。手机端（≤ 599px）不用底板
+- 文章目录 `.article-list`（glint.js `tree()`）：`--glass-*` 卡片 + 竖线轨道，配色 `--toc-*`；收起为右上角迷你目录 `.toc-mini`，开合由 tocMorph 用 `.toc-ghost` 替身线条形变，状态以类名为准。桌面端让位只给 `main` 和 `footer` 加 `padding-right`（**不要用 body 的 margin-right**），卡片本身不加 opacity / transform 动画，不要给 `.wrap` 做 translate FLIP
+- 续读（glint.js 末尾）：按「正文第几块 + 块内比例」记在 localStorage `whatasiger_read_progress`，`vtSettled` 后浮出 `.resume-bar`；读过的最远位置记在 `whatasiger_read_max`（目录打勾、「读到 x%」胶囊）
+- 脚注预览 `setupFootnotePeek`；图片灯箱在 glint.js 末尾（取代 kico 的 `ks.image`）；更新日志折叠在 glint.js 末尾
+- 正文 Markdown 外观见 glint.css 同名一节（变量 `--md-*`）：链接悬停下划线不接管带 class 的卡片链接、脚注标号与回跳、包图片的链接；表格用 `border-collapse: separate`，行线画在 td 上（kico 画在 tr 上的边框此时不生效）
+- 文末「继续阅读」（post.ejs，配色 `--near-*`）：Hexo 的 `next` 是较早、`prev` 是较新；相关阅读先取 `related`，再按标签补足到 3 篇
+- 字数显示：满一万写「x.x 万字」，不足一万取整到百（各处口径一致，数据来自 `page.length`）
+- Quote Box 折叠用 grid 行高 `min-content 1fr ↔ 0fr`，顶栏行必须 `min-content`
+
+## 其他页面与功能
+- **底栏**（`_partial/footer.ejs`）：底板自带毛玻璃，三张 `.footer-card` 不再嵌套模糊；配色 `--footer-*`
+- **站内搜索**（glint.js `local_search`）：索引 `scripts/search-index.js` → `/search.json`，首次聚焦才下载；`search.xml` 留给 Origin，不要删
+- **归档 / 标签页**（`layout/archive.ejs`，「归档时间线」，配色 `--arc-*`）：不分页（`_config.yml` 的 `archive_generator` / `tag_generator` per_page: 0）
+- **写作统计** `/stats/`（layout `stats`，「写作统计」）：构建时统计，CW 字数来自 `cw_stats()`
+- **Gizmo** `/gizmo/`（layout `gizmo`，篇目 `source/_data/gizmo.yml`，加东西只改数据）：独立小玩意放 `source/gizmo/<名字>/`，`skip_render` 原样输出；自包含、相对路径（返回写 `../`）。示范《一叶》`source/gizmo/yiye/`：`sim.js` 纯物理（无 DOM、确定性）、`game.js` 画面输入、进度 localStorage `whatasiger_gizmo_yiye`，首帧读博客主题色与 sessionStorage `theme`
+- **订阅源**：`scripts/feed-stylesheet.js` 给 `atom.xml` / `rss2.xml` / `carrier_wave/atom.xml` 插入 `/feed.xsl`（`source/feed.xsl`，XSLT 1.0，Origin 不含）
+- **评论**：`static/comments.js`（defer，接近视口才加载 Twikoo，`vtSettled` 之后）
+- 站点图标在 `static/img/`，manifest `source/site.webmanifest`
+
+## CARRiER WAVE.（【特殊】短篇辑）
+- 正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/carrier-wave.js` 单独生成；页面不加载 glint.css
+- 暂时隐藏入口：`carrier_wave.yml` 顶部 `hide_entry: true`（**不能叫 `hidden`**，文件里已有同名键，重复会让整个文件解析失败）。此时首页显示预告卡片 `.cw-card.is-soon`，点进 `/carrier_wave/soon/`（layout `soon`，glint.css「CW 预告页」），`search.json` 不收录（`cw_hidden()`），CW 页面照常生成；Origin 首页不显示卡片。预告卡片只接 `pressable`、不预取目录页；预告页背景用「阅读页」那项模糊度，拼贴画板按 cqi 等比缩放、窄屏另一套位置。删掉该行或改 false 即恢复（预告页随之转去目录页）
+- 目录页载波画布 `.cw-wave` 是 280px 高的窄带，由 cw.js 用 transform 跟随中线；阅读页标题字号按 `--len` 自动缩小
+- 读者记录：读完记 localStorage `whatasiger_cw_read`（目录 `is-read`）；见过的篇目记 `whatasiger_cw_seen`，首页卡片（`data-cw-tracks`，来自 `cw_published()`）有新篇目时挂 `has-new`
+- 订阅源 `/carrier_wave/atom.xml`：篇目无日期，按正文文件修改时间排
+- 视觉更新前的备份在 `.backup/carrier-wave-2026-10-23/`（见 RESTORE.md）
+
+## CI
+- `.github/workflows/site.yml`：push / PR 时构建并跑 `tools/check-site.js`；部署须配 `DEPLOY_TOKEN`（只注入部署那一步，job 级只有 `HAS_DEPLOY_TOKEN`）且手动运行时勾选，部署是提交 public/ 到 Whatasiger.github.io（不强推）。**不要加定时整站部署**（源码仓库常落后于线上，会把线上改回旧版）
+
+## 调试提示
+- 无头浏览器截图时页面常卡在 loading（外部脚本），DOMContentLoaded 绑定的交互不会生效
