@@ -51,7 +51,7 @@ var Glint = function (config) {
         letterSpacing: 3,      // 字间距（-2 ~ 8，单位 0.01em，滑动条无级）
         fontSize: 100,         // 字号百分比（90 ~ 130，滑动条无级）
         bgOpacity: 55,         // 背景可见度默认 55%（设置滑块按一半数值显示）
-        bgBlur: 8,             // 阅读页（及 CW 预告页）的背景模糊度（0~20px），默认 8px
+        bgBlur: matchMedia("(min-width: 600px)").matches ? 4.5 : 8, // 阅读页（及 CW 预告页）的背景模糊度（0~20px）：桌面端有玻璃底板托着，默认更轻；须与 header.ejs、head.ejs 一致
         homeBlur: 0,           // 首页（及归档等其余页面）的背景模糊度（0~20px），默认清晰
         accent: "blue",        // 主题色：blue（天青）/ lavender / sakura / mikan / wakakusa / mint，见 glint.css 第 0 节
         themeMode: "dark",     // 日夜：dark 夜间（默认）/ light 白天 / auto 跟随系统；日月按钮只是本次浏览中临时切换
@@ -252,7 +252,16 @@ var Glint = function (config) {
         // 结果以 data URL 存进 sessionStorage（一个数组，新的在前，最多 6 张 / 约 2.4M 字符），供下一页首帧使用；
         // 它同时是一镜到底里封面组的模糊层（post-vt.ejs），所以卡片一进视口就烤，不等悬停 / 按下
         // 只比对图、模糊度、视口宽度：手机地址栏伸缩会改视口高度，而背景按 cover 铺、差一点高度无妨（head.ejs 取用时同样放宽）
-        var prebaking = {};
+        // 已烤好的条目在内存里记一份（标识同 tag）：悬停卡片时每次都要查，不能每次从 sessionStorage 读出几 MB 再 JSON.parse——
+        // 那是同步的主线程长活，正赶上刚开始的悬停过渡时，会让离开时的回程过渡被跳过（卡片硬切回原样）
+        // 只有首页会写这个列表；从往返缓存回来时别的首页实例可能改过，作废重读
+        var prebaking = {}, prebaked = null;
+        function prebakeTag(p) { return p.src + "|" + p.blur + "|" + p.w; }
+        function rememberPrebaked(list) {
+            prebaked = {};
+            list.forEach(function (p) { prebaked[prebakeTag(p)] = 1; });
+        }
+        window.addEventListener("pageshow", function (e) { if (e.persisted) prebaked = null; });
         function prebakeList() {
             try {
                 var list = JSON.parse(sessionStorage.getItem(PREBAKE_KEY));
@@ -262,9 +271,10 @@ var Glint = function (config) {
         function prebake(src, from, blur) {
             if (!src || !(blur > 0)) return;
             var w = window.innerWidth;
-            var tag = src + "|" + blur + "|" + w;
+            var tag = prebakeTag({ src: src, blur: blur, w: w });
             if (prebaking[tag]) return;
-            if (prebakeList().some(function (p) { return p.src === src && p.blur === blur && p.w === w; })) return;
+            if (!prebaked) rememberPrebaked(prebakeList());
+            if (prebaked[tag]) return;
             prebaking[tag] = 1;
             function end() { delete prebaking[tag]; }
             loadImage(from || src, function (img) {
@@ -281,8 +291,10 @@ var Glint = function (config) {
                         while (list.length > 1 && (list.length > 6 || size() > 2.4e6)) list.pop();
                         try {
                             sessionStorage.setItem(PREBAKE_KEY, JSON.stringify(list));
+                            rememberPrebaked(list);
                         } catch (e) {
-                            try { sessionStorage.setItem(PREBAKE_KEY, JSON.stringify([entry])); } catch (e2) {}
+                            try { sessionStorage.setItem(PREBAKE_KEY, JSON.stringify([entry])); rememberPrebaked([entry]); }
+                            catch (e2) { rememberPrebaked([]); }
                         }
                     };
                     fr.onerror = end;
@@ -1880,7 +1892,7 @@ var Glint = function (config) {
             var max = parseFloat(cs.maxWidth);
             if (!isFinite(max)) return false;
             if (cs.boxSizing !== "border-box") max += parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-            var pad = 19.5 * parseFloat(mcs.fontSize);     // 与 glint.css 第 7 节 main 的 padding-right（17.5em + 2em）一致
+            var pad = 19.5 * parseFloat(mcs.fontSize);     // glint.css 第 7 节 main 让位的封顶值（17.5em + 1em + 2.25em − 1.25em）：放得下整宽 .wrap 时让位总小于它
             return main.clientWidth - parseFloat(mcs.paddingLeft) - pad >= max - 0.5;
         }
 

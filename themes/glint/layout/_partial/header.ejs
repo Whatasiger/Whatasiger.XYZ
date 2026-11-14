@@ -67,8 +67,8 @@
             // 忽略错误，使用默认 0.55
         }
 
-        // 0.2 背景模糊度：设置里分两项——阅读页 bgBlur（默认 8px，CW 预告页也用它）与首页 homeBlur（默认 0，首页、归档等其余页面）
-        var DEFAULT_ARTICLE_BLUR = 8;
+        // 0.2 背景模糊度：设置里分两项——阅读页 bgBlur（默认桌面 4.5px / 手机 8px，CW 预告页也用它）与首页 homeBlur（默认 0，首页、归档等其余页面）
+        var DEFAULT_ARTICLE_BLUR = matchMedia("(min-width: 600px)").matches ? 4.5 : 8; // 与 glint.js defaultSettings.bgBlur 一致
         var savedBlur = DEFAULT_ARTICLE_BLUR, homeBlur = 0;
         try {
             if (readerSettings && typeof readerSettings.bgBlur === "number") {

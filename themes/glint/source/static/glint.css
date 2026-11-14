@@ -157,6 +157,10 @@ body.dark-theme:before {
 body.bg-faded:before {
     opacity: calc(var(--bg-opacity) * 0.2) !important;
 }
+/* 桌面端阅读页有玻璃底板托着正文，背景不必压得那么暗（手机端没有底板，保持上面的值） */
+@media (min-width: 600px) {
+    body.bg-faded:before { opacity: calc(var(--bg-opacity) * 0.5) !important; }
+}
 
 /* 切换首页背景（glint.js setupBgSwitch）：新图解码好后先淡出，换上再淡入 */
 body.bg-swapping:before { opacity: 0 !important; }
@@ -2091,12 +2095,14 @@ html.vt-from-card::view-transition-new(root) { animation: post-vt-in .35s ease-o
    - 两块都不建立层叠上下文，z-index: -1 的伪元素落在根层叠上下文里、排在 body:before 背景图之后，正好压在背景上、内容之下
    - 玻璃即两块的内边距盒；.wrap 的最大宽度加上玻璃左右内边距，正文行宽仍是原来的 50em
    配色走 --sheet-* 变量，这里是夜间（默认），白天见第 8 节 */
+body.post-page {
+    --sheet-pad: clamp(1.25em, 4vw, 2.75em);          /* 玻璃左右内边距：宽屏 2.75em，随视口收窄（挂在 body 上，第 7 节底栏的目录让位也要用） */
+}
 body.post-page main {
     padding: 2em 0 3em;             /* 上下留白，玻璃自身已有内边距，这里比其他页面收一些 */
 
-    --sheet-pad: clamp(1.25em, 4vw, 2.75em);          /* 玻璃左右内边距：宽屏 2.75em，随视口收窄 */
-    --sheet-bg: rgba(20, 22, 28, 0.42);               /* 玻璃底色 */
-    --sheet-filter: blur(22px) saturate(140%);        /* 玻璃模糊 */
+    --sheet-bg: rgba(20, 22, 28, 0.52);               /* 玻璃底色 */
+    --sheet-filter: blur(32px) saturate(140%);        /* 玻璃模糊 */
     --sheet-border: rgba(255, 255, 255, 0.07);        /* 玻璃描边 */
     --sheet-highlight: rgba(255, 255, 255, 0.06);     /* 顶部内高光 */
     --sheet-shadow: rgba(0, 0, 0, 0.45);              /* 投影 */
@@ -4160,9 +4166,19 @@ pre[class*="language-"].line-numbers {
     /* 有目录时正文区右侧让出目录卡片：卡片宽 + 两侧各 1em 间距
        只给 main 留白、不再整个 body 右移：顶栏与底栏仍铺满整宽，目录卡片浮在底栏之上
        （body 设了 overflow-x: clip，任何伸出 body 的做法都会被裁掉） */
+    /* 让位只让到「玻璃右缘与目录卡片之间留出 --toc-gap」为止：宽屏本就放得下时不挪；放不下时只挪差的那一点；
+       再窄、正文开始变窄时封顶在「卡片宽 + 右边距 + 空隙 − .wrap 内边距」。推导：玻璃宽 S、卡片占右侧 R、body 宽 100%，
+       居中时玻璃右缘在 (100% − P + S) / 2，令它等于 100% − R − gap 得 P = S + 2R + 2gap − 100%。
+       改卡片宽 / right、.wrap 内边距或玻璃宽度算法时同步这里；glint.js tocMorph 的 wrapWidthStable 用的 19.5em 即封顶值 */
+    body.has-trees {
+        --toc-gap: 2.25em;          /* 玻璃右缘与目录卡片之间的空隙 */
+        --toc-room: calc(17.5em + 1em);  /* 目录卡片宽 + 右边距 */
+    }
     body.has-trees main,
     body.has-trees footer {
-        padding-right: calc(17.5em + 2em); /* 目录卡片宽 + 两侧间距；底栏背景照样铺满，只是内容与正文同一中线，不钻到目录卡片下面 */
+        padding-right: clamp(0px,
+            calc(var(--reader-width) + 2 * var(--sheet-pad) + 2 * var(--toc-room) + 2 * var(--toc-gap) - 100%),
+            calc(var(--toc-room) + var(--toc-gap) - 1.25em));  /* 底栏背景照样铺满，只是内容与正文同一中线 */
         transition: padding-right 0.5s var(--ease-spring),
                     background-color .5s var(--ease-spring), border-color .5s var(--ease-spring); /* 保留底栏自身的配色过渡 */
     }
@@ -4178,7 +4194,7 @@ pre[class*="language-"].line-numbers {
     .article-list {
         top: calc(3.2em + 1em);     /* 导航栏下方留 1em */
         right: 1em;
-        width: 17.5em;              /* 目录卡片宽度；改动时同步上方 main / footer 的 padding-right */
+        width: 17.5em;              /* 目录卡片宽度；改动时同步上方 --toc-room */
         max-height: calc(100vh - 3.2em - 2em);
     }
 
@@ -7135,6 +7151,9 @@ body.bg-faded:not(.dark-theme):before {
 }
 body.bg-baked.bg-faded:not(.dark-theme):before,
 html.bg-prebaked body.bg-faded:not(.dark-theme):before { filter: saturate(1.5) brightness(1.5); }
+@media (min-width: 600px) {
+    body.bg-faded:not(.dark-theme):before { opacity: calc(var(--bg-opacity) * 0.35) !important; } /* 桌面端有玻璃底板，同第 1 节夜间那条 */
+}
 
 /* 白天模式 body 滚动条轨道 */
 body:not(.dark-theme)::-webkit-scrollbar {
@@ -7207,7 +7226,7 @@ body:not(.dark-theme) .home-hero {
 
 /* 白天模式阅读页玻璃底板：暖白玻璃，投影带一点暖色 */
 body.post-page:not(.dark-theme) main {
-    --sheet-bg: rgba(255, 250, 244, 0.6);
+    --sheet-bg: rgba(255, 250, 244, 0.7);
     --sheet-border: rgba(255, 255, 255, 0.65);
     --sheet-highlight: rgba(255, 255, 255, 0.5);
     --sheet-shadow: rgba(110, 70, 40, 0.22);
