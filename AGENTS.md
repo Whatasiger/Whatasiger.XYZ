@@ -93,7 +93,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 正文宋体选中才加载（head.ejs 首帧与 glint.js `loadSerif` 两处地址一致）；排版变量 `--reader-*`（第 0 节），首帧由 header.ejs 写好
 
 ## 首页
-- 博主卡 `.home-hero`（`index.ejs` + `_partial/social.ejs`）：一整张毛玻璃，里面不能再用毛玻璃；配色 `--hero-*`；座右铭在 `index.ejs` 顶部 `motto`；社交图标用 SVG mask + `currentColor`（照 `.fa-xxx-icon` 写）；`.home-title` 归档页也在用，首页专属样式限定 `.home-hero`
+- 博主卡 `.home-hero`（`index.ejs` + `_partial/social.ejs`）：一整张毛玻璃，里面不能再用毛玻璃；配色 `--hero-*`；座右铭在 `index.ejs` 顶部 `motto`；社交图标用 SVG mask + `currentColor`（照 `.fa-xxx-icon` 写，图形放 `static/img/social/<名>.svg`，不要再内联 data URI）；`.home-title` 归档页也在用，首页专属样式限定 `.home-hero`
 - 文章卡片结构：`.post-card-shadow`（投影）、`.post-card-bg > .post-card-zoom > .post-card-img ×3`（原图 / 轻模糊 / 重模糊，由 glint.js `setupCardBlur()` 烤图）、`.post-card-light`（细边与悬停高光，光斑只平移不缩放，不要加小而亮的光芯）；卡片本身不裁切。倾斜由 `setupCardFloat()` 写内联 transform（透视须与 CSS 一致）。前两张卡片封面直接内联，其余写 `data-bg-style` 进视口附近才写上
 - 首页内容 `user-select: none`、链接图片不可拖动（划水面用）
 - 水波纹 `static/water-ripple.js`（WebGL2）：静水时须与 CSS 背景一致，改背景层叠方式要同步这里；尺寸按画布 / `body:before` 实际大小量，**不要用 `innerWidth / innerHeight`**（含 scrollbar-gutter）；物理网格按 CSS px 定格宽（`minCell`）；`stiffness` 必须 < 2，物理通道用 texelFetch 取格并钳位（否则个别手机 GPU 发散成满屏泛白）；触摸参数 `TOUCH_SLOP / TOUCH_HOLD`
