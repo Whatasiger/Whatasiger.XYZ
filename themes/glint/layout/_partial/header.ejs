@@ -205,15 +205,6 @@
         <div class="settings-panes">
             <div class="settings-pane" id="st-pane-look" role="tabpanel" aria-labelledby="st-tab-look" data-pane="look">
                 <div class="settings-group">
-                    <%# 界面主题：切到 Origin 会跳到 Origin 界面的同一页（见 _partial/ui-switch.ejs） %>
-                    <div class="settings-row">
-                        <i class="fa fa-desktop"></i>
-                        <span>界面</span>
-                        <div class="settings-segment" id="setting-ui" data-value="glint" role="radiogroup" aria-label="界面">
-                            <button type="button" role="radio" data-value="glint" aria-checked="true">Glint</button>
-                            <button type="button" role="radio" data-value="origin" aria-checked="false">Origin</button>
-                        </div>
-                    </div>
                     <%# 日夜：夜间（默认）/ 白天 / 跟随系统；顶栏的日月按钮只在本次浏览中临时切换（header.ejs 开头首帧前判断） %>
                     <div class="settings-row">
                         <i class="fa fa-adjust"></i>

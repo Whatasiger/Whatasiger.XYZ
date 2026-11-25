@@ -6,7 +6,6 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - 不要改动文章正文内容，除非我明确要求（这是我的创作）
 - `public/`、`.deploy_git/`、`db.json` 是生成物，不要编辑
 - 部署、源码发布只在我明确要求时执行
-- 若无特殊说明，前端改动只做在 Glint（`themes/glint`），Origin（`themes/origin`）冻结、不同步
 - 维护本文件：
   - 改动让本文件某处描述失效时（改名、挪位置、删功能），顺手改正或删掉那一条
   - 只有满足以下之一才新增条目：① 不看本文件就容易做错、且看代码不易察觉的约束（写成「不要……」「须同时改……」）；② 改完必须执行的步骤（重跑脚本、加版本号）；③ 跨多个文件、单看一处找不全的关联（如同一判断分布在三个模板）
@@ -15,19 +14,16 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
   - 代码注释同理：写约束和原因，不写修改历史
 
 ## 常用命令
-- `npm run server`：本地预览（只有 Glint，未压缩源码）
-- `npm run build`：生成 Glint + Origin，最后 `tools/minify.js` 用 esbuild 压缩 `public/` 下各 `static/` 的 CSS / JS（保留文件头署名注释，压缩失败即构建失败）。生成一律带 `--force`，**不要去掉**（`hexo s` 会把新哈希写进 `db.json`，不带 force 时 `public/` 会留下旧文件）
-- 预览两套界面：`npm run build` 后 `npx hexo server -s`
-- 部署：先 `npm run build`，再 `npm run deploy`（hexo-deployer-git → Whatasiger.github.io main）；**不要只跑 `hexo generate` 就部署**（Origin 不会更新）
+- `npm run server`：本地预览（未压缩源码）
+- `npm run build`：生成站点，再由 `tools/minify.js` 用 esbuild 压缩 `public/` 下各 `static/` 的 CSS / JS（保留文件头署名注释，压缩失败即构建失败）。生成一律带 `--force`，**不要去掉**（`hexo s` 会把新哈希写进 `db.json`，不带 force 时 `public/` 会留下旧文件）
+- 预览压缩后的站点：`npm run build` 后 `npx hexo server -s`
+- 部署：先 `npm run build`，再 `npm run deploy`（hexo-deployer-git → Whatasiger.github.io main）；**不要只跑 `hexo generate` 就部署**（静态资源不会压缩）
 - 源码发布（Whatasiger/Whatasiger.XYZ main）与部署分开：`npm run source:preview` 离线列出待推内容；人工审核、手动提交且工作区干净后，经我授权才执行 `npm run source:publish -- --confirm --review <完整HEAD SHA>`（工具不 add / commit，遇敏感路径拒绝）
 - `npm run clean`
 
-## 两套界面：Glint / Origin
-- **Glint**（`themes/glint`，站点根路径，当前设计）与 **Origin**（`themes/origin`，改版前界面，生成在 `/origin/`），同一份 `source/`、`scripts/` 生成两遍：`tools/build-origin.js` 叠加 `_config.build-origin.yml`（root `/origin/`、输出 `public/origin/`、缓存 `.origin-build/`）；图片只在根路径放一份
-- 切换：两套各自的 `_partial/ui-switch.ejs`（`<head>` 最前），选择存 localStorage `whatasiger_ui`，不符时跳到另一套的同一路径
-- Origin 页面 `noindex`，canonical 指向 Glint；订阅源 / 站点地图指向根路径。Origin 只为能在 `/origin/` 下工作做过必要改动（绝对路径改 `url_for`、加切换项）
-- **CARRiER WAVE. 与界面无关**：只在 Glint 根路径生成一份，Origin 里的链接写死 `/carrier_wave/`，CW 页面不引用 ui-switch
-- Glint 原名 hingle（基于 Dreamer-Paul 的 Hingle），已更名为 `glint.css` / `glint.js` / 构造函数 `Glint`；对 Hingle 的署名（页尾、文件头、README、LICENSE、关于页）须保留。Origin 的 `hingle.*` 不改名
+## 主题
+- 唯一主题 Glint（`themes/glint`），原名 hingle（基于 Dreamer-Paul 的 Hingle），已更名为 `glint.css` / `glint.js` / 构造函数 `Glint`；对 Hingle 的署名（页尾、文件头、README、LICENSE、关于页）须保留
+- 旧界面 Origin（`/origin/`）已移除，`source/404.html` 把 `/origin/…` 旧链接转回根路径同一页
 
 ## 内容与数据
 - 文章：`source/_posts/`，只用 tag 不用分类（随笔/小说/评析/特殊）。front matter：title / abbrlink（数字短链）/ alias / tag / cover / description / hideIndex: true（不上首页）/ related: [abbrlink…]
@@ -100,7 +96,7 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 - Gizmo 叶片 `.gizmo-leaf`（`static/gizmo-leaf.js`，图形 `_partial/gizmo-leaf-svg.ejs`，与 Gizmo 页 `.gizmo-emblem`、一叶的叶子共用同一路径）：仅导航横排时显示，借 `window.waterRipple` 激发 / 采样水面，参数在 CFG
 - 首页沉浸：glint.js `setupHomeZen()` 挂 `html.home-zen`，sessionStorage `glint-home-zen`；样式「首页沉浸」
 - TO DO 抽屉（`_partial/todo-sidebar.ejs` + `static/todo-sidebar.js`）：只位移外层 `.todo-drawer`；条目按 `--i` 依次浮现（模板与脚本都要写）；封面 `data-src` 首次展开才加载；收起时 `inert`；设置关掉时不请求 Bangumi
-- 周榜：`/todo.json` 构建时生成（Origin 不生成），`.github/workflows/todo.yml` 每天北京时间 06:30 不重建、只替换线上 `/todo.json`（`tools/todo-refresh.js`；榜单没变不提交，抓取失败则运行失败、线上留旧榜；同样要 `DEPLOY_TOKEN`），抓取逻辑 `tools/todo-fetch.js` 与 `scripts/todo-sidebar.js` 共用；页面读到更新的 `fetchedAt` 才换上，本地 deploy 覆盖线上那份无妨
+- 周榜：`/todo.json` 构建时生成，`.github/workflows/todo.yml` 每天北京时间 06:30 不重建、只替换线上 `/todo.json`（`tools/todo-refresh.js`；榜单没变不提交，抓取失败则运行失败、线上留旧榜；同样要 `DEPLOY_TOKEN`），抓取逻辑 `tools/todo-fetch.js` 与 `scripts/todo-sidebar.js` 共用；页面读到更新的 `fetchedAt` 才换上，本地 deploy 覆盖线上那份无妨
 
 ## 跨页过渡（View Transitions）
 - **`vtFlip`**（`_partial/vt-flip.ejs` → `static/vt-flip.js`，须在各页 pagereveal 脚本之前引入）：取消浏览器默认组动画，改为只动 transform 的动画（合成线程）。调用 `vtFlip(vt, { 名字: { old, new, radius, el, box } })`：
@@ -131,17 +127,17 @@ Hexo 8 静态博客，中文内容（小说/随笔/日记/评析），部署到 
 
 ## 其他页面与功能
 - **底栏**（`_partial/footer.ejs`）：底板自带毛玻璃，三张 `.footer-card` 不再嵌套模糊；配色 `--footer-*`
-- **站内搜索**（glint.js `local_search`）：索引 `scripts/search-index.js` → `/search.json`，首次聚焦才下载；`search.xml` 留给 Origin，不要删
+- **站内搜索**（glint.js `local_search`）：索引 `scripts/search-index.js` → `/search.json`，首次聚焦才下载
 - **归档 / 标签页**（`layout/archive.ejs`，「归档时间线」，配色 `--arc-*`）：不分页（`_config.yml` 的 `archive_generator` / `tag_generator` per_page: 0）
 - **写作统计** `/stats/`（layout `stats`，「写作统计」）：构建时统计，CW 字数来自 `cw_stats()`
 - **Gizmo** `/gizmo/`（layout `gizmo`，篇目 `source/_data/gizmo.yml`，加东西只改数据）：独立小玩意放 `source/gizmo/<名字>/`，`skip_render` 原样输出；自包含、相对路径（返回写 `../`）。示范《一叶》`source/gizmo/yiye/`：`sim.js` 纯物理（无 DOM、确定性）、`game.js` 画面输入、进度 localStorage `whatasiger_gizmo_yiye`，首帧读博客主题色与 sessionStorage `theme`
-- **订阅源**：`scripts/feed-stylesheet.js` 给 `atom.xml` / `rss2.xml` / `carrier_wave/atom.xml` 插入 `/feed.xsl`（`source/feed.xsl`，XSLT 1.0，Origin 不含）
+- **订阅源**：`scripts/feed-stylesheet.js` 给 `atom.xml` / `rss2.xml` / `carrier_wave/atom.xml` 插入 `/feed.xsl`（`source/feed.xsl`，XSLT 1.0）
 - **评论**：`static/comments.js`（defer，接近视口才加载 Twikoo，`vtSettled` 之后）
 - 站点图标在 `static/img/`，manifest `source/site.webmanifest`
 
 ## CARRiER WAVE.（【特殊】短篇辑）
 - 正文 `source/_carrier_wave/`，篇目 `source/_data/carrier_wave.yml`，由 `scripts/carrier-wave.js` 单独生成；页面不加载 glint.css
-- 暂时隐藏入口：`carrier_wave.yml` 顶部 `hide_entry: true`（**不能叫 `hidden`**，文件里已有同名键，重复会让整个文件解析失败）。此时首页显示预告卡片 `.cw-card.is-soon`，点进 `/carrier_wave/soon/`（layout `soon`，glint.css「CW 预告页」），`search.json` 不收录（`cw_hidden()`），CW 页面照常生成；Origin 首页不显示卡片。预告卡片只接 `pressable`、不预取目录页；预告页背景用「阅读页」那项模糊度，拼贴画板按 cqi 等比缩放、窄屏另一套位置。删掉该行或改 false 即恢复（预告页随之转去目录页）
+- 暂时隐藏入口：`carrier_wave.yml` 顶部 `hide_entry: true`（**不能叫 `hidden`**，文件里已有同名键，重复会让整个文件解析失败）。此时首页显示预告卡片 `.cw-card.is-soon`，点进 `/carrier_wave/soon/`（layout `soon`，glint.css「CW 预告页」），`search.json` 不收录（`cw_hidden()`），CW 页面照常生成。预告卡片只接 `pressable`、不预取目录页；预告页背景用「阅读页」那项模糊度，拼贴画板按 cqi 等比缩放、窄屏另一套位置。删掉该行或改 false 即恢复（预告页随之转去目录页）
 - 目录页载波画布 `.cw-wave` 是 280px 高的窄带，由 cw.js 用 transform 跟随中线；阅读页标题字号按 `--len` 自动缩小
 - 读者记录：读完记 localStorage `whatasiger_cw_read`（目录 `is-read`）；见过的篇目记 `whatasiger_cw_seen`，首页卡片（`data-cw-tracks`，来自 `cw_published()`）有新篇目时挂 `has-new`
 - 订阅源 `/carrier_wave/atom.xml`：篇目无日期，按正文文件修改时间排

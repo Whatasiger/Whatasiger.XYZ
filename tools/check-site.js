@@ -1,6 +1,6 @@
 /* ----
 # 站点检查（CI 与本地都可用）：先 npm run build，再 node tools/check-site.js [public]
-#   1. 站内链接：public/ 下各页（Origin 除外）href / src 指向的站内文件都要存在 —— 有缺失即失败（退出码 1）
+#   1. 站内链接：public/ 下各页href / src 指向的站内文件都要存在 —— 有缺失即失败（退出码 1）
 #   2. 页面体积：单页 HTML 超过 HTML_BUDGET 给出提醒（长篇小说本身就大，只提醒不失败）
 #   3. 图片格式：public/images 下除 ALLOW_RASTER 以外都应是 webp —— 只提醒
 #   4. 一叶关卡：node tools/yiye-solve.js 每关都要能解（求解器输出「抵达 ×」即失败）；--skip-yiye 跳过
@@ -47,7 +47,7 @@ const big = [];
 let pages = 0;
 for (const f of files) {
   const r = rel(f);
-  if (!r.endsWith('.html') || r.startsWith('origin/')) continue;
+  if (!r.endsWith('.html')) continue;
   pages++;
   const html = fs.readFileSync(f, 'utf8');
   if (Buffer.byteLength(html) > HTML_BUDGET) big.push(r + '（' + Math.round(Buffer.byteLength(html) / 1024) + ' KB）');
