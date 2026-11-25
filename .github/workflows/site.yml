@@ -1,6 +1,6 @@
 # 构建与检查（源码仓库 Whatasiger/Whatasiger.XYZ）
 #
-# - 推送到 main / 提 PR：完整构建（Glint + Origin + 压缩），再跑 tools/check-site.js（站内链接、页面体积、图片格式、一叶关卡）
+# - 推送到 main / 提 PR：完整构建（生成 + 压缩），再跑 tools/check-site.js（站内链接、页面体积、图片格式、一叶关卡）
 # - 手动运行（Actions 页面 Run workflow）：可勾选「部署」
 # - 每天刷新网易云周榜另见 todo.yml（只替换线上的 /todo.json，不在这里定时整站重建部署：
 #   源码仓库常落后于已部署的站点，定时部署会把线上改回旧版）
@@ -49,7 +49,7 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
-      - name: 构建（Glint + Origin + 压缩）
+      - name: 构建（生成 + 压缩）
         run: npm run build
 
       - name: 检查站点

@@ -4,8 +4,7 @@
 # 生成 Glint 站内搜索用的精简索引 /search.json（glint.js setupSearch 读取）：
 #   文章、独立页面（关于 / 留言板 / 友链…）、CARRiER WAVE. 各篇、Gizmo 陈列的小玩意
 #   每条 { k: 类别, t: 标题, u: 地址, d: 日期, g: [标签], c: 纯文本正文, i: 小封面 }
-# 正文去掉 HTML、脚注回跳符号与多余空白；比 hexo-generator-searchdb 的 search.xml（带整段 HTML）小得多
-# search.xml 仍保留：Origin 界面（冻结的旧版）还在用它
+# 正文去掉 HTML、脚注回跳符号与多余空白
 ---- */
 
 'use strict';

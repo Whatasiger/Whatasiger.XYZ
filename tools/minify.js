@@ -1,6 +1,6 @@
 /* ----
 # 压缩生成后的样式 / 脚本（npm run build 的最后一步）
-# 只处理 public/ 下各 static/ 目录里的 .css / .js（Glint、Origin、CARRiER WAVE. 的主题资源），源码里的中文注释照常保留
+# 只处理 public/ 下各 static/ 目录里的 .css / .js（Glint、CARRiER WAVE. 的主题资源），源码里的中文注释照常保留
 # 文件开头的说明注释（含 Hingle 等署名）原样留在压缩结果最前面
 # hexo server 预览的是未压缩的源码；asset_url 的 ?v= 哈希按源码算，源码一改地址即变
 # 用法：node tools/minify.js [目录，缺省 public]

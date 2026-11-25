@@ -847,20 +847,6 @@ var Glint = function (config) {
             });
         }
 
-        // 界面主题（Glint / Origin）：滑块先滑过去，再跳到另一套界面的同一页（window.switchUI 见 _partial/ui-switch.ejs）
-        var uiInput = document.getElementById("setting-ui");
-        if (uiInput) {
-            uiInput.addEventListener("click", function (e) {
-                var opt = e.target.closest("button[data-value]");
-                if (!opt || opt.getAttribute("aria-checked") === "true") return;
-                var value = opt.getAttribute("data-value");
-                uiInput.setAttribute("data-value", value);
-                var opts = uiInput.querySelectorAll("button");
-                for (var i = 0; i < opts.length; i++) opts[i].setAttribute("aria-checked", String(opts[i] === opt));
-                setTimeout(function () { if (window.switchUI) window.switchUI(value); }, 280);
-            });
-        }
-
         // 切换主题色：支持时用一次视图过渡，让全站颜色整体淡入新色，而不是各处按自己的过渡时长先后变色
         function switchAccent(value) {
             function apply() {

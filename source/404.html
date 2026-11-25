@@ -10,6 +10,13 @@ sitemap: false
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<script>
+  // 旧界面 Origin（/origin/ 下）已移除：旧链接转到根路径的同一页
+  (function () {
+    var p = location.pathname;
+    if (/^\/origin(\/|$)/.test(p)) location.replace((p.replace(/^\/origin/, "") || "/") + location.search + location.hash);
+  })();
+</script>
 <title>???</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }

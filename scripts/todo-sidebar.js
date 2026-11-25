@@ -98,7 +98,6 @@ hexo.extend.helper.register('get_todo_data', function () {
 });
 
 // /todo.json：与 CI 每天写到线上的是同一格式；本地部署时用构建当时的数据（首页脚本取两者中较新的一份）
-// Origin 构建（tools/build-origin.js）删掉了这个生成器
 hexo.extend.generator.register('todo_json', function () {
   var cache = loadCache(path.join(hexo.base_dir, TODO_CACHE_PATH), hexo.log);
   if (!cache.netease || !Array.isArray(cache.netease.songs)) return [];

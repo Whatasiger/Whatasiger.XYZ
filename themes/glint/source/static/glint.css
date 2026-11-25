@@ -3638,8 +3638,7 @@ div.settings-row { cursor: default; }
     transition: transform 0.45s var(--ease-spring);
 }
 .settings-segment[data-value="system-default"]:before,
-.settings-segment[data-value="origin"]:before,
-.settings-segment[data-value="serif"]:before { transform: translateX(100%); } /* 右侧选项：字体「系统默认」、界面「Origin」、正文「宋体」 */
+.settings-segment[data-value="serif"]:before { transform: translateX(100%); } /* 右侧选项：字体「系统默认」、正文「宋体」 */
 /* 三选一（日夜：夜间 / 白天 / 自动）：滑块占三分之一 */
 .settings-segment.is-three { grid-template-columns: repeat(3, 1fr); }
 .settings-segment.is-three:before { width: calc((100% - 4px) / 3); }

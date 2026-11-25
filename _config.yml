@@ -135,13 +135,6 @@ symbols_count_time:
   wpm: 275
   suffix: "" # 关键：强制设为空，不让插件自己乱加 mins. 之类的后缀
 
-# 搜索配置
-search:
-  path: search.xml
-  field: post
-  content: true
-  format: html
-
 # RSS / Atom 订阅源（hexo-generator-feed）
 feed:
   enable: true
